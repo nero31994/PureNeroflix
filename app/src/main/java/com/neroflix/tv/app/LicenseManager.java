@@ -1,0 +1,513 @@
+package com.neroflix.tv.app;
+
+import android.content.Context;
+import android.content.SharedPreferences;
+import android.content.pm.PackageInfo;
+import android.content.pm.PackageManager;
+import android.content.pm.Signature;
+import android.content.pm.SigningInfo;
+import android.os.Build;
+import android.provider.Settings;
+import android.util.Log;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.security.MessageDigest;
+
+public class LicenseManager {
+
+    public enum Status { APPROVED, EXPIRED, NOT_FOUND, TAMPERED }
+    public enum Plan   { FREE, PREMIUM }
+
+    private static final String PREFS_NAME     = "neroflix_license";
+    private static final String PREF_TOKEN     = "access_token";
+    private static final String PREF_TOKEN_TS  = "token_issued_time";
+    private static final String PREF_PLAN      = "device_plan";
+    private static final String PREF_CACHE     = "license_cache";
+    private static final String PREF_CACHE_TS  = "license_cache_time";
+    private static final String PREF_FREE_CODE = "saved_free_code";
+    private static final String PREF_SERVERS   = "cached_servers";
+
+    private static final long TOKEN_MAX_AGE    = 24 * 60 * 60 * 1000L;
+    private static final long CACHE_MAX_AGE    = 24 * 60 * 60 * 1000L;
+
+    // XOR-encoded worker URL (key = 0x7A)
+    // Decodes to: https://nero-license.kkt01.workers.dev/license
+    private static final byte   W_KEY = 0x7A;
+    private static final byte[] WORKER_ENC = {
+        (byte)0x12,(byte)0x0E,(byte)0x0E,(byte)0x0A,(byte)0x09,(byte)0x40,
+        (byte)0x55,(byte)0x55,(byte)0x14,(byte)0x1F,(byte)0x08,(byte)0x15,
+        (byte)0x57,(byte)0x16,(byte)0x13,(byte)0x19,(byte)0x1F,(byte)0x14,
+        (byte)0x09,(byte)0x1F,(byte)0x54,(byte)0x11,(byte)0x11,(byte)0x0E,
+        (byte)0x4A,(byte)0x4B,(byte)0x54,(byte)0x0D,(byte)0x15,(byte)0x08,
+        (byte)0x11,(byte)0x1F,(byte)0x08,(byte)0x09,(byte)0x54,(byte)0x1E,
+        (byte)0x1F,(byte)0x0C,(byte)0x55,(byte)0x16,(byte)0x13,(byte)0x19,
+        (byte)0x1F,(byte)0x14,(byte)0x09,(byte)0x1F,
+    };
+
+    private static String workerUrl() {
+        byte[] dec = new byte[WORKER_ENC.length];
+        for (int i = 0; i < WORKER_ENC.length; i++) dec[i] = (byte)(WORKER_ENC[i] ^ W_KEY);
+        return new String(dec);
+    }
+
+    // XOR-encoded expected SHA-256 signature (key = 0x3A)
+    // Decodes to: 849D0A8D138655960999FD084B23A771B105928D6B27DDB59F1AF1C148411AFF
+    private static final byte   SIG_KEY = 0x3A;
+    private static final byte[] SIG_ENC = {
+        (byte)0xBC,(byte)0x8B,(byte)0x83,(byte)0xA7,(byte)0x30,(byte)0x8B,
+        (byte)0x73,(byte)0xA7,(byte)0x09,(byte)0xA3,(byte)0xBC,(byte)0x5E,
+        (byte)0x76,(byte)0xA3,(byte)0x4E,(byte)0x7A,(byte)0xA6,(byte)0x09,
+        (byte)0xBC,(byte)0x76,(byte)0x5A,(byte)0x72,(byte)0x43,(byte)0xA3,
+        (byte)0x00,(byte)0x1B,(byte)0x43,(byte)0x9F,(byte)0x46,(byte)0xA3,
+        (byte)0x1B,(byte)0x0B,(byte)0x43,(byte)0x9F,(byte)0x6E,(byte)0x19,
+        (byte)0x5E,(byte)0x1B,(byte)0x1B,(byte)0x59,(byte)0x1B,(byte)0xA4,
+        (byte)0x1B,(byte)0x5A,(byte)0xA4,(byte)0x1B,(byte)0x59,(byte)0xA5,
+        (byte)0x09,(byte)0x09,(byte)0x4A,(byte)0x0F,(byte)0x1B,(byte)0x76,
+        (byte)0x5E,(byte)0x4E,(byte)0x5E,(byte)0x09,(byte)0x76,(byte)0x7A,
+        (byte)0x4E,(byte)0x4E,(byte)0x5E,(byte)0xA4,(byte)0xA5
+    };
+
+    private static String expectedSig() {
+        byte[] dec = new byte[SIG_ENC.length];
+        for (int i = 0; i < SIG_ENC.length; i++) dec[i] = (byte)(SIG_ENC[i] ^ SIG_KEY);
+        return new String(dec).toUpperCase();
+    }
+
+    public interface LicenseCallback  { void onResult(Status status); }
+    // servers[][0] = name, servers[][1] = url. null = not approved.
+    public interface ServersCallback  { void onResult(String[][] servers); }
+
+    private static String lastMessage = "";
+    public static String getLastMessage() { return lastMessage; }
+
+    // -----------------------------------------------------------------------
+    // Tamper detection — scattered, not a single patchable chokepoint
+    // -----------------------------------------------------------------------
+    private static boolean checkSignature(Context ctx) {
+        try {
+            String expected = expectedSig();
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                PackageInfo pi = ctx.getPackageManager().getPackageInfo(
+                    ctx.getPackageName(), PackageManager.GET_SIGNING_CERTIFICATES);
+                SigningInfo si = pi.signingInfo;
+                Signature[] sigs = si.hasMultipleSigners()
+                    ? si.getApkContentsSigners()
+                    : si.getSigningCertificateHistory();
+                for (Signature s : sigs)
+                    if (expected.equalsIgnoreCase(sha256Hex(s.toByteArray()))) return true;
+                return false;
+            } else {
+                @SuppressWarnings("deprecation")
+                PackageInfo pi = ctx.getPackageManager().getPackageInfo(
+                    ctx.getPackageName(), PackageManager.GET_SIGNATURES);
+                for (Signature s : pi.signatures)
+                    if (expected.equalsIgnoreCase(sha256Hex(s.toByteArray()))) return true;
+                return false;
+            }
+        } catch (Exception e) { return false; }
+    }
+
+    private static boolean checkPackageName(Context ctx) {
+        return "com.neroflix.tv.app".equals(ctx.getPackageName());
+    }
+
+    public static boolean isApkTampered(Context ctx) {
+        return !checkSignature(ctx) || !checkPackageName(ctx);
+    }
+
+    // -----------------------------------------------------------------------
+    // fetchServers — called by launchPlayer() in DetailActivity.
+    // Returns server list from the Worker so URLs are never in the APK.
+    // -----------------------------------------------------------------------
+    public static void fetchServers(Context context, ServersCallback callback) {
+        // Scattered tamper checks — patching isApkTampered() alone is not enough
+        if (!checkSignature(context) || !checkPackageName(context)) {
+            callback.onResult(null);
+            return;
+        }
+
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        String token    = prefs.getString(PREF_TOKEN, "");
+        String deviceId = getDeviceId(context);
+        long   tokenAge = System.currentTimeMillis() - prefs.getLong(PREF_TOKEN_TS, 0);
+
+        if (!token.isEmpty() && tokenAge < TOKEN_MAX_AGE) {
+            // Fast path: verify cached token
+            new Thread(() -> {
+                try {
+                    JSONObject body = new JSONObject();
+                    body.put("device_id",    deviceId);
+                    body.put("action",       "verify_token");
+                    body.put("token",        token);
+                    body.put("version_code", BuildConfig.VERSION_CODE);
+
+                    String response = postToWorker(body.toString());
+                    if (response != null) {
+                        JSONObject json = new JSONObject(response);
+                        if ("valid".equals(json.optString("status"))) {
+                            String[][] servers = parseServers(json);
+                            if (servers != null) cacheServers(context, json.optJSONArray("servers"));
+                            callback.onResult(servers);
+                            return;
+                        }
+                    }
+                } catch (Exception e) {
+                    Log.e("LicenseManager", "token verify failed", e);
+                }
+                // Token stale or verify failed — do full check
+                doFullServerCheck(context, deviceId, prefs, callback);
+            }).start();
+        } else {
+            new Thread(() -> doFullServerCheck(context, deviceId, prefs, callback)).start();
+        }
+    }
+
+    private static void doFullServerCheck(Context context, String deviceId,
+                                          SharedPreferences prefs, ServersCallback callback) {
+        try {
+            String savedCode = prefs.getString(PREF_FREE_CODE, "");
+            JSONObject body  = new JSONObject();
+            body.put("device_id",    deviceId);
+            body.put("version_code", BuildConfig.VERSION_CODE);
+            if (!savedCode.isEmpty()) body.put("free_code", savedCode);
+
+            String response = postToWorker(body.toString());
+            if (response != null) {
+                JSONObject json   = new JSONObject(response);
+                String status     = json.optString("status", "");
+                String plan       = json.optString("plan", "free");
+                String newToken   = json.optString("token", "");
+                lastMessage       = json.optString("message", "");
+
+                if (!newToken.isEmpty()) {
+                    prefs.edit()
+                        .putString(PREF_TOKEN,  newToken)
+                        .putLong(PREF_TOKEN_TS, System.currentTimeMillis())
+                        .putString(PREF_PLAN,   plan)
+                        .apply();
+                }
+
+                if ("approved".equals(status)) {
+                    String[][] servers = parseServers(json);
+                    if (servers != null) cacheServers(context, json.optJSONArray("servers"));
+                    callback.onResult(servers);
+                    return;
+                }
+            }
+        } catch (Exception e) {
+            Log.e("LicenseManager", "doFullServerCheck failed", e);
+            // Offline grace: use cached server list if approved within 24h
+            String cachedServers = prefs.getString(PREF_SERVERS, null);
+            long   cacheAge      = System.currentTimeMillis() - prefs.getLong(PREF_CACHE_TS, 0);
+            if (cachedServers != null && cacheAge < CACHE_MAX_AGE) {
+                try {
+                    callback.onResult(parseServersFromArray(new JSONArray(cachedServers)));
+                    return;
+                } catch (Exception ignored) {}
+            }
+        }
+        callback.onResult(null);
+    }
+
+    // -----------------------------------------------------------------------
+    // check / checkWithCode — used by ActivationActivity (unchanged flow)
+    // -----------------------------------------------------------------------
+    public static void check(Context context, LicenseCallback callback) {
+        if (!checkSignature(context) || !checkPackageName(context)) {
+            callback.onResult(Status.TAMPERED);
+            return;
+        }
+
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        long   cacheAge = System.currentTimeMillis() - prefs.getLong(PREF_CACHE_TS, 0);
+        String cached   = prefs.getString(PREF_CACHE, null);
+
+        if (cached != null && cacheAge <= CACHE_MAX_AGE) {
+            try { callback.onResult(parseStatus(context, new JSONObject(cached))); return; }
+            catch (Exception ignored) {}
+        }
+
+        String deviceId  = getDeviceId(context);
+        String savedCode = prefs.getString(PREF_FREE_CODE, "");
+
+        new Thread(() -> {
+            try {
+                JSONObject body = new JSONObject();
+                body.put("device_id",    deviceId);
+                body.put("version_code", BuildConfig.VERSION_CODE);
+                if (!savedCode.isEmpty()) body.put("free_code", savedCode);
+
+                String response = postToWorker(body.toString());
+                if (response != null) {
+                    prefs.edit()
+                        .putString(PREF_CACHE,  response)
+                        .putLong(PREF_CACHE_TS, System.currentTimeMillis())
+                        .apply();
+                    callback.onResult(parseStatus(context, new JSONObject(response)));
+                    return;
+                }
+            } catch (Exception e) {
+                Log.e("LicenseManager", "check failed", e);
+            }
+            callback.onResult(cached != null ? Status.APPROVED : Status.NOT_FOUND);
+        }).start();
+    }
+
+    public static void checkWithCode(Context context, String freeCode, LicenseCallback callback) {
+        if (!checkSignature(context) || !checkPackageName(context)) {
+            callback.onResult(Status.TAMPERED);
+            return;
+        }
+        String deviceId = getDeviceId(context);
+        new Thread(() -> {
+            try {
+                JSONObject body = new JSONObject();
+                body.put("device_id",    deviceId);
+                body.put("version_code", BuildConfig.VERSION_CODE);
+                body.put("free_code",    freeCode);
+
+                String response = postToWorker(body.toString());
+                SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+                if (response != null) {
+                    JSONObject json = new JSONObject(response);
+                    if ("approved".equals(json.optString("status"))) {
+                        prefs.edit().putString(PREF_FREE_CODE, freeCode).apply();
+                    }
+                    prefs.edit()
+                        .putString(PREF_CACHE,  response)
+                        .putLong(PREF_CACHE_TS, System.currentTimeMillis())
+                        .apply();
+                    callback.onResult(parseStatus(context, json));
+                    return;
+                }
+            } catch (Exception e) {
+                Log.e("LicenseManager", "checkWithCode failed", e);
+            }
+            callback.onResult(Status.NOT_FOUND);
+        }).start();
+    }
+
+    public static boolean isPremium(Context context) {
+        if (!checkSignature(context) || !checkPackageName(context)) return false;
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        long tokenAge = System.currentTimeMillis() - prefs.getLong(PREF_TOKEN_TS, 0);
+        if (tokenAge > TOKEN_MAX_AGE) return false;
+        String token = prefs.getString(PREF_TOKEN, "");
+        if (token.isEmpty()) return false;
+        return "premium".equals(prefs.getString(PREF_PLAN, "free"));
+    }
+
+    public static String getDeviceId(Context context) {
+        return Settings.Secure.getString(
+            context.getContentResolver(), Settings.Secure.ANDROID_ID);
+    }
+
+    // -----------------------------------------------------------------------
+    // Internal helpers
+    // -----------------------------------------------------------------------
+    private static String postToWorker(String bodyJson) {
+        try {
+            URL url = new URL(workerUrl());
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("POST");
+            conn.setRequestProperty("Content-Type", "application/json");
+            conn.setConnectTimeout(8000);
+            conn.setReadTimeout(8000);
+            conn.setDoOutput(true);
+            conn.getOutputStream().write(bodyJson.getBytes("UTF-8"));
+            if (conn.getResponseCode() != 200) return null;
+            BufferedReader reader = new BufferedReader(
+                new InputStreamReader(conn.getInputStream()));
+            StringBuilder sb = new StringBuilder();
+            String line;
+            while ((line = reader.readLine()) != null) sb.append(line);
+            reader.close();
+            conn.disconnect();
+            return sb.toString();
+        } catch (Exception e) {
+            Log.e("LicenseManager", "postToWorker failed", e);
+            return null;
+        }
+    }
+
+    private static String[][] parseServers(JSONObject json) {
+        try {
+            JSONArray arr = json.optJSONArray("servers");
+            if (arr == null || arr.length() == 0) return null;
+            return parseServersFromArray(arr);
+        } catch (Exception e) { return null; }
+    }
+
+    private static String[][] parseServersFromArray(JSONArray arr) throws Exception {
+        // servers[][0] = name, servers[][1] = movie url, servers[][2] = tv url (may be empty)
+        String[][] servers = new String[arr.length()][3];
+        for (int i = 0; i < arr.length(); i++) {
+            JSONObject s = arr.getJSONObject(i);
+            servers[i][0] = s.getString("name");
+            servers[i][1] = s.getString("url");
+            servers[i][2] = s.optString("url_tv", "");
+        }
+        return servers;
+    }
+
+    private static void cacheServers(Context context, JSONArray arr) {
+        if (arr == null) return;
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit()
+            .putString(PREF_SERVERS, arr.toString())
+            .putLong(PREF_CACHE_TS,  System.currentTimeMillis())
+            .apply();
+    }
+
+    private static Status parseStatus(Context context, JSONObject json) {
+        try {
+            String status = json.optString("status", "not_found");
+            String plan   = json.optString("plan",   "free");
+            String token  = json.optString("token",  "");
+            lastMessage   = json.optString("message","");
+
+            SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+            if (!token.isEmpty()) {
+                prefs.edit()
+                    .putString(PREF_TOKEN,  token)
+                    .putLong(PREF_TOKEN_TS, System.currentTimeMillis())
+                    .putString(PREF_PLAN,   plan)
+                    .apply();
+            } else {
+                prefs.edit().putString(PREF_PLAN, plan).apply();
+            }
+
+            switch (status) {
+                case "approved":     return Status.APPROVED;
+                case "expired":      return Status.EXPIRED;
+                case "tampered":     return Status.TAMPERED;
+                case "code_expired": return Status.NOT_FOUND;
+                case "invalid_code": return Status.NOT_FOUND;
+                default:             return Status.NOT_FOUND;
+            }
+        } catch (Exception e) { return Status.NOT_FOUND; }
+    }
+
+    // -----------------------------------------------------------------------
+    // fetchIptvAccess — called by IPTVActivity.
+    // Returns IptvAccess with the M3U URL from the Worker, or null if not approved.
+    // The M3U URL is never stored in the APK.
+    // -----------------------------------------------------------------------
+    public static class IptvAccess {
+        public final String m3uUrl;
+        public IptvAccess(String m3uUrl) { this.m3uUrl = m3uUrl; }
+    }
+
+    public interface IptvCallback { void onResult(IptvAccess result); }
+
+    private static final String PREF_IPTV_URL      = "iptv_m3u_url";
+    private static final String PREF_IPTV_CACHE_TS = "iptv_cache_time";
+
+    public static void fetchIptvAccess(Context context, IptvCallback callback) {
+        if (!checkSignature(context) || !checkPackageName(context)) {
+            callback.onResult(null);
+            return;
+        }
+
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        String token    = prefs.getString(PREF_TOKEN, "");
+        String deviceId = getDeviceId(context);
+        long   tokenAge = System.currentTimeMillis() - prefs.getLong(PREF_TOKEN_TS, 0);
+
+        if (!token.isEmpty() && tokenAge < TOKEN_MAX_AGE) {
+            // Fast path: verify token and get IPTV URL in one call
+            new Thread(() -> {
+                try {
+                    JSONObject body = new JSONObject();
+                    body.put("device_id",    deviceId);
+                    body.put("action",       "verify_token");
+                    body.put("token",        token);
+                    body.put("version_code", BuildConfig.VERSION_CODE);
+
+                    String response = postToWorker(body.toString());
+                    if (response != null) {
+                        JSONObject json = new JSONObject(response);
+                        if ("valid".equals(json.optString("status"))) {
+                            String m3uUrl = json.optString("iptv_m3u_url", "");
+                            if (!m3uUrl.isEmpty()) {
+                                cacheIptvUrl(context, m3uUrl);
+                                callback.onResult(new IptvAccess(m3uUrl));
+                                return;
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    Log.e("LicenseManager", "fetchIptvAccess token verify failed", e);
+                }
+                doFullIptvCheck(context, deviceId, prefs, callback);
+            }).start();
+        } else {
+            new Thread(() -> doFullIptvCheck(context, deviceId, prefs, callback)).start();
+        }
+    }
+
+    private static void doFullIptvCheck(Context context, String deviceId,
+                                        SharedPreferences prefs, IptvCallback callback) {
+        try {
+            String savedCode = prefs.getString(PREF_FREE_CODE, "");
+            JSONObject body  = new JSONObject();
+            body.put("device_id",    deviceId);
+            body.put("version_code", BuildConfig.VERSION_CODE);
+            if (!savedCode.isEmpty()) body.put("free_code", savedCode);
+
+            String response = postToWorker(body.toString());
+            if (response != null) {
+                JSONObject json = new JSONObject(response);
+                String status   = json.optString("status", "");
+                String plan     = json.optString("plan",   "free");
+                String newToken = json.optString("token",  "");
+                String m3uUrl   = json.optString("iptv_m3u_url", "");
+                lastMessage     = json.optString("message", "");
+
+                if (!newToken.isEmpty()) {
+                    prefs.edit()
+                        .putString(PREF_TOKEN,  newToken)
+                        .putLong(PREF_TOKEN_TS, System.currentTimeMillis())
+                        .putString(PREF_PLAN,   plan)
+                        .apply();
+                }
+
+                if ("approved".equals(status) && !m3uUrl.isEmpty()) {
+                    cacheIptvUrl(context, m3uUrl);
+                    callback.onResult(new IptvAccess(m3uUrl));
+                    return;
+                }
+            }
+        } catch (Exception e) {
+            Log.e("LicenseManager", "doFullIptvCheck failed", e);
+            // Offline grace: use cached M3U URL if available within 24h
+            String cached   = prefs.getString(PREF_IPTV_URL, null);
+            long   cacheAge = System.currentTimeMillis() - prefs.getLong(PREF_IPTV_CACHE_TS, 0);
+            if (cached != null && !cached.isEmpty() && cacheAge < CACHE_MAX_AGE) {
+                callback.onResult(new IptvAccess(cached));
+                return;
+            }
+        }
+        callback.onResult(null);
+    }
+
+    private static void cacheIptvUrl(Context context, String url) {
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE).edit()
+            .putString(PREF_IPTV_URL,      url)
+            .putLong(PREF_IPTV_CACHE_TS,   System.currentTimeMillis())
+            .apply();
+    }
+
+    private static String sha256Hex(byte[] data) throws Exception {
+        MessageDigest md = MessageDigest.getInstance("SHA-256");
+        md.update(data);
+        StringBuilder sb = new StringBuilder();
+        for (byte b : md.digest()) sb.append(String.format("%02X", b));
+        return sb.toString();
+    }
+}

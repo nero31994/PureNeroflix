@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#000000">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:padding="32dp">
+
+        <!-- Logo -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="N"
+            android:textColor="#E50914"
+            android:textSize="72sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp"/>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="NeroFlix"
+            android:textColor="#FFFFFF"
+            android:textSize="24sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="24dp"/>
+
+        <!-- Status -->
+        <TextView
+            android:id="@+id/activation_status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="#FFAA00"
+            android:textSize="14sp"
+            android:gravity="center"
+            android:layout_marginBottom="24dp"/>
+
+        <!-- Code input -->
+        <EditText
+            android:id="@+id/code_input"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:hint="Enter access code"
+            android:textColor="#FFFFFF"
+            android:textColorHint="#666666"
+            android:textSize="16sp"
+            android:gravity="center"
+            android:inputType="textCapCharacters"
+            android:background="@drawable/input_bg"
+            android:layout_marginBottom="12dp"
+            android:padding="12dp"/>
+
+        <Button
+            android:id="@+id/submit_code_btn"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:text="ACTIVATE"
+            android:textColor="#FFFFFF"
+            android:textStyle="bold"
+            android:backgroundTint="#E50914"
+            android:layout_marginBottom="16dp"/>
+
+        <ProgressBar
+            android:id="@+id/code_loading"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:visibility="gone"
+            android:layout_marginBottom="16dp"/>
+
+        <!-- Divider -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#222222"
+            android:layout_marginBottom="16dp"/>
+
+        <!-- Device ID section -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Your Device ID:"
+            android:textColor="#AAAAAA"
+            android:textSize="12sp"
+            android:layout_marginBottom="8dp"/>
+
+        <TextView
+            android:id="@+id/device_id_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="#FFFFFF"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:gravity="center"
+            android:background="@drawable/input_bg"
+            android:padding="12dp"
+            android:layout_marginBottom="12dp"/>
+
+        <Button
+            android:id="@+id/copy_btn"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:text="📋 Copy Device ID"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="#222222"
+            android:layout_marginBottom="12dp"/>
+
+        <Button
+            android:id="@+id/message_admin_btn"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:text="💬 Message Admin on Messenger"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="#0084FF"
+            android:textStyle="bold"/>
+
+    </LinearLayout>
+</ScrollView>

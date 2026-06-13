@@ -1,0 +1,449 @@
+package com.neroflix.tv.app.activities;
+
+import androidx.appcompat.app.AlertDialog;
+import android.content.Intent;
+import android.widget.NumberPicker;
+import android.widget.LinearLayout;
+import android.os.Bundle;
+import android.view.KeyEvent;
+import android.view.View;
+import android.widget.ImageView;
+import android.widget.ProgressBar;
+import android.widget.TextView;
+
+import androidx.appcompat.app.AppCompatActivity;
+
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions;
+import com.neroflix.tv.app.R;
+import com.neroflix.tv.app.models.Movie;
+import com.neroflix.tv.app.network.TmdbClient;
+
+public class DetailActivity extends AppCompatActivity {
+
+    private int movieId;
+    private String mediaType;
+    private Movie movie;
+
+    private ImageView backdropImage;
+    private ImageView posterImage;
+    private TextView titleText;
+    private TextView overviewText;
+    private TextView ratingText;
+    private TextView yearText;
+    private TextView genresText;
+    private TextView runtimeText;
+    private TextView taglineText;
+    private View playButton;
+    private View backButton;
+    private ProgressBar progressBar;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_detail);
+
+        movieId = getIntent().getIntExtra("movie_id", 0);
+        mediaType = getIntent().getStringExtra("media_type");
+
+        setupViews();
+        loadBasicInfo();
+        loadDetailInfo();
+    }
+
+    private void setupViews() {
+        backdropImage = findViewById(R.id.detail_backdrop);
+        posterImage   = findViewById(R.id.detail_poster);
+        titleText     = findViewById(R.id.detail_title);
+        overviewText  = findViewById(R.id.detail_overview);
+        ratingText    = findViewById(R.id.detail_rating);
+        yearText      = findViewById(R.id.detail_year);
+        genresText    = findViewById(R.id.detail_genres);
+        runtimeText   = findViewById(R.id.detail_runtime);
+        taglineText   = findViewById(R.id.detail_tagline);
+        playButton    = findViewById(R.id.detail_play_btn);
+        backButton    = findViewById(R.id.detail_back_btn);
+        progressBar   = findViewById(R.id.detail_progress);
+
+        playButton.setFocusable(true);
+        backButton.setFocusable(true);
+
+        playButton.setOnClickListener(v -> playMovie());
+
+        View downloadButton = findViewById(R.id.detail_download_btn);
+        if (downloadButton != null) {
+            downloadButton.setOnClickListener(v -> openDownload());
+        }
+
+        View watchlistBtn = findViewById(R.id.detail_watchlist_btn);
+        if (watchlistBtn != null) {
+            updateWatchlistBtn(watchlistBtn);
+            watchlistBtn.setOnClickListener(v -> {
+                if (movie != null) {
+                    com.neroflix.tv.app.WatchManager.toggleWatchlist(this, movie);
+                    updateWatchlistBtn(watchlistBtn);
+                }
+            });
+        }
+
+        backButton.setOnClickListener(v -> finish());
+
+        playButton.setOnKeyListener((v, keyCode, event) -> {
+            if (event.getAction() == KeyEvent.ACTION_DOWN
+                    && (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER)) {
+                playMovie();
+                return true;
+            }
+            return false;
+        });
+
+        backButton.setOnKeyListener((v, keyCode, event) -> {
+            if (event.getAction() == KeyEvent.ACTION_DOWN
+                    && (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER)) {
+                finish();
+                return true;
+            }
+            return false;
+        });
+
+        setFocusAnimation(playButton);
+        setFocusAnimation(backButton);
+    }
+
+    private void setFocusAnimation(View view) {
+        view.setOnFocusChangeListener((v, hasFocus) -> {
+            v.animate().scaleX(hasFocus ? 1.05f : 1f)
+                    .scaleY(hasFocus ? 1.05f : 1f)
+                    .setDuration(120).start();
+        });
+    }
+
+    private void loadBasicInfo() {
+        String title        = getIntent().getStringExtra("movie_title");
+        String overview     = getIntent().getStringExtra("movie_overview");
+        String posterPath   = getIntent().getStringExtra("movie_poster");
+        String backdropPath = getIntent().getStringExtra("movie_backdrop");
+        String year         = getIntent().getStringExtra("movie_year");
+        double rating       = getIntent().getDoubleExtra("movie_rating", 0.0);
+
+        if (title != null)    titleText.setText(title);
+        if (overview != null) overviewText.setText(overview);
+        if (year != null)     yearText.setText(year);
+        ratingText.setText(String.format("★ %.1f", rating));
+
+        if (backdropPath != null && !backdropPath.isEmpty()) {
+            Glide.with(this)
+                    .load("https://image.tmdb.org/t/p/w1280" + backdropPath)
+                    .transition(DrawableTransitionOptions.withCrossFade())
+                    .centerCrop()
+                    .into(backdropImage);
+        }
+
+        if (posterPath != null && !posterPath.isEmpty()) {
+            Glide.with(this)
+                    .load("https://image.tmdb.org/t/p/w500" + posterPath)
+                    .transition(DrawableTransitionOptions.withCrossFade())
+                    .centerCrop()
+                    .into(posterImage);
+        }
+    }
+
+    private void loadDetailInfo() {
+        progressBar.setVisibility(View.VISIBLE);
+        TmdbClient.getInstance().fetchMovieDetail(movieId, mediaType, new TmdbClient.MovieDetailCallback() {
+            @Override
+            public void onSuccess(Movie m) {
+                movie = m;
+                progressBar.setVisibility(View.GONE);
+                updateDetailUI(m);
+            }
+            @Override
+            public void onError(String error) {
+                progressBar.setVisibility(View.GONE);
+            }
+        });
+    }
+
+    private void updateDetailUI(Movie m) {
+        if (m.getGenres() != null && !m.getGenres().isEmpty()) {
+            genresText.setText(m.getGenres());
+            genresText.setVisibility(View.VISIBLE);
+        }
+        if (!m.getRuntimeFormatted().isEmpty()) {
+            runtimeText.setText(m.getRuntimeFormatted());
+            runtimeText.setVisibility(View.VISIBLE);
+        }
+        if (m.getTagline() != null && !m.getTagline().isEmpty()) {
+            taglineText.setText("\"" + m.getTagline() + "\"");
+            taglineText.setVisibility(View.VISIBLE);
+        }
+    }
+
+    private void playMovie() {
+        if ("tv".equals(mediaType)) {
+            showEpisodePicker();
+        } else {
+            launchPlayer(1, 1);
+        }
+    }
+
+    private void showEpisodePicker() {
+        AlertDialog loadingDialog = new AlertDialog.Builder(this)
+            .setTitle("Loading seasons...")
+            .setMessage("Please wait")
+            .setCancelable(false)
+            .create();
+        loadingDialog.show();
+
+        com.neroflix.tv.app.network.TmdbClient.getInstance().fetchTVDetails(movieId,
+            new com.neroflix.tv.app.network.TmdbClient.TVDetailsCallback() {
+                @Override
+                public void onSuccess(int numSeasons, java.util.List<String> seasonNames) {
+                    loadingDialog.dismiss();
+                    showSeasonDialog(numSeasons, seasonNames);
+                }
+                @Override
+                public void onError(String error) {
+                    loadingDialog.dismiss();
+                    showSimpleEpisodePicker();
+                }
+            });
+    }
+
+    private void showSeasonDialog(int numSeasons, java.util.List<String> seasonNames) {
+        String[] seasons = seasonNames.toArray(new String[0]);
+        new AlertDialog.Builder(this)
+            .setTitle("Select Season")
+            .setItems(seasons, (d, which) -> fetchEpisodesForSeason(which + 1))
+            .setNegativeButton("Cancel", null)
+            .show();
+    }
+
+    private void fetchEpisodesForSeason(int season) {
+        AlertDialog loadingDialog = new AlertDialog.Builder(this)
+            .setTitle("Loading episodes...")
+            .setMessage("Season " + season)
+            .setCancelable(false)
+            .create();
+        loadingDialog.show();
+
+        com.neroflix.tv.app.network.TmdbClient.getInstance().fetchEpisodes(movieId, season,
+            new com.neroflix.tv.app.network.TmdbClient.EpisodesCallback() {
+                @Override
+                public void onSuccess(java.util.List<String> episodeNames) {
+                    loadingDialog.dismiss();
+                    String[] episodes = episodeNames.toArray(new String[0]);
+                    new AlertDialog.Builder(DetailActivity.this)
+                        .setTitle("Season " + season + " — Select Episode")
+                        .setItems(episodes, (d, which) -> launchPlayer(season, which + 1))
+                        .setNegativeButton("Cancel", null)
+                        .show();
+                }
+                @Override
+                public void onError(String error) {
+                    loadingDialog.dismiss();
+                    showSimpleEpisodePicker();
+                }
+            });
+    }
+
+    private void showSimpleEpisodePicker() {
+        android.widget.LinearLayout layout = new android.widget.LinearLayout(this);
+        layout.setOrientation(android.widget.LinearLayout.HORIZONTAL);
+        layout.setPadding(40, 20, 40, 20);
+        layout.setGravity(android.view.Gravity.CENTER);
+        android.widget.NumberPicker seasonPicker = new android.widget.NumberPicker(this);
+        seasonPicker.setMinValue(1);
+        seasonPicker.setMaxValue(15);
+        android.widget.NumberPicker episodePicker = new android.widget.NumberPicker(this);
+        episodePicker.setMinValue(1);
+        episodePicker.setMaxValue(30);
+        layout.addView(seasonPicker);
+        layout.addView(episodePicker);
+        new AlertDialog.Builder(this)
+            .setTitle("Select Episode")
+            .setView(layout)
+            .setPositiveButton("Watch", (d, w) -> launchPlayer(seasonPicker.getValue(), episodePicker.getValue()))
+            .setNegativeButton("Cancel", null)
+            .show();
+    }
+
+    private void launchPlayer(int season, int episode) {
+        // Show a loading indicator while we contact the server
+        runOnUiThread(() -> progressBar.setVisibility(View.VISIBLE));
+
+        // fetchServers contacts the Worker — server URLs are never in the APK.
+        // Returns null if device is not approved.
+        com.neroflix.tv.app.LicenseManager.fetchServers(this, servers -> {
+            runOnUiThread(() -> {
+                progressBar.setVisibility(View.GONE);
+
+                if (servers == null || servers.length == 0) {
+                    // Not activated — send to ActivationActivity
+                    startActivity(new Intent(this,
+                        com.neroflix.tv.app.activities.ActivationActivity.class));
+                    return;
+                }
+
+                if (servers.length == 1) {
+                    // Only one server (free plan) — launch directly, no picker
+                    launchPlayerIntent(movieId, mediaType, season, episode, 0,
+                        servers[0][1], servers[0][2]);
+                    return;
+                }
+
+                // Premium: show server picker
+                String[] labels = new String[servers.length];
+                for (int i = 0; i < servers.length; i++) labels[i] = servers[i][0];
+
+                final String[][] finalServers = servers;
+                new AlertDialog.Builder(this)
+                    .setTitle("Select Server")
+                    .setItems(labels, (d, which) ->
+                        launchPlayerIntent(movieId, mediaType, season, episode,
+                            which, finalServers[which][1], finalServers[which][2]))
+                    .show();
+            });
+        });
+    }
+
+    private void launchPlayerIntent(int movieId, String mediaType,
+                                    int season, int episode,
+                                    int serverIndex, String serverUrl, String serverUrlTv) {
+        Intent intent = new Intent(this, PlayerActivity.class);
+        intent.putExtra("movie_id",      movieId);
+        intent.putExtra("media_type",    mediaType);
+        intent.putExtra("season",        season);
+        intent.putExtra("episode",       episode);
+        intent.putExtra("server_index",  serverIndex);
+        intent.putExtra("server_url",    serverUrl);
+        intent.putExtra("server_url_tv", serverUrlTv != null ? serverUrlTv : "");
+        String title = (movie != null) ? movie.getTitle()
+                : getIntent().getStringExtra("movie_title");
+        intent.putExtra("movie_title", title);
+        startActivity(intent);
+        overridePendingTransition(R.anim.fade_in, R.anim.fade_out);
+    }
+
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        if (keyCode == KeyEvent.KEYCODE_BACK) {
+            finish();
+            overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right);
+            return true;
+        }
+        return super.onKeyDown(keyCode, event);
+    }
+
+    private void openDownload() {
+        com.neroflix.tv.app.LicenseManager.fetchServers(this, servers -> {
+            runOnUiThread(() -> {
+                if (servers == null || servers.length <= 1) {
+                    // Free plan or not activated — no download
+                    new AlertDialog.Builder(this)
+                        .setTitle("🔒 Premium Required")
+                        .setMessage("Download feature is available for Premium users only.\n\nContact admin to upgrade.")
+                        .setPositiveButton("OK", null)
+                        .show();
+                    return;
+                }
+                if ("tv".equals(mediaType)) {
+                    showEpisodePickerForDownload();
+                } else {
+                    launchDownload(1, 1);
+                }
+            });
+        });
+    }
+
+    private void showEpisodePickerForDownload() {
+        AlertDialog loadingDialog = new AlertDialog.Builder(this)
+            .setTitle("Loading seasons...")
+            .setMessage("Please wait")
+            .setCancelable(false)
+            .create();
+        loadingDialog.show();
+
+        com.neroflix.tv.app.network.TmdbClient.getInstance().fetchTVDetails(movieId,
+            new com.neroflix.tv.app.network.TmdbClient.TVDetailsCallback() {
+                @Override
+                public void onSuccess(int numSeasons, java.util.List<String> seasonNames) {
+                    loadingDialog.dismiss();
+                    String[] seasons = seasonNames.toArray(new String[0]);
+                    new AlertDialog.Builder(DetailActivity.this)
+                        .setTitle("Select Season to Download")
+                        .setItems(seasons, (d, which) -> fetchEpisodesForDownload(which + 1))
+                        .setNegativeButton("Cancel", null)
+                        .show();
+                }
+                @Override
+                public void onError(String error) {
+                    loadingDialog.dismiss();
+                    android.widget.NumberPicker sp = new android.widget.NumberPicker(DetailActivity.this);
+                    sp.setMinValue(1); sp.setMaxValue(15);
+                    android.widget.NumberPicker ep = new android.widget.NumberPicker(DetailActivity.this);
+                    ep.setMinValue(1); ep.setMaxValue(30);
+                    android.widget.LinearLayout layout = new android.widget.LinearLayout(DetailActivity.this);
+                    layout.setOrientation(android.widget.LinearLayout.HORIZONTAL);
+                    layout.setPadding(40, 20, 40, 20);
+                    layout.setGravity(android.view.Gravity.CENTER);
+                    layout.addView(sp); layout.addView(ep);
+                    new AlertDialog.Builder(DetailActivity.this)
+                        .setTitle("Select Episode to Download")
+                        .setView(layout)
+                        .setPositiveButton("Download", (d, w) -> launchDownload(sp.getValue(), ep.getValue()))
+                        .setNegativeButton("Cancel", null)
+                        .show();
+                }
+            });
+    }
+
+    private void fetchEpisodesForDownload(int season) {
+        AlertDialog loadingDialog = new AlertDialog.Builder(this)
+            .setTitle("Loading episodes...")
+            .setMessage("Season " + season)
+            .setCancelable(false)
+            .create();
+        loadingDialog.show();
+
+        com.neroflix.tv.app.network.TmdbClient.getInstance().fetchEpisodes(movieId, season,
+            new com.neroflix.tv.app.network.TmdbClient.EpisodesCallback() {
+                @Override
+                public void onSuccess(java.util.List<String> episodeNames) {
+                    loadingDialog.dismiss();
+                    String[] episodes = episodeNames.toArray(new String[0]);
+                    new AlertDialog.Builder(DetailActivity.this)
+                        .setTitle("Season " + season + " — Select Episode")
+                        .setItems(episodes, (d, which) -> launchDownload(season, which + 1))
+                        .setNegativeButton("Cancel", null)
+                        .show();
+                }
+                @Override
+                public void onError(String error) {
+                    loadingDialog.dismiss();
+                    launchDownload(season, 1);
+                }
+            });
+    }
+
+    private void launchDownload(int season, int episode) {
+        Intent intent = new Intent(this, DownloadActivity.class);
+        intent.putExtra("movie_id",   movieId);
+        intent.putExtra("media_type", mediaType);
+        intent.putExtra("season",     season);
+        intent.putExtra("episode",    episode);
+        String title = (movie != null) ? movie.getTitle()
+                : getIntent().getStringExtra("movie_title");
+        intent.putExtra("movie_title", title);
+        startActivity(intent);
+        overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
+    }
+
+    private void updateWatchlistBtn(android.view.View btn) {
+        if (movie == null) return;
+        boolean inList = com.neroflix.tv.app.WatchManager.isInWatchlist(this, movie);
+        if (btn instanceof android.widget.Button) {
+            ((android.widget.Button) btn).setText(inList ? "✓ In Watchlist" : "+ Watchlist");
+        }
+    }
+}

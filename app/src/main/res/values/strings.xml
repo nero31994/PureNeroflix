@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">NeroFlix</string>
+    <string name="hero_backdrop_desc">Featured movie backdrop</string>
+    <string name="poster_desc">Movie poster</string>
+    <string name="backdrop_desc">Movie backdrop</string>
+</resources>
