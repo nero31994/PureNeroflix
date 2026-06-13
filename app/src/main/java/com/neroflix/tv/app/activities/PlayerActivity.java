@@ -57,13 +57,15 @@ public class PlayerActivity extends AppCompatActivity {
         currentServer    = getIntent().getIntExtra("server_index", 0);
         currentServerUrl = getIntent().getStringExtra("server_url");
         currentServerUrlTv = getIntent().getStringExtra("server_url_tv");
+        String urlFormat = getIntent().getStringExtra("server_url_format");
 
-        if (movieTitle == null)       movieTitle = "Now Playing";
-        if (currentServerUrl == null) currentServerUrl = "";
+        if (movieTitle == null)        movieTitle = "Now Playing";
+        if (currentServerUrl == null)  currentServerUrl = "";
         if (currentServerUrlTv == null) currentServerUrlTv = "";
+        if (urlFormat == null)         urlFormat = "standard";
 
         setupViews();
-        loadPlayer(currentServerUrl, currentServerUrlTv);
+        loadPlayer(currentServerUrl, currentServerUrlTv, urlFormat);
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -147,41 +149,41 @@ public class PlayerActivity extends AppCompatActivity {
                 if (customView != null) {
                     setContentView(R.layout.activity_player);
                     setupViews();
-                    loadPlayer(currentServerUrl, currentServerUrlTv);
+                    loadPlayer(currentServerUrl, currentServerUrlTv, "standard");
                     customView = null;
                 }
             }
         });
     }
 
-    // Wraps the embed URL in a local HTML page so we can:
-    // 1. Make the iframe fill the screen with no scrollbars
-    // 2. Forward D-pad key events into the iframe via postMessage
-    // 3. Suppress popups/redirects from the embed
-    private void loadPlayer(String serverMovieUrl, String serverTvUrl) {
-        if (movieId == 0 || serverMovieUrl == null || serverMovieUrl.isEmpty()) {
+    private void loadPlayer(String serverUrl, String serverUrlTv, String urlFormat) {
+        if (movieId == 0 || serverUrl == null || serverUrl.isEmpty()) {
             finish();
             return;
         }
         loadingOverlay.setVisibility(View.VISIBLE);
         boolean isTV = "tv".equals(mediaType);
         String embedUrl;
-        if (isTV) {
-            String tvBase = (serverTvUrl != null && !serverTvUrl.isEmpty())
-                ? serverTvUrl
-                : serverMovieUrl.replace("movie/", "tv/").replace("movie", "tv");
-            embedUrl = tvBase + movieId + "/" + season + "/" + episode + "?autoplay=1";
+
+        if ("anyembed".equals(urlFormat)) {
+            // AnyEmbed uses: /embed/tmdb-movie-{id} and /embed/tmdb-tv-{id}-{s}-{e}
+            if (isTV) {
+                embedUrl = serverUrl + "tmdb-tv-" + movieId + "-" + season + "-" + episode + "?autoplay=1";
+            } else {
+                embedUrl = serverUrl + "tmdb-movie-" + movieId + "?autoplay=1";
+            }
         } else {
-            embedUrl = serverMovieUrl + movieId + "?autoplay=1";
+            // Standard format: /movie/{id} and /tv/{id}/{s}/{e}
+            if (isTV) {
+                embedUrl = serverUrlTv + "tv/" + movieId + "/" + season + "/" + episode + "?autoplay=1";
+            } else {
+                embedUrl = serverUrl + "movie/" + movieId + "?autoplay=1";
+            }
         }
 
-        currentServerUrl   = serverMovieUrl;
-        currentServerUrlTv = serverTvUrl != null ? serverTvUrl : "";
+        currentServerUrl   = serverUrl;
+        currentServerUrlTv = serverUrlTv != null ? serverUrlTv : serverUrl;
 
-        // Inject a wrapper HTML page that:
-        // - Loads the embed in a fullscreen iframe
-        // - Forwards D-pad keypresses into the iframe via postMessage
-        // - Blocks popups and redirects
         String html = "<!DOCTYPE html><html><head>"
             + "<meta name='viewport' content='width=device-width,initial-scale=1'>"
             + "<style>"
@@ -193,24 +195,20 @@ public class PlayerActivity extends AppCompatActivity {
             + "allowfullscreen allow='autoplay;fullscreen;picture-in-picture' "
             + "scrolling='no'></iframe>"
             + "<script>"
-            // Block popups
             + "window.open=function(){return{focus:function(){},blur:function(){}}};"
             + "window.alert=function(){};"
             + "window.confirm=function(){return true;};"
-            // Forward key events into the iframe via postMessage
-            // The embed player listens for these standard media key events
             + "document.addEventListener('keydown',function(e){"
             + "  var f=document.getElementById('embedFrame');"
             + "  if(!f||!f.contentWindow)return;"
             + "  var act=null;"
-            + "  if(e.keyCode===13||e.keyCode===179){act='playpause';}"        // Enter / MediaPlayPause
-            + "  else if(e.keyCode===39||e.keyCode===228){act='seekforward';}" // Right / FastForward
-            + "  else if(e.keyCode===37||e.keyCode===227){act='seekback';}"    // Left / Rewind
-            + "  else if(e.keyCode===32){act='playpause';}"                    // Space
-            + "  else if(e.keyCode===70){act='fullscreen';}"                   // F key
+            + "  if(e.keyCode===13||e.keyCode===179){act='playpause';}"
+            + "  else if(e.keyCode===39||e.keyCode===228){act='seekforward';}"
+            + "  else if(e.keyCode===37||e.keyCode===227){act='seekback';}"
+            + "  else if(e.keyCode===32){act='playpause';}"
+            + "  else if(e.keyCode===70){act='fullscreen';}"
             + "  if(act){"
             + "    f.contentWindow.postMessage({action:act},'*');"
-            // Also dispatch a real KeyboardEvent into the iframe document
             + "    try{f.contentWindow.document.dispatchEvent("
             + "      new KeyboardEvent('keydown',{keyCode:e.keyCode,which:e.keyCode,bubbles:true})"
             + "    );}catch(ex){}"
@@ -221,7 +219,6 @@ public class PlayerActivity extends AppCompatActivity {
 
         webView.loadDataWithBaseURL("https://neroflix.local/", html, "text/html", "UTF-8", null);
     }
-
     // Server switcher — re-contacts Worker to get fresh server list
     private void showServerPicker() {
         com.neroflix.tv.app.LicenseManager.fetchServers(this, servers -> {
@@ -241,9 +238,9 @@ public class PlayerActivity extends AppCompatActivity {
                     .setTitle("Select Server")
                     .setItems(labels, (d, which) -> {
                         currentServer = which;
-                        // servers[][1] = movie url, servers[][2] = tv url
-                        String tvUrl = passedServers[which].length > 2 ? passedServers[which][2] : "";
-                        loadPlayer(passedServers[which][1], tvUrl);
+                        String tvUrl  = passedServers[which][2];
+                        String format = passedServers[which].length > 3 ? passedServers[which][3] : "standard";
+                        loadPlayer(passedServers[which][1], tvUrl, format);
                         playerTitle.setText(movieTitle + "  •  " + passedServers[which][0]);
                     })
                     .show();

@@ -286,13 +286,11 @@ public class DetailActivity extends AppCompatActivity {
                 }
 
                 if (servers.length == 1) {
-                    // Only one server (free plan) — launch directly, no picker
                     launchPlayerIntent(movieId, mediaType, season, episode, 0,
-                        servers[0][1], servers[0][2]);
+                        servers[0][1], servers[0][2], servers[0][3]);
                     return;
                 }
 
-                // Premium: show server picker
                 String[] labels = new String[servers.length];
                 for (int i = 0; i < servers.length; i++) labels[i] = servers[i][0];
 
@@ -301,7 +299,8 @@ public class DetailActivity extends AppCompatActivity {
                     .setTitle("Select Server")
                     .setItems(labels, (d, which) ->
                         launchPlayerIntent(movieId, mediaType, season, episode,
-                            which, finalServers[which][1], finalServers[which][2]))
+                            which, finalServers[which][1], finalServers[which][2],
+                            finalServers[which].length > 3 ? finalServers[which][3] : "standard"))
                     .show();
             });
         });
@@ -309,15 +308,16 @@ public class DetailActivity extends AppCompatActivity {
 
     private void launchPlayerIntent(int movieId, String mediaType,
                                     int season, int episode,
-                                    int serverIndex, String serverUrl, String serverUrlTv) {
+                                    int serverIndex, String serverUrl, String serverUrlTv, String serverUrlFormat) {
         Intent intent = new Intent(this, PlayerActivity.class);
-        intent.putExtra("movie_id",      movieId);
-        intent.putExtra("media_type",    mediaType);
-        intent.putExtra("season",        season);
-        intent.putExtra("episode",       episode);
-        intent.putExtra("server_index",  serverIndex);
-        intent.putExtra("server_url",    serverUrl);
-        intent.putExtra("server_url_tv", serverUrlTv != null ? serverUrlTv : "");
+        intent.putExtra("movie_id",          movieId);
+        intent.putExtra("media_type",        mediaType);
+        intent.putExtra("season",            season);
+        intent.putExtra("episode",           episode);
+        intent.putExtra("server_index",      serverIndex);
+        intent.putExtra("server_url",        serverUrl);
+        intent.putExtra("server_url_tv",     serverUrlTv != null ? serverUrlTv : serverUrl);
+        intent.putExtra("server_url_format", serverUrlFormat != null ? serverUrlFormat : "standard");
         String title = (movie != null) ? movie.getTitle()
                 : getIntent().getStringExtra("movie_title");
         intent.putExtra("movie_title", title);
@@ -338,7 +338,7 @@ public class DetailActivity extends AppCompatActivity {
     private void openDownload() {
         com.neroflix.tv.app.LicenseManager.fetchServers(this, servers -> {
             runOnUiThread(() -> {
-                if (servers == null || !com.neroflix.tv.app.LicenseManager.isPremium(DetailActivity.this)) {
+                if (servers == null || servers.length <= 1) {
                     // Free plan or not activated — no download
                     new AlertDialog.Builder(this)
                         .setTitle("🔒 Premium Required")

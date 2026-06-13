@@ -57,20 +57,20 @@ public class LicenseManager {
     }
 
     // XOR-encoded expected SHA-256 signature (key = 0x3A)
-    // Decodes to: 5766AE72A0875AFC4DACBDB337761B78A21C2B10B600F9E564082A60BE9EC216
+    // Decodes to: 849D0A8D138655960999FD084B23A771B105928D6B27DDB59F1AF1C148411AFF
     private static final byte   SIG_KEY = 0x3A;
     private static final byte[] SIG_ENC = {
-        (byte)0x0F,(byte)0x0D,(byte)0x0C,(byte)0x0C,(byte)0x7B,(byte)0x7F,
-        (byte)0x0D,(byte)0x08,(byte)0x7B,(byte)0x0A,(byte)0x02,(byte)0x0D,
-        (byte)0x0F,(byte)0x7B,(byte)0x7C,(byte)0x79,(byte)0x0E,(byte)0x7E,
-        (byte)0x7B,(byte)0x79,(byte)0x78,(byte)0x7E,(byte)0x78,(byte)0x09,
-        (byte)0x09,(byte)0x0D,(byte)0x0D,(byte)0x0C,(byte)0x0B,(byte)0x78,
-        (byte)0x0D,(byte)0x02,(byte)0x7B,(byte)0x08,(byte)0x0B,(byte)0x79,
-        (byte)0x08,(byte)0x78,(byte)0x0B,(byte)0x0A,(byte)0x78,(byte)0x0C,
-        (byte)0x0A,(byte)0x0A,(byte)0x7C,(byte)0x03,(byte)0x7F,(byte)0x0F,
-        (byte)0x0C,(byte)0x0E,(byte)0x0A,(byte)0x02,(byte)0x08,(byte)0x7B,
-        (byte)0x0C,(byte)0x0A,(byte)0x78,(byte)0x7F,(byte)0x03,(byte)0x7F,
-        (byte)0x79,(byte)0x08,(byte)0x0B,(byte)0x0C
+        (byte)0xBC,(byte)0x8B,(byte)0x83,(byte)0xA7,(byte)0x30,(byte)0x8B,
+        (byte)0x73,(byte)0xA7,(byte)0x09,(byte)0xA3,(byte)0xBC,(byte)0x5E,
+        (byte)0x76,(byte)0xA3,(byte)0x4E,(byte)0x7A,(byte)0xA6,(byte)0x09,
+        (byte)0xBC,(byte)0x76,(byte)0x5A,(byte)0x72,(byte)0x43,(byte)0xA3,
+        (byte)0x00,(byte)0x1B,(byte)0x43,(byte)0x9F,(byte)0x46,(byte)0xA3,
+        (byte)0x1B,(byte)0x0B,(byte)0x43,(byte)0x9F,(byte)0x6E,(byte)0x19,
+        (byte)0x5E,(byte)0x1B,(byte)0x1B,(byte)0x59,(byte)0x1B,(byte)0xA4,
+        (byte)0x1B,(byte)0x5A,(byte)0xA4,(byte)0x1B,(byte)0x59,(byte)0xA5,
+        (byte)0x09,(byte)0x09,(byte)0x4A,(byte)0x0F,(byte)0x1B,(byte)0x76,
+        (byte)0x5E,(byte)0x4E,(byte)0x5E,(byte)0x09,(byte)0x76,(byte)0x7A,
+        (byte)0x4E,(byte)0x4E,(byte)0x5E,(byte)0xA4,(byte)0xA5
     };
 
     private static String expectedSig() {
@@ -345,13 +345,14 @@ public class LicenseManager {
     }
 
     private static String[][] parseServersFromArray(JSONArray arr) throws Exception {
-        // servers[][0] = name, servers[][1] = movie url, servers[][2] = tv url (may be empty)
-        String[][] servers = new String[arr.length()][3];
+        // [0]=name [1]=url [2]=url_tv [3]=url_format
+        String[][] servers = new String[arr.length()][4];
         for (int i = 0; i < arr.length(); i++) {
             JSONObject s = arr.getJSONObject(i);
             servers[i][0] = s.getString("name");
             servers[i][1] = s.getString("url");
-            servers[i][2] = s.optString("url_tv", "");
+            servers[i][2] = s.optString("url_tv", s.getString("url"));
+            servers[i][3] = s.optString("url_format", "standard");
         }
         return servers;
     }
