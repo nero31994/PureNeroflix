@@ -21,9 +21,9 @@ android {
     signingConfigs {
         release {
             storeFile file(System.getenv("SIGNING_STORE_FILE") ?: "nero.keystore")
-            storePassword System.getenv("SIGNING_STORE_PASSWORD") ?: ""
+            storePassword "Neroflix2025"
             keyAlias "nero"
-            keyPassword System.getenv("SIGNING_STORE_PASSWORD") ?: ""
+            keyPassword "Neroflix2025"
         }
     }
 
