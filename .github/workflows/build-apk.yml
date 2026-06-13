@@ -27,8 +27,8 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
-      - name: Verify Keystore
-        run: ls -la nero.keystore
+      - name: Restore Keystore
+        run: xxd -r nero.keystore.hex > nero.keystore
 
       - name: Build Release APK
         run: ./gradlew assembleRelease --no-daemon
