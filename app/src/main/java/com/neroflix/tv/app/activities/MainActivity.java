@@ -40,7 +40,9 @@ public class MainActivity extends AppCompatActivity {
     // Matches the value in LicenseManager.java
     private static String g() {
         return new StringBuilder()
-            .append("5766AE72").append("A0875AFC").append("4DACBDB3").append("37761B78").append("A21C2B10").append("B600F9E5").append("64082A60").append("BE9EC216")
+            .append("849D0A8D").append("13865596").append("0999FD08")
+            .append("4B23A771").append("B105928D").append("6B27DDB5")
+            .append("9F1AF1C1").append("48411AFF")
             .toString();
     }
 
@@ -95,7 +97,7 @@ public class MainActivity extends AppCompatActivity {
 
         setContentView(R.layout.activity_main);
         setupViews();
-        setupNetworkRow();
+        setupBrowseRows("movie"); // Default: show Studios row on launch
         loadContent();
         UpdateChecker.check(this);
         AnnouncementChecker.check(this);
@@ -316,6 +318,7 @@ public class MainActivity extends AppCompatActivity {
     private void switchMode(String mode) {
         if (mode.equals(currentMode)) return;
         currentMode = mode;
+        setupBrowseRows(mode);
         switch (mode) {
             case "tv":
                 CATEGORY_DEFS = new String[][]{
@@ -424,15 +427,74 @@ public class MainActivity extends AppCompatActivity {
         {"Hulu",       "453",  "https://image.tmdb.org/t/p/w500/pqUTCleNUiTLAVlelGxUgWn1ELh.png"},
         {"Paramount+", "4330", "https://image.tmdb.org/t/p/w500/fi83B1oztoS47xxcemFdPMhIzK.png"},
         {"Peacock",    "3353", "https://image.tmdb.org/t/p/w500/xbhHHa26At9bTVmrmCfBJCGeHGT.png"},
+        {"Max",        "3186", "https://image.tmdb.org/t/p/w500/Ajqyt5aNxNx9mr1JojoRt6OVHM.png"},
+        {"Showtime",   "67",   "https://image.tmdb.org/t/p/w500/Allse9kbjiP6ExaQrnNCxLd5EEz.png"},
+        {"Crunchyroll","1112", "https://image.tmdb.org/t/p/w500/mO5jMHxNYHcWgxWpEHqpxVBpRV.png"},
+        {"BBC",        "4",    "https://image.tmdb.org/t/p/w500/mDDG8AzEYqU2d6LKZN4Gqt2GdlQ.png"},
     };
 
+    private static final String[][] STUDIOS = {
+        {"Marvel",     "420",   "https://image.tmdb.org/t/p/w500/hUzeosd33nzE5MCNsZxCGEKTXaQ.png"},
+        {"DC Films",   "9993",  "https://image.tmdb.org/t/p/w500/2Tc13eoJKtjBWjBCVmHOxNBP1T1.png"},
+        {"Warner Bros","174",   "https://image.tmdb.org/t/p/w500/IuAlhI9eVC9Z8UQWOIDdWRKSEJ.png"},
+        {"Universal",  "33",    "https://image.tmdb.org/t/p/w500/MLibEBtbSPFTBGrsqlJNKOFVR.png"},
+        {"Paramount",  "4",     "https://image.tmdb.org/t/p/w500/fycMZt242LVjagMByZOLUGbCvv.png"},
+        {"Sony",       "5",     "https://image.tmdb.org/t/p/w500/71BqEFAF4V3qjjMPCpLuyJFB9A.png"},
+        {"20th Century","25",   "https://image.tmdb.org/t/p/w500/qZCc1lty5FzX30aOCVRBLzaVmcp.png"},
+        {"A24",        "41077", "https://image.tmdb.org/t/p/w500/9KNIsFNFEQhkJuZiTPpRZB2YYQS.png"},
+        {"Pixar",      "3",     "https://image.tmdb.org/t/p/w500/1TjvGVDMYsj6JBxOAkUZStzomlX.png"},
+        {"DreamWorks", "521",   "https://image.tmdb.org/t/p/w500/vSDPD2J6jMHJKKMbRcwmHV8OAfO.png"},
+        {"Lionsgate",  "1632",  "https://image.tmdb.org/t/p/w500/oOKYaqtJMVjkfYnlLCJeznBhFcZ.png"},
+        {"Studio Ghibli","10342","https://image.tmdb.org/t/p/w500/yCCos2FBFKsSCbdxUsHgTM0lVhY.png"},
+        {"Star Cinema","3965",  "https://image.tmdb.org/t/p/w500/qV3d5KzirSqT5vOFD6Bmy8hHQPb.png"},
+        {"Viva Films", "5842",  "https://image.tmdb.org/t/p/w500/3dBmPCGrQSQWPnmvhWC8MZiD4lL.png"},
+    };
+
+    private RecyclerView networkRecycler;
+    private RecyclerView studioRecycler;
+    private android.widget.TextView networkLabel;
+    private android.widget.TextView studioLabel;
+
+    private void setupBrowseRows(String mode) {
+        networkRecycler = findViewById(R.id.network_recycler);
+        studioRecycler  = findViewById(R.id.studio_recycler);
+        networkLabel    = findViewById(R.id.network_label);
+        studioLabel     = findViewById(R.id.studio_label);
+
+        if (networkRecycler == null || studioRecycler == null) return;
+
+        if ("tv".equals(mode) || "anime".equals(mode)) {
+            // TV/Anime tab — show Networks only
+            studioRecycler.setVisibility(android.view.View.GONE);
+            if (studioLabel != null) studioLabel.setVisibility(android.view.View.GONE);
+            networkRecycler.setVisibility(android.view.View.VISIBLE);
+            if (networkLabel != null) networkLabel.setVisibility(android.view.View.VISIBLE);
+            setupNetworkRow();
+        } else {
+            // Movies tab (and default) — show Studios only
+            networkRecycler.setVisibility(android.view.View.GONE);
+            if (networkLabel != null) networkLabel.setVisibility(android.view.View.GONE);
+            studioRecycler.setVisibility(android.view.View.VISIBLE);
+            if (studioLabel != null) studioLabel.setVisibility(android.view.View.VISIBLE);
+            setupStudioRow();
+        }
+    }
+
     private void setupNetworkRow() {
-        RecyclerView networkRecycler = findViewById(R.id.network_recycler);
         if (networkRecycler == null) return;
         networkRecycler.setLayoutManager(
             new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
         networkRecycler.setAdapter(new NetworkLogoAdapter(this, NETWORKS, (networkId, networkName, logoUrl) -> {
             NetworkActivity.open(this, networkId, networkName, logoUrl, "with_networks", "tv");
+        }));
+    }
+
+    private void setupStudioRow() {
+        if (studioRecycler == null) return;
+        studioRecycler.setLayoutManager(
+            new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
+        studioRecycler.setAdapter(new NetworkLogoAdapter(this, STUDIOS, (studioId, studioName, logoUrl) -> {
+            NetworkActivity.open(this, studioId, studioName, logoUrl, "with_companies", "movie");
         }));
     }
 
