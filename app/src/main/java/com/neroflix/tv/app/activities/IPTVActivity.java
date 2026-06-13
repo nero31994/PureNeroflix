@@ -236,9 +236,17 @@ public class IPTVActivity extends AppCompatActivity {
 
     private void loadChannels() {
         loadingBar.setVisibility(View.VISIBLE);
-        new Thread(() -> {
+        com.neroflix.tv.app.LicenseManager.fetchIptvAccess(this, result -> {
+            if (result == null || result.m3uUrl == null || result.m3uUrl.isEmpty()) {
+                runOnUiThread(() -> {
+                    loadingBar.setVisibility(View.GONE);
+                    Toast.makeText(this, "IPTV not available. Please activate first.", Toast.LENGTH_LONG).show();
+                });
+                return;
+            }
+            new Thread(() -> {
             try {
-                URL url = new URL(com.neroflix.tv.app.util.RemoteConfig.getCachedM3uUrl(IPTVActivity.this));
+                URL url = new URL(result.m3uUrl);
                 HttpURLConnection conn = (HttpURLConnection) url.openConnection();
                 conn.setConnectTimeout(10000);
                 conn.setReadTimeout(15000);
@@ -266,7 +274,8 @@ public class IPTVActivity extends AppCompatActivity {
                         Toast.LENGTH_LONG).show();
                 });
             }
-        }).start();
+            }).start();
+        });
     }
 
     // ── Group tabs ───────────────────────────────────────────────────────────
