@@ -3,8 +3,6 @@ name: Build NeroFlix APK
 on:
   push:
     branches: [ main, master ]
-  pull_request:
-    branches: [ main, master ]
   workflow_dispatch:
 
 jobs:
@@ -26,52 +24,40 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Cache Gradle packages
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-v2-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
-
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
       - name: Decode Keystore
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
         run: |
-          echo -n "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > nero.keystore
+          echo "$KEYSTORE_BASE64" | tr -d ' \n\r' | base64 -d > nero.keystore
+          keytool -list -keystore nero.keystore -storepass "$SIGNING_STORE_PASSWORD" -noprompt
 
       - name: Build Release APK
-        run: ./gradlew clean assembleRelease --no-daemon --rerun-tasks
+        run: ./gradlew assembleRelease --no-daemon
         env:
           SIGNING_STORE_FILE: ${{ github.workspace }}/nero.keystore
-          SIGNING_STORE_PASSWORD: ${{ secrets.STORE_PASSWORD }}
-          SIGNING_KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          SIGNING_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
 
-      - name: Upload Release APK
+      - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
           name: NeroFlix-Release-APK
           path: app/build/outputs/apk/release/app-release.apk
-          retention-days: 30
 
-      - name: Get Version Name
+      - name: Get Version
         id: version
         run: |
-          VERSION=$(grep 'versionName' app/build.gradle | grep -v 'Suffix' | head -1 | awk '{print $2}' | tr -d '"')
+          VERSION=$(grep 'versionName' app/build.gradle | grep -v Suffix | head -1 | awk '{print $2}' | tr -d '"')
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Create GitHub Release
-        if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master'
+      - name: Create Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.version.outputs.version }}
           name: Neroflix v${{ steps.version.outputs.version }}
-          body: |
-            Auto-release from GitHub Actions
           files: app/build/outputs/apk/release/app-release.apk
           make_latest: true
         env:
