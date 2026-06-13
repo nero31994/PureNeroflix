@@ -77,9 +77,13 @@
                     <Button android:id="@+id/hero_info_btn" android:layout_width="0dp" android:layout_height="0dp"/>
                 </RelativeLayout>
 
-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Popular Networks" android:textColor="@color/text_primary" android:textSize="14sp" android:textStyle="bold" android:paddingStart="12dp" android:paddingTop="12dp" android:paddingBottom="8dp" />
+                <TextView android:id="@+id/network_label" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Popular Networks" android:textColor="@color/text_primary" android:textSize="14sp" android:textStyle="bold" android:paddingStart="12dp" android:paddingTop="12dp" android:paddingBottom="8dp" />
 
                 <androidx.recyclerview.widget.RecyclerView android:id="@+id/network_recycler" android:layout_width="match_parent" android:layout_height="90dp" android:paddingStart="12dp" android:paddingEnd="12dp" android:clipToPadding="false" android:layout_marginBottom="8dp" />
+
+                <TextView android:id="@+id/studio_label" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="Studios" android:textColor="@color/text_primary" android:textSize="14sp" android:textStyle="bold" android:paddingStart="12dp" android:paddingTop="4dp" android:paddingBottom="8dp" />
+
+                <androidx.recyclerview.widget.RecyclerView android:id="@+id/studio_recycler" android:layout_width="match_parent" android:layout_height="90dp" android:paddingStart="12dp" android:paddingEnd="12dp" android:clipToPadding="false" android:layout_marginBottom="8dp" />
 
                 <androidx.recyclerview.widget.RecyclerView android:id="@+id/main_recycler_view" android:layout_width="match_parent" android:layout_height="wrap_content" android:nestedScrollingEnabled="false" android:paddingBottom="32dp" />
 
