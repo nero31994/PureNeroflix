@@ -28,12 +28,8 @@ jobs:
         run: chmod +x gradlew
 
       - name: Decode Keystore
-        env:
-          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
-          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
         run: |
-          echo "$KEYSTORE_BASE64" | tr -d ' \n\r' | base64 -d > nero.keystore
-          keytool -list -keystore nero.keystore -storepass "$SIGNING_STORE_PASSWORD" -noprompt
+          echo "${{ secrets.KEYSTORE_BASE64 }}" | tr -d ' \n\r' | base64 -d > nero.keystore
 
       - name: Build Release APK
         run: ./gradlew assembleRelease --no-daemon
