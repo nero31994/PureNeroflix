@@ -234,10 +234,50 @@ public class IPTVActivity extends AppCompatActivity {
 
     // ── Channel loading ──────────────────────────────────────────────────────
 
+    private static final String PREF_M3U_CACHE     = "iptv_m3u_cache";
+    private static final String PREF_M3U_CACHE_TS  = "iptv_m3u_cache_ts";
+    private static final long   M3U_CACHE_MAX_AGE  = 24 * 60 * 60 * 1000L;
+
     private void loadChannels() {
         loadingBar.setVisibility(View.VISIBLE);
+
+        // Check local M3U cache first — valid for 24h
+        android.content.SharedPreferences prefs =
+            getSharedPreferences("neroflix_iptv", MODE_PRIVATE);
+        String cachedM3u = prefs.getString(PREF_M3U_CACHE, null);
+        long cacheAge    = System.currentTimeMillis() - prefs.getLong(PREF_M3U_CACHE_TS, 0);
+
+        if (cachedM3u != null && cacheAge < M3U_CACHE_MAX_AGE) {
+            // Use cached M3U — no network call needed
+            List<com.neroflix.tv.app.iptv.M3UParser.Channel> cached =
+                com.neroflix.tv.app.iptv.M3UParser.parse(cachedM3u);
+            if (!cached.isEmpty()) {
+                channels = cached;
+                loadingBar.setVisibility(View.GONE);
+                buildGroupTabs();
+                setupRecycler();
+                if (!channels.isEmpty()) playChannel(0);
+                return;
+            }
+        }
+
         com.neroflix.tv.app.LicenseManager.fetchIptvAccess(this, result -> {
             if (result == null || result.m3uUrl == null || result.m3uUrl.isEmpty()) {
+                // Offline fallback — use expired cache if available
+                if (cachedM3u != null) {
+                    List<com.neroflix.tv.app.iptv.M3UParser.Channel> fallback =
+                        com.neroflix.tv.app.iptv.M3UParser.parse(cachedM3u);
+                    if (!fallback.isEmpty()) {
+                        runOnUiThread(() -> {
+                            channels = fallback;
+                            loadingBar.setVisibility(View.GONE);
+                            buildGroupTabs();
+                            setupRecycler();
+                            if (!channels.isEmpty()) playChannel(0);
+                        });
+                        return;
+                    }
+                }
                 runOnUiThread(() -> {
                     loadingBar.setVisibility(View.GONE);
                     Toast.makeText(this, "IPTV not available. Please activate first.", Toast.LENGTH_LONG).show();
@@ -259,7 +299,13 @@ public class IPTVActivity extends AppCompatActivity {
                 while ((line = reader.readLine()) != null) sb.append(line).append("\n");
                 reader.close();
                 conn.disconnect();
-                channels = M3UParser.parse(sb.toString());
+                String m3uContent = sb.toString();
+                // Save to cache
+                prefs.edit()
+                    .putString(PREF_M3U_CACHE,  m3uContent)
+                    .putLong(PREF_M3U_CACHE_TS, System.currentTimeMillis())
+                    .apply();
+                channels = M3UParser.parse(m3uContent);
                 new Handler(Looper.getMainLooper()).post(() -> {
                     loadingBar.setVisibility(View.GONE);
                     buildGroupTabs();
