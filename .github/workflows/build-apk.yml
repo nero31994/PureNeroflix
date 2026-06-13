@@ -32,14 +32,12 @@ jobs:
           xxd -r nero.keystore.hex > nero.keystore
           echo "Keystore MD5:"
           md5sum nero.keystore
-          echo "Keystore SHA256 fingerprint:"
-          keytool -list -v -keystore nero.keystore -storepass Neroflix2025 | grep "SHA-256" 
 
       - name: Build Release APK
         run: ./gradlew assembleRelease --no-daemon
         env:
           SIGNING_STORE_FILE: ${{ github.workspace }}/nero.keystore
-          SIGNING_STORE_PASSWORD: ${{ secrets.SIGNING_STORE_PASSWORD }}
+          SIGNING_STORE_PASSWORD: Neroflix2025
 
       - name: Verify APK Signature
         run: |
