@@ -338,7 +338,7 @@ public class DetailActivity extends AppCompatActivity {
     private void openDownload() {
         com.neroflix.tv.app.LicenseManager.fetchServers(this, servers -> {
             runOnUiThread(() -> {
-                if (servers == null || servers.length <= 1) {
+                if (servers == null || !com.neroflix.tv.app.LicenseManager.isPremium(DetailActivity.this)) {
                     // Free plan or not activated — no download
                     new AlertDialog.Builder(this)
                         .setTitle("🔒 Premium Required")
