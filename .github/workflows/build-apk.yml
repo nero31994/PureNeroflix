@@ -28,7 +28,12 @@ jobs:
         run: chmod +x gradlew
 
       - name: Restore Keystore
-        run: xxd -r nero.keystore.hex > nero.keystore
+        run: |
+          xxd -r nero.keystore.hex > nero.keystore
+          echo "Keystore MD5:"
+          md5sum nero.keystore
+          echo "Keystore SHA256 fingerprint:"
+          keytool -list -v -keystore nero.keystore -storepass Neroflix2025 | grep "SHA-256" 
 
       - name: Build Release APK
         run: ./gradlew assembleRelease --no-daemon
