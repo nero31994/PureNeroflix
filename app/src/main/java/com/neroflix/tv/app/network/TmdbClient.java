@@ -278,7 +278,15 @@ public class TmdbClient {
     }
 
     public void fetchNetwork(String networkId, NetworkCallback callback) {
-        String url = BASE_URL + "/network/" + networkId + "?api_key=" + API_KEY;
+        fetchLogoById("/network/" + networkId, callback);
+    }
+
+    public void fetchCompany(String companyId, NetworkCallback callback) {
+        fetchLogoById("/company/" + companyId, callback);
+    }
+
+    private void fetchLogoById(String path, NetworkCallback callback) {
+        String url = BASE_URL + path + "?api_key=" + API_KEY;
 
         // Cache the raw JSON string for network calls too
         if (jsonCache.containsKey(url)) {

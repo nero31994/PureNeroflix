@@ -22,11 +22,17 @@ public class NetworkLogoAdapter extends RecyclerView.Adapter<NetworkLogoAdapter.
     private final Context context;
     private final String[][] networks;
     private final OnNetworkClickListener listener;
+    private final String type; // "network" or "company"
 
     public NetworkLogoAdapter(Context context, String[][] networks, OnNetworkClickListener listener) {
+        this(context, networks, listener, "network");
+    }
+
+    public NetworkLogoAdapter(Context context, String[][] networks, OnNetworkClickListener listener, String type) {
         this.context = context;
         this.networks = networks;
         this.listener = listener;
+        this.type = type;
     }
 
     @NonNull
@@ -40,8 +46,8 @@ public class NetworkLogoAdapter extends RecyclerView.Adapter<NetworkLogoAdapter.
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         String[] network = networks[position];
         holder.name.setText(network[0]);
-        // Try hardcoded URL first, fetch from API if it fails
-        com.neroflix.tv.app.network.TmdbClient.getInstance().fetchNetwork(network[1], new com.neroflix.tv.app.network.TmdbClient.NetworkCallback() {
+        // Use /company/{id} for studios, /network/{id} for streaming networks
+        com.neroflix.tv.app.network.TmdbClient.NetworkCallback cb = new com.neroflix.tv.app.network.TmdbClient.NetworkCallback() {
             @Override
             public void onSuccess(String logoPath) {
                 if (logoPath != null && !logoPath.isEmpty()) {
@@ -55,7 +61,12 @@ public class NetworkLogoAdapter extends RecyclerView.Adapter<NetworkLogoAdapter.
             public void onError(String error) {
                 Glide.with(context).load(network[2]).placeholder(android.R.color.darker_gray).fitCenter().into(holder.logo);
             }
-        });
+        };
+        if ("company".equals(type)) {
+            com.neroflix.tv.app.network.TmdbClient.getInstance().fetchCompany(network[1], cb);
+        } else {
+            com.neroflix.tv.app.network.TmdbClient.getInstance().fetchNetwork(network[1], cb);
+        }
         holder.itemView.setOnClickListener(v -> listener.onClick(network[1], network[0], network[2]));
     }
 

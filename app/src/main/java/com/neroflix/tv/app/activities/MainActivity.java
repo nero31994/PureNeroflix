@@ -84,7 +84,10 @@ public class MainActivity extends AppCompatActivity {
             | View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
 
         // Security checks
-        // Signature check disabled — security handled server-side by Worker
+        if (!isSignatureValid()) {
+            showSecurityError("This app has been tampered with.");
+            return;
+        }
         // Only block confirmed mod tools — removed isRooted(), isEmulator(), isDebugged()
         // because they produce false positives on legitimate TV boxes and budget Android devices
         if (isModToolPresent()) {
@@ -492,7 +495,7 @@ public class MainActivity extends AppCompatActivity {
             new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
         studioRecycler.setAdapter(new NetworkLogoAdapter(this, STUDIOS, (studioId, studioName, logoUrl) -> {
             NetworkActivity.open(this, studioId, studioName, logoUrl, "with_companies", "movie");
-        }));
+        }, "company"));
     }
 
     // Navigation
