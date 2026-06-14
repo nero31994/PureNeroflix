@@ -97,10 +97,12 @@ public class DownloadActivity extends AppCompatActivity {
         });
 
         // Make WebView focusable for D-pad
-        webView.setFocusable(true);
-        webView.setFocusableInTouchMode(true);
+            // Make WebView focusable for D-pad
+    webView.setFocusable(true);
+    webView.setFocusableInTouchMode(true);
+}   // ← ADD THIS CLOSING BRACE
 
-    private void loadDownloadPage() {
+private void loadDownloadPage() {
         String url;
         if ("tv".equals(mediaType)) {
             // FIX: deep-link directly to the specific season/episode
