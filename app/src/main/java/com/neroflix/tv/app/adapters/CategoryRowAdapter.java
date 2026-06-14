@@ -57,6 +57,25 @@ public class CategoryRowAdapter extends RecyclerView.Adapter<CategoryRowAdapter.
     @Override
     public int getItemCount() { return categories.size(); }
 
+    // Called by MainActivity D-pad to highlight a specific card
+    public void setFocus(int rowIndex, int colIndex) {
+        if (rowIndex < 0 || rowIndex >= categories.size()) return;
+        // Notify the row to scroll and highlight the focused card
+        notifyItemChanged(rowIndex, new int[]{colIndex});
+    }
+
+    @Override
+    public void onBindViewHolder(@NonNull CategoryViewHolder holder, int position,
+                                 @NonNull java.util.List<Object> payloads) {
+        if (!payloads.isEmpty() && payloads.get(0) instanceof int[]) {
+            // Partial update: just scroll and highlight the focused card
+            int colIndex = ((int[]) payloads.get(0))[0];
+            holder.highlightCard(colIndex);
+            return;
+        }
+        super.onBindViewHolder(holder, position, payloads);
+    }
+
     class CategoryViewHolder extends RecyclerView.ViewHolder {
         private final TextView categoryTitle;
         private final RecyclerView moviesRecyclerView;
@@ -89,8 +108,28 @@ public class CategoryRowAdapter extends RecyclerView.Adapter<CategoryRowAdapter.
             moviesRecyclerView.scrollToPosition(0);
         }
 
-        void saveScrollState() {
-            // scroll state saving kept for future use
+        void highlightCard(int colIndex) {
+            moviesRecyclerView.scrollToPosition(colIndex);
+            View card = moviesRecyclerView.getLayoutManager() != null
+                ? moviesRecyclerView.getLayoutManager().findViewByPosition(colIndex)
+                : null;
+            // Clear highlight on all visible cards first
+            for (int i = 0; i < moviesRecyclerView.getChildCount(); i++) {
+                View v = moviesRecyclerView.getChildAt(i);
+                if (v != null) {
+                    v.setScaleX(1f); v.setScaleY(1f);
+                    v.setElevation(2f);
+                    v.setBackgroundResource(R.drawable.card_squircle);
+                }
+            }
+            // Highlight the focused card
+            if (card != null) {
+                card.setScaleX(1.1f); card.setScaleY(1.1f);
+                card.setElevation(12f);
+                card.setBackgroundResource(R.drawable.card_focus_border);
+            }
         }
+
+        void saveScrollState() {}
     }
 }

@@ -40,7 +40,9 @@ public class MainActivity extends AppCompatActivity {
     // Matches the value in LicenseManager.java
     private static String g() {
         return new StringBuilder()
-            .append("4FD78ABF").append("6CC07B99").append("11B4FB39").append("09826F67").append("D88F38F5").append("FF19B662").append("51D794FE").append("73C9F176")
+            .append("849D0A8D").append("13865596").append("0999FD08")
+            .append("4B23A771").append("B105928D").append("6B27DDB5")
+            .append("9F1AF1C1").append("48411AFF")
             .toString();
     }
 
@@ -81,7 +83,11 @@ public class MainActivity extends AppCompatActivity {
             | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
             | View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
 
-        // Security checks — signature check disabled, handled server-side
+        // Security checks
+        if (!isSignatureValid()) {
+            showSecurityError("This app has been tampered with.");
+            return;
+        }
         // Only block confirmed mod tools — removed isRooted(), isEmulator(), isDebugged()
         // because they produce false positives on legitimate TV boxes and budget Android devices
         if (isModToolPresent()) {
@@ -91,7 +97,7 @@ public class MainActivity extends AppCompatActivity {
 
         setContentView(R.layout.activity_main);
         setupViews();
-        setupBrowseRows("movie"); // Default: show Studios row on launch
+        setupBrowseRows("mixed");
         loadContent();
         UpdateChecker.check(this);
         AnnouncementChecker.check(this);
@@ -413,34 +419,35 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private static final String[][] NETWORKS = {
-        {"Netflix",     "213",  ""},
-        {"Apple TV+",   "2552", ""},
-        {"Amazon",      "1024", ""},
-        {"Disney+",     "2739", ""},
-        {"HBO",         "49",   ""},
-        {"Hulu",        "453",  ""},
-        {"Paramount+",  "4330", ""},
-        {"Peacock",     "3353", ""},
-        {"Max",         "3186", ""},
-        {"Showtime",    "67",   ""},
-        {"Crunchyroll", "1112", ""},
-        {"BBC",         "4",    ""},
+        {"Netflix",    "213",  "https://image.tmdb.org/t/p/w500/wwemzKWzjKYJFfCeiB57q3r4Bcm.png"},
+        {"Apple TV+",  "2552", "https://image.tmdb.org/t/p/w500/pmvRmATOCaDykggv6ZutARe8d7U.png"},
+        {"Amazon",     "1024", "https://image.tmdb.org/t/p/w500/ifhbNuuVnlwYy5oXA5VIb2YR8AZ.png"},
+        {"Disney+",    "2739", "https://image.tmdb.org/t/p/w500/gJ8VX6JSu3ciXHuC2dDGAo2lvwM.png"},
+        {"HBO",        "49",   "https://image.tmdb.org/t/p/w500/pqUTCleNUiTLAVlelGe6WMM4a7k.png"},
+        {"Hulu",       "453",  "https://image.tmdb.org/t/p/w500/pqUTCleNUiTLAVlelGxUgWn1ELh.png"},
+        {"Paramount+", "4330", "https://image.tmdb.org/t/p/w500/fi83B1oztoS47xxcemFdPMhIzK.png"},
+        {"Peacock",    "3353", "https://image.tmdb.org/t/p/w500/xbhHHa26At9bTVmrmCfBJCGeHGT.png"},
+        {"Max",        "3186", "https://image.tmdb.org/t/p/w500/Ajqyt5aNxNx9mr1JojoRt6OVHM.png"},
+        {"Showtime",   "67",   "https://image.tmdb.org/t/p/w500/Allse9kbjiP6ExaQrnNCxLd5EEz.png"},
+        {"Crunchyroll","1112", "https://image.tmdb.org/t/p/w500/mO5jMHxNYHcWgxWpEHqpxVBpRV.png"},
+        {"BBC",        "4",    "https://image.tmdb.org/t/p/w500/mDDG8AzEYqU2d6LKZN4Gqt2GdlQ.png"},
     };
 
     private static final String[][] STUDIOS = {
-        {"Marvel",       "420",   ""},
-        {"DC Films",     "9993",  ""},
-        {"Warner Bros",  "174",   ""},
-        {"Universal",    "33",    ""},
-        {"Paramount",    "4",     ""},
-        {"Sony",         "5",     ""},
-        {"20th Century", "25",    ""},
-        {"A24",          "41077", ""},
-        {"Pixar",        "3",     ""},
-        {"DreamWorks",   "521",   ""},
-        {"Lionsgate",    "1632",  ""},
-        {"Studio Ghibli","10342", ""},
-        {"Star Cinema",  "3965",  ""},
+        {"Marvel",     "420",   "https://image.tmdb.org/t/p/w500/hUzeosd33nzE5MCNsZxCGEKTXaQ.png"},
+        {"DC Films",   "9993",  "https://image.tmdb.org/t/p/w500/2Tc13eoJKtjBWjBCVmHOxNBP1T1.png"},
+        {"Warner Bros","174",   "https://image.tmdb.org/t/p/w500/IuAlhI9eVC9Z8UQWOIDdWRKSEJ.png"},
+        {"Universal",  "33",    "https://image.tmdb.org/t/p/w500/MLibEBtbSPFTBGrsqlJNKOFVR.png"},
+        {"Paramount",  "4",     "https://image.tmdb.org/t/p/w500/fycMZt242LVjagMByZOLUGbCvv.png"},
+        {"Sony",       "5",     "https://image.tmdb.org/t/p/w500/71BqEFAF4V3qjjMPCpLuyJFB9A.png"},
+        {"20th Century","25",   "https://image.tmdb.org/t/p/w500/qZCc1lty5FzX30aOCVRBLzaVmcp.png"},
+        {"A24",        "41077", "https://image.tmdb.org/t/p/w500/9KNIsFNFEQhkJuZiTPpRZB2YYQS.png"},
+        {"Pixar",      "3",     "https://image.tmdb.org/t/p/w500/1TjvGVDMYsj6JBxOAkUZStzomlX.png"},
+        {"DreamWorks", "521",   "https://image.tmdb.org/t/p/w500/vSDPD2J6jMHJKKMbRcwmHV8OAfO.png"},
+        {"Lionsgate",  "1632",  "https://image.tmdb.org/t/p/w500/oOKYaqtJMVjkfYnlLCJeznBhFcZ.png"},
+        {"Studio Ghibli","10342","https://image.tmdb.org/t/p/w500/yCCos2FBFKsSCbdxUsHgTM0lVhY.png"},
+        {"Star Cinema","3965",  "https://image.tmdb.org/t/p/w500/qV3d5KzirSqT5vOFD6Bmy8hHQPb.png"},
+        {"Viva Films", "5842",  "https://image.tmdb.org/t/p/w500/3dBmPCGrQSQWPnmvhWC8MZiD4lL.png"},
     };
 
     private RecyclerView networkRecycler;
@@ -454,22 +461,33 @@ public class MainActivity extends AppCompatActivity {
         networkLabel    = findViewById(R.id.network_label);
         studioLabel     = findViewById(R.id.studio_label);
 
-        if (networkRecycler == null || studioRecycler == null) return;
-
-        if ("tv".equals(mode) || "anime".equals(mode)) {
-            // TV/Anime tab — show Networks only
-            studioRecycler.setVisibility(android.view.View.GONE);
-            if (studioLabel != null) studioLabel.setVisibility(android.view.View.GONE);
-            networkRecycler.setVisibility(android.view.View.VISIBLE);
-            if (networkLabel != null) networkLabel.setVisibility(android.view.View.VISIBLE);
-            setupNetworkRow();
-        } else {
-            // Movies tab (and default) — show Studios only
-            networkRecycler.setVisibility(android.view.View.GONE);
-            if (networkLabel != null) networkLabel.setVisibility(android.view.View.GONE);
-            studioRecycler.setVisibility(android.view.View.VISIBLE);
-            if (studioLabel != null) studioLabel.setVisibility(android.view.View.VISIBLE);
-            setupStudioRow();
+        switch (mode) {
+            case "movie":
+                // Movies — show studios only
+                if (networkRecycler != null) networkRecycler.setVisibility(android.view.View.GONE);
+                if (networkLabel != null)    networkLabel.setVisibility(android.view.View.GONE);
+                if (studioRecycler != null)  studioRecycler.setVisibility(android.view.View.VISIBLE);
+                if (studioLabel != null)     studioLabel.setVisibility(android.view.View.VISIBLE);
+                setupStudioRow();
+                break;
+            case "tv":
+            case "anime":
+                // TV/Anime — show networks only
+                if (studioRecycler != null)  studioRecycler.setVisibility(android.view.View.GONE);
+                if (studioLabel != null)     studioLabel.setVisibility(android.view.View.GONE);
+                if (networkRecycler != null) networkRecycler.setVisibility(android.view.View.VISIBLE);
+                if (networkLabel != null)    networkLabel.setVisibility(android.view.View.VISIBLE);
+                setupNetworkRow();
+                break;
+            default:
+                // Mixed — show both
+                if (networkRecycler != null) networkRecycler.setVisibility(android.view.View.VISIBLE);
+                if (networkLabel != null)    networkLabel.setVisibility(android.view.View.VISIBLE);
+                if (studioRecycler != null)  studioRecycler.setVisibility(android.view.View.VISIBLE);
+                if (studioLabel != null)     studioLabel.setVisibility(android.view.View.VISIBLE);
+                setupNetworkRow();
+                setupStudioRow();
+                break;
         }
     }
 
@@ -488,7 +506,7 @@ public class MainActivity extends AppCompatActivity {
             new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
         studioRecycler.setAdapter(new NetworkLogoAdapter(this, STUDIOS, (studioId, studioName, logoUrl) -> {
             NetworkActivity.open(this, studioId, studioName, logoUrl, "with_companies", "movie");
-        }, "company"));
+        }));
     }
 
     // Navigation
@@ -530,11 +548,209 @@ public class MainActivity extends AppCompatActivity {
         return false;
     }
 
+    // ── D-pad focus zones ─────────────────────────────────────────────────────
+    // NAV_SIDEBAR → CONTENT → FILTER_BAR → STUDIO/NETWORK_ROW
+    private enum MainFocusZone { NAV, FILTER, BROWSE_ROW, CONTENT }
+    private MainFocusZone mainFocusZone = MainFocusZone.CONTENT;
+    private int focusedNavIndex     = 0;
+    private int focusedCategoryRow  = 0;
+    private int focusedCategoryCol  = 0;
+    private int focusedFilterIndex  = 0;
+    private int focusedBrowseIndex  = 0;
+
+    private RecyclerView getNavRecycler() { return findViewById(R.id.nav_recycler); }
+
+    private void highlightNav(int index) {
+        RecyclerView nav = getNavRecycler();
+        if (nav == null) return;
+        for (int i = 0; i < nav.getChildCount(); i++) {
+            View v = nav.getChildAt(i);
+            if (v != null) {
+                v.setScaleX(i == index ? 1.2f : 1f);
+                v.setScaleY(i == index ? 1.2f : 1f);
+                v.setAlpha(i == index ? 1f : 0.6f);
+            }
+        }
+        nav.scrollToPosition(index);
+    }
+
+    private void highlightFilter(int index) {
+        int[] ids = {R.id.filter_popular, R.id.filter_top_rated,
+                     R.id.filter_now_playing, R.id.filter_upcoming};
+        for (int i = 0; i < ids.length; i++) {
+            View v = findViewById(ids[i]);
+            if (v != null) {
+                v.setScaleX(i == index ? 1.1f : 1f);
+                v.setScaleY(i == index ? 1.1f : 1f);
+                v.setAlpha(i == index ? 1f : 0.6f);
+            }
+        }
+    }
+
+    private void highlightBrowse(int index) {
+        // Highlight in studio or network recycler based on current mode
+        RecyclerView active = null;
+        if (studioRecycler != null && studioRecycler.getVisibility() == View.VISIBLE)
+            active = studioRecycler;
+        else if (networkRecycler != null && networkRecycler.getVisibility() == View.VISIBLE)
+            active = networkRecycler;
+        if (active == null) return;
+        for (int i = 0; i < active.getChildCount(); i++) {
+            View v = active.getChildAt(i);
+            if (v != null) {
+                v.setScaleX(i == index ? 1.12f : 1f);
+                v.setScaleY(i == index ? 1.12f : 1f);
+                v.setElevation(i == index ? 10f : 2f);
+            }
+        }
+        active.scrollToPosition(index);
+    }
+
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         if (keyCode == KeyEvent.KEYCODE_SEARCH || keyCode == KeyEvent.KEYCODE_S) {
             openSearch(); return true;
         }
+
+        switch (mainFocusZone) {
+
+            case NAV:
+                switch (keyCode) {
+                    case KeyEvent.KEYCODE_DPAD_UP:
+                        if (focusedNavIndex > 0) { focusedNavIndex--; highlightNav(focusedNavIndex); }
+                        return true;
+                    case KeyEvent.KEYCODE_DPAD_DOWN:
+                        RecyclerView nav = getNavRecycler();
+                        int navMax = nav != null ? nav.getAdapter().getItemCount() - 1 : 8;
+                        if (focusedNavIndex < navMax) { focusedNavIndex++; highlightNav(focusedNavIndex); }
+                        return true;
+                    case KeyEvent.KEYCODE_DPAD_RIGHT:
+                        mainFocusZone = MainFocusZone.CONTENT;
+                        highlightNav(-1); // clear nav highlight
+                        return true;
+                    case KeyEvent.KEYCODE_DPAD_CENTER:
+                    case KeyEvent.KEYCODE_ENTER:
+                        RecyclerView navRv = getNavRecycler();
+                        if (navRv != null) {
+                            View item = navRv.getLayoutManager().findViewByPosition(focusedNavIndex);
+                            if (item != null) item.performClick();
+                        }
+                        return true;
+                }
+                break;
+
+            case FILTER:
+                switch (keyCode) {
+                    case KeyEvent.KEYCODE_DPAD_LEFT:
+                        if (focusedFilterIndex > 0) { focusedFilterIndex--; highlightFilter(focusedFilterIndex); }
+                        return true;
+                    case KeyEvent.KEYCODE_DPAD_RIGHT:
+                        if (focusedFilterIndex < 3) { focusedFilterIndex++; highlightFilter(focusedFilterIndex); }
+                        return true;
+                    case KeyEvent.KEYCODE_DPAD_DOWN:
+                        mainFocusZone = MainFocusZone.BROWSE_ROW;
+                        highlightFilter(-1);
+                        highlightBrowse(focusedBrowseIndex);
+                        return true;
+                    case KeyEvent.KEYCODE_DPAD_UP:
+                        mainFocusZone = MainFocusZone.NAV;
+                        highlightFilter(-1);
+                        highlightNav(focusedNavIndex);
+                        return true;
+                    case KeyEvent.KEYCODE_DPAD_CENTER:
+                    case KeyEvent.KEYCODE_ENTER:
+                        int[] ids = {R.id.filter_popular, R.id.filter_top_rated,
+                                     R.id.filter_now_playing, R.id.filter_upcoming};
+                        View f = findViewById(ids[focusedFilterIndex]);
+                        if (f != null) f.performClick();
+                        return true;
+                }
+                break;
+
+            case BROWSE_ROW:
+                switch (keyCode) {
+                    case KeyEvent.KEYCODE_DPAD_LEFT:
+                        if (focusedBrowseIndex > 0) { focusedBrowseIndex--; highlightBrowse(focusedBrowseIndex); }
+                        return true;
+                    case KeyEvent.KEYCODE_DPAD_RIGHT:
+                        focusedBrowseIndex++; highlightBrowse(focusedBrowseIndex);
+                        return true;
+                    case KeyEvent.KEYCODE_DPAD_UP:
+                        mainFocusZone = MainFocusZone.FILTER;
+                        highlightBrowse(-1);
+                        highlightFilter(focusedFilterIndex);
+                        return true;
+                    case KeyEvent.KEYCODE_DPAD_DOWN:
+                        mainFocusZone = MainFocusZone.CONTENT;
+                        highlightBrowse(-1);
+                        return true;
+                    case KeyEvent.KEYCODE_DPAD_CENTER:
+                    case KeyEvent.KEYCODE_ENTER:
+                        RecyclerView active = null;
+                        if (studioRecycler != null && studioRecycler.getVisibility() == View.VISIBLE)
+                            active = studioRecycler;
+                        else if (networkRecycler != null && networkRecycler.getVisibility() == View.VISIBLE)
+                            active = networkRecycler;
+                        if (active != null) {
+                            View item = active.getLayoutManager().findViewByPosition(focusedBrowseIndex);
+                            if (item != null) item.performClick();
+                        }
+                        return true;
+                }
+                break;
+
+            case CONTENT:
+                switch (keyCode) {
+                    case KeyEvent.KEYCODE_DPAD_LEFT:
+                        if (focusedCategoryCol > 0) focusedCategoryCol--;
+                        else {
+                            mainFocusZone = MainFocusZone.NAV;
+                            highlightNav(focusedNavIndex);
+                            return true;
+                        }
+                        scrollContentFocus();
+                        return true;
+                    case KeyEvent.KEYCODE_DPAD_RIGHT:
+                        focusedCategoryCol++;
+                        scrollContentFocus();
+                        return true;
+                    case KeyEvent.KEYCODE_DPAD_UP:
+                        if (focusedCategoryRow > 0) {
+                            focusedCategoryRow--;
+                            scrollContentFocus();
+                        } else {
+                            mainFocusZone = MainFocusZone.BROWSE_ROW;
+                            highlightBrowse(focusedBrowseIndex);
+                        }
+                        return true;
+                    case KeyEvent.KEYCODE_DPAD_DOWN:
+                        focusedCategoryRow++;
+                        scrollContentFocus();
+                        return true;
+                    case KeyEvent.KEYCODE_DPAD_CENTER:
+                    case KeyEvent.KEYCODE_ENTER:
+                        openFocusedMovie();
+                        return true;
+                }
+                break;
+        }
+
         return super.onKeyDown(keyCode, event);
+    }
+
+    private void scrollContentFocus() {
+        if (focusedCategoryRow < categories.size()) {
+            mainRecyclerView.scrollToPosition(focusedCategoryRow);
+            // Tell the CategoryRowAdapter which item is focused
+            adapter.setFocus(focusedCategoryRow, focusedCategoryCol);
+        }
+    }
+
+    private void openFocusedMovie() {
+        if (focusedCategoryRow >= categories.size()) return;
+        List<Movie> movies = categories.get(focusedCategoryRow).getMovies();
+        if (movies != null && focusedCategoryCol < movies.size()) {
+            openDetail(movies.get(focusedCategoryCol));
+        }
     }
 }

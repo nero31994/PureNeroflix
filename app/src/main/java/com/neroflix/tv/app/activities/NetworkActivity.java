@@ -3,6 +3,7 @@ package com.neroflix.tv.app.activities;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
+import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
@@ -36,14 +37,19 @@ public class NetworkActivity extends AppCompatActivity {
     private TextView countBadge;
 
     private String networkId, networkName, networkLogo;
-    private String endpointType = "with_networks"; // "with_networks" or "with_companies"
+    private String endpointType = "with_networks";
     private String currentTab   = "tv";
-    private int currentPage = 1;
+    private int currentPage  = 1;
     private boolean isLoading = false;
-    private boolean hasMore = true;
+    private boolean hasMore   = true;
 
     private final List<Movie> items = new ArrayList<>();
     private GridAdapter adapter;
+
+    // D-pad focus state
+    private int focusedRow = 0;
+    private int focusedCol = 0;
+    private int gridCols   = 4;
 
     public static void open(Context ctx, String networkId, String networkName,
                             String networkLogo, String endpointType, String mediaType) {
@@ -59,13 +65,10 @@ public class NetworkActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-
-        // Fullscreen
         getWindow().setFlags(
             WindowManager.LayoutParams.FLAG_FULLSCREEN,
             WindowManager.LayoutParams.FLAG_FULLSCREEN);
         if (getSupportActionBar() != null) getSupportActionBar().hide();
-
         setContentView(R.layout.activity_network);
 
         networkId    = getIntent().getStringExtra(EXTRA_NETWORK_ID);
@@ -76,44 +79,43 @@ public class NetworkActivity extends AppCompatActivity {
         if (endpointType == null) endpointType = "with_networks";
         if (currentTab == null)   currentTab   = "tv";
 
+        // Header logo
         ImageView logo = findViewById(R.id.network_header_logo);
-        com.neroflix.tv.app.network.TmdbClient.NetworkCallback logoCb = new com.neroflix.tv.app.network.TmdbClient.NetworkCallback() {
-            @Override
-            public void onSuccess(String logoPath) {
-                String url = (logoPath != null && !logoPath.isEmpty()) ? "https://image.tmdb.org/t/p/w500" + logoPath : networkLogo;
-                Glide.with(NetworkActivity.this).load(url).fitCenter().into(logo);
-            }
-            @Override
-            public void onError(String error) {
-                Glide.with(NetworkActivity.this).load(networkLogo).fitCenter().into(logo);
-            }
-        };
-        if ("with_companies".equals(endpointType)) {
+        com.neroflix.tv.app.network.TmdbClient.NetworkCallback logoCb =
+            new com.neroflix.tv.app.network.TmdbClient.NetworkCallback() {
+                @Override public void onSuccess(String logoPath) {
+                    String url = (logoPath != null && !logoPath.isEmpty())
+                        ? "https://image.tmdb.org/t/p/w500" + logoPath : networkLogo;
+                    Glide.with(NetworkActivity.this).load(url).fitCenter().into(logo);
+                }
+                @Override public void onError(String e) {
+                    Glide.with(NetworkActivity.this).load(networkLogo).fitCenter().into(logo);
+                }
+            };
+        if ("with_companies".equals(endpointType))
             com.neroflix.tv.app.network.TmdbClient.getInstance().fetchCompany(networkId, logoCb);
-        } else {
+        else
             com.neroflix.tv.app.network.TmdbClient.getInstance().fetchNetwork(networkId, logoCb);
-        }
 
         countBadge = findViewById(R.id.network_count_badge);
         loading    = findViewById(R.id.network_loading);
 
         findViewById(R.id.network_back).setOnClickListener(v -> finish());
 
-recycler = findViewById(R.id.network_recycler);
-        boolean isLandscape = getResources().getConfiguration().orientation == 
+        recycler = findViewById(R.id.network_recycler);
+        boolean isLandscape = getResources().getConfiguration().orientation ==
             android.content.res.Configuration.ORIENTATION_LANDSCAPE;
-        recycler.setLayoutManager(new GridLayoutManager(this, isLandscape ? 6 : 4));
+        gridCols = isLandscape ? 6 : 4;
+        recycler.setLayoutManager(new GridLayoutManager(this, gridCols));
         adapter = new GridAdapter();
         recycler.setAdapter(adapter);
 
         recycler.addOnScrollListener(new RecyclerView.OnScrollListener() {
-            @Override
-            public void onScrolled(RecyclerView rv, int dx, int dy) {
+            @Override public void onScrolled(RecyclerView rv, int dx, int dy) {
                 GridLayoutManager lm = (GridLayoutManager) rv.getLayoutManager();
                 if (!isLoading && hasMore && lm != null &&
-                    lm.findLastVisibleItemPosition() >= adapter.getItemCount() - 6) {
+                    lm.findLastVisibleItemPosition() >= adapter.getItemCount() - 6)
                     loadMore();
-                }
             }
         });
 
@@ -136,7 +138,6 @@ recycler = findViewById(R.id.network_recycler);
 
         String endpoint;
         if ("with_companies".equals(endpointType)) {
-            // Studios — works for both movies and TV
             String mediaType = currentTab.equals("tv") ? "tv" : "movie";
             endpoint = "/discover/" + mediaType + "?with_companies=" + networkId +
                        "&sort_by=popularity.desc&page=" + currentPage;
@@ -149,8 +150,7 @@ recycler = findViewById(R.id.network_recycler);
         }
 
         TmdbClient.getInstance().fetchMovies(endpoint, currentTab, new TmdbClient.MovieListCallback() {
-            @Override
-            public void onSuccess(List<Movie> result) {
+            @Override public void onSuccess(List<Movie> result) {
                 runOnUiThread(() -> {
                     loading.setVisibility(View.GONE);
                     isLoading = false;
@@ -160,65 +160,165 @@ recycler = findViewById(R.id.network_recycler);
                     countBadge.setText(items.size() + "+ titles");
                     currentPage++;
                     if (result.size() < 20) hasMore = false;
+                    // Highlight first item on initial load
+                    if (items.size() <= result.size()) highlightFocused();
                 });
             }
-            @Override
-            public void onError(String error) {
-                runOnUiThread(() -> {
-                    loading.setVisibility(View.GONE);
-                    isLoading = false;
-                });
+            @Override public void onError(String error) {
+                runOnUiThread(() -> { loading.setVisibility(View.GONE); isLoading = false; });
             }
         });
     }
 
+    // ── D-pad navigation ─────────────────────────────────────────────────────
+
+    @Override
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        int totalItems = adapter.getItemCount();
+        if (totalItems == 0) return super.onKeyDown(keyCode, event);
+
+        int totalRows = (int) Math.ceil((double) totalItems / gridCols);
+        int focusedPos = focusedRow * gridCols + focusedCol;
+
+        switch (keyCode) {
+            case KeyEvent.KEYCODE_DPAD_RIGHT:
+                if (focusedCol < gridCols - 1 && focusedPos + 1 < totalItems) {
+                    focusedCol++;
+                } else if (focusedPos + 1 < totalItems) {
+                    // Wrap to next row
+                    focusedRow++;
+                    focusedCol = 0;
+                }
+                highlightFocused();
+                return true;
+
+            case KeyEvent.KEYCODE_DPAD_LEFT:
+                if (focusedCol > 0) {
+                    focusedCol--;
+                } else if (focusedRow > 0) {
+                    focusedRow--;
+                    focusedCol = gridCols - 1;
+                }
+                highlightFocused();
+                return true;
+
+            case KeyEvent.KEYCODE_DPAD_DOWN:
+                if (focusedRow < totalRows - 1) {
+                    focusedRow++;
+                    int newPos = focusedRow * gridCols + focusedCol;
+                    if (newPos >= totalItems) focusedCol = (totalItems - 1) % gridCols;
+                    // Load more when near bottom
+                    if (focusedRow >= totalRows - 2) loadMore();
+                }
+                highlightFocused();
+                return true;
+
+            case KeyEvent.KEYCODE_DPAD_UP:
+                if (focusedRow > 0) {
+                    focusedRow--;
+                } else {
+                    // At top — go back
+                    finish();
+                    return true;
+                }
+                highlightFocused();
+                return true;
+
+            case KeyEvent.KEYCODE_DPAD_CENTER:
+            case KeyEvent.KEYCODE_ENTER:
+            case KeyEvent.KEYCODE_BUTTON_A:
+                int pos = focusedRow * gridCols + focusedCol;
+                if (pos < totalItems) openMovie(items.get(pos));
+                return true;
+
+            case KeyEvent.KEYCODE_BACK:
+                finish();
+                return true;
+        }
+        return super.onKeyDown(keyCode, event);
+    }
+
+    private void highlightFocused() {
+        int pos = focusedRow * gridCols + focusedCol;
+        adapter.setFocusedPosition(pos);
+        recycler.scrollToPosition(pos);
+    }
+
+    private void openMovie(Movie m) {
+        Intent i = new Intent(this, DetailActivity.class);
+        i.putExtra("movie_id",       m.getId());
+        i.putExtra("media_type",     m.getMediaType());
+        i.putExtra("movie_title",    m.getTitle());
+        i.putExtra("movie_poster",   m.getPosterPath());
+        i.putExtra("movie_backdrop", m.getBackdropPath());
+        i.putExtra("movie_overview", m.getOverview());
+        i.putExtra("movie_rating",   m.getVoteAverage());
+        i.putExtra("movie_year",     m.getYear());
+        startActivity(i);
+    }
+
+    // ── Grid Adapter ─────────────────────────────────────────────────────────
+
     private class GridAdapter extends RecyclerView.Adapter<GridAdapter.VH> {
+        private int focusedPosition = 0;
+
+        public void setFocusedPosition(int pos) {
+            int old = focusedPosition;
+            focusedPosition = pos;
+            notifyItemChanged(old);
+            notifyItemChanged(pos);
+        }
+
         @Override
         public VH onCreateViewHolder(ViewGroup parent, int viewType) {
             View v = LayoutInflater.from(parent.getContext())
                 .inflate(R.layout.item_movie_card, parent, false);
-            // Responsive grid: 4 cols landscape, 3 cols portrait
-            android.content.res.Configuration config = parent.getContext().getResources().getConfiguration();
-            boolean isLandscape = config.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE;
+            android.content.res.Configuration config =
+                parent.getContext().getResources().getConfiguration();
+            boolean isLandscape = config.orientation ==
+                android.content.res.Configuration.ORIENTATION_LANDSCAPE;
             int cols = isLandscape ? 6 : 4;
             int gap = 10;
-            int totalGap = gap * (cols + 1);
             int screenWidth = parent.getWidth();
-            int cardWidth = (screenWidth - totalGap) / cols;
+            int cardWidth = (screenWidth - gap * (cols + 1)) / cols;
             int cardHeight = (int)(cardWidth * 1.5f);
             RecyclerView.LayoutParams lp = new RecyclerView.LayoutParams(cardWidth, cardHeight);
             lp.setMargins(gap/2, gap/2, gap/2, gap/2);
-            // Squircle shape via background
             v.setBackgroundResource(R.drawable.card_squircle);
             v.setClipToOutline(true);
             v.setLayoutParams(lp);
             return new VH(v);
         }
+
         @Override
         public void onBindViewHolder(VH holder, int position) {
             Movie m = items.get(position);
             holder.title.setText(m.getTitle());
             holder.year.setText(m.getYear());
             holder.rating.setText(String.format("★ %.1f", m.getVoteAverage()));
+
             Glide.with(NetworkActivity.this)
                 .load("https://image.tmdb.org/t/p/w500" + m.getPosterPath())
                 .placeholder(android.R.color.darker_gray)
                 .into(holder.poster);
-            holder.itemView.setOnClickListener(v -> {
-                Intent i = new Intent(NetworkActivity.this, DetailActivity.class);
-                i.putExtra("movie_id",       m.getId());
-                i.putExtra("media_type",     m.getMediaType());
-                i.putExtra("movie_title",    m.getTitle());
-                i.putExtra("movie_poster",   m.getPosterPath());
-                i.putExtra("movie_backdrop", m.getBackdropPath());
-                i.putExtra("movie_overview", m.getOverview());
-                i.putExtra("movie_rating",   m.getVoteAverage());
-                i.putExtra("movie_year",     m.getYear());
-                startActivity(i);
+
+            // D-pad focus highlight — scale up + red border
+            boolean focused = (position == focusedPosition);
+            holder.itemView.setScaleX(focused ? 1.08f : 1f);
+            holder.itemView.setScaleY(focused ? 1.08f : 1f);
+            holder.itemView.setElevation(focused ? 12f : 2f);
+            holder.itemView.setBackgroundResource(focused
+                ? R.drawable.card_focus_border
+                : R.drawable.card_squircle);
+
+            holder.itemView.setOnClickListener(v -> openMovie(m));
+            holder.itemView.setOnFocusChangeListener((v, hasFocus) -> {
+                v.setScaleX(hasFocus ? 1.08f : 1f);
+                v.setScaleY(hasFocus ? 1.08f : 1f);
             });
         }
-        @Override
-        public int getItemCount() { return items.size(); }
+
+        @Override public int getItemCount() { return items.size(); }
 
         class VH extends RecyclerView.ViewHolder {
             ImageView poster;
