@@ -77,7 +77,7 @@ public class NetworkActivity extends AppCompatActivity {
         if (currentTab == null)   currentTab   = "tv";
 
         ImageView logo = findViewById(R.id.network_header_logo);
-        com.neroflix.tv.app.network.TmdbClient.getInstance().fetchNetwork(networkId, new com.neroflix.tv.app.network.TmdbClient.NetworkCallback() {
+        com.neroflix.tv.app.network.TmdbClient.NetworkCallback logoCb = new com.neroflix.tv.app.network.TmdbClient.NetworkCallback() {
             @Override
             public void onSuccess(String logoPath) {
                 String url = (logoPath != null && !logoPath.isEmpty()) ? "https://image.tmdb.org/t/p/w500" + logoPath : networkLogo;
@@ -87,7 +87,12 @@ public class NetworkActivity extends AppCompatActivity {
             public void onError(String error) {
                 Glide.with(NetworkActivity.this).load(networkLogo).fitCenter().into(logo);
             }
-        });
+        };
+        if ("with_companies".equals(endpointType)) {
+            com.neroflix.tv.app.network.TmdbClient.getInstance().fetchCompany(networkId, logoCb);
+        } else {
+            com.neroflix.tv.app.network.TmdbClient.getInstance().fetchNetwork(networkId, logoCb);
+        }
 
         countBadge = findViewById(R.id.network_count_badge);
         loading    = findViewById(R.id.network_loading);
