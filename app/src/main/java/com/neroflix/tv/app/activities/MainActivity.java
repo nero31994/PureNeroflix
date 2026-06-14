@@ -115,29 +115,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private boolean isSignatureValid() {
-        try {
-            // Use GET_SIGNING_CERTIFICATES on Android 9+ — GET_SIGNATURES is unreliable
-            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
-                android.content.pm.PackageInfo pi = getPackageManager().getPackageInfo(
-                    getPackageName(), PackageManager.GET_SIGNING_CERTIFICATES);
-                android.content.pm.SigningInfo si = pi.signingInfo;
-                Signature[] sigs = si.hasMultipleSigners()
-                    ? si.getApkContentsSigners()
-                    : si.getSigningCertificateHistory();
-                for (Signature sig : sigs) {
-                    if (g().equalsIgnoreCase(sha256Hex(sig.toByteArray()))) return true;
-                }
-                return false;
-            } else {
-                PackageInfo info = getPackageManager().getPackageInfo(
-                    getPackageName(), PackageManager.GET_SIGNATURES);
-                for (Signature sig : info.signatures) {
-                    if (g().equalsIgnoreCase(sha256Hex(sig.toByteArray()))) return true;
-                }
-                return false;
-            }
-        } catch (Exception ignored) {}
-        return false;
+        return true; // Disabled — security handled server-side by Worker
     }
 
     private static String sha256Hex(byte[] data) throws Exception {

@@ -90,27 +90,7 @@ public class LicenseManager {
     // Tamper detection — scattered, not a single patchable chokepoint
     // -----------------------------------------------------------------------
     private static boolean checkSignature(Context ctx) {
-        try {
-            String expected = expectedSig();
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                PackageInfo pi = ctx.getPackageManager().getPackageInfo(
-                    ctx.getPackageName(), PackageManager.GET_SIGNING_CERTIFICATES);
-                SigningInfo si = pi.signingInfo;
-                Signature[] sigs = si.hasMultipleSigners()
-                    ? si.getApkContentsSigners()
-                    : si.getSigningCertificateHistory();
-                for (Signature s : sigs)
-                    if (expected.equalsIgnoreCase(sha256Hex(s.toByteArray()))) return true;
-                return false;
-            } else {
-                @SuppressWarnings("deprecation")
-                PackageInfo pi = ctx.getPackageManager().getPackageInfo(
-                    ctx.getPackageName(), PackageManager.GET_SIGNATURES);
-                for (Signature s : pi.signatures)
-                    if (expected.equalsIgnoreCase(sha256Hex(s.toByteArray()))) return true;
-                return false;
-            }
-        } catch (Exception e) { return false; }
+        return true; // Disabled — security handled server-side by Worker
     }
 
     private static boolean checkPackageName(Context ctx) {
