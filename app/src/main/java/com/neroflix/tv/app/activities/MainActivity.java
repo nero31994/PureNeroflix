@@ -84,10 +84,7 @@ public class MainActivity extends AppCompatActivity {
             | View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
 
         // Security checks
-        if (!isSignatureValid()) {
-            showSecurityError("This app has been tampered with.");
-            return;
-        }
+        // Signature check disabled — security handled server-side by Worker
         // Only block confirmed mod tools — removed isRooted(), isEmulator(), isDebugged()
         // because they produce false positives on legitimate TV boxes and budget Android devices
         if (isModToolPresent()) {
