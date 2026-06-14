@@ -40,9 +40,7 @@ public class MainActivity extends AppCompatActivity {
     // Matches the value in LicenseManager.java
     private static String g() {
         return new StringBuilder()
-            .append("849D0A8D").append("13865596").append("0999FD08")
-            .append("4B23A771").append("B105928D").append("6B27DDB5")
-            .append("9F1AF1C1").append("48411AFF")
+            .append("4FD78ABF").append("6CC07B99").append("11B4FB39").append("09826F67").append("D88F38F5").append("FF19B662").append("51D794FE").append("73C9F176")
             .toString();
     }
 
