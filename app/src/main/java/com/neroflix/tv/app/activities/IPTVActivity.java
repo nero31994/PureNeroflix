@@ -1,5 +1,6 @@
 package com.neroflix.tv.app.activities;
 
+import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -32,12 +33,11 @@ import androidx.media3.ui.PlayerView;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
+import com.neroflix.tv.app.LicenseManager;
 import com.neroflix.tv.app.R;
 import com.neroflix.tv.app.adapters.IPTVChannelAdapter;
 import com.neroflix.tv.app.iptv.M3UParser;
-import com.neroflix.tv.app.util.RemoteConfig;
 
-import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
@@ -56,7 +56,6 @@ import okhttp3.OkHttpClient;
 @OptIn(markerClass = UnstableApi.class)
 public class IPTVActivity extends AppCompatActivity {
 
-    // M3U URL fetched remotely via RemoteConfig
     // XOR encrypted app key for M3U Worker (key=0x4E)
     private static final byte[] M3U_KEY_ENC = {
         (byte)0x20,(byte)0x2B,(byte)0x3C,(byte)0x21,(byte)0x28,(byte)0x22,
@@ -81,10 +80,19 @@ public class IPTVActivity extends AppCompatActivity {
 
     // ── State ────────────────────────────────────────────────────────────────
     private List<M3UParser.Channel> channels = new ArrayList<>();
-    private int currentIndex   = 0;
-    private boolean sidebarVisible = false; // hidden by default, shown on click/touch/dpad
-    private String lastReferrer = "";
-    private String activeGroup  = null; // null = all groups tab
+    private int currentIndex       = 0;
+    private boolean sidebarVisible = false;
+    private String lastReferrer    = "";
+    private String activeGroup     = null;
+
+    // D-pad focus zones: PLAYER, CHANNELS, GROUPS, SEARCH
+    private enum FocusZone { PLAYER, CHANNELS, GROUPS, SEARCH }
+    private FocusZone focusZone = FocusZone.PLAYER;
+    private int focusedChannelIndex = 0;
+    private int focusedGroupIndex   = 0;
+
+    // M3U URL delivered by the Worker — never hardcoded in the APK
+    private String m3uUrl = null;
 
     private final Handler timeHandler = new Handler(Looper.getMainLooper());
 
@@ -97,23 +105,20 @@ public class IPTVActivity extends AppCompatActivity {
         hideSystemUI();
         setContentView(R.layout.activity_iptv);
 
-        playerView          = findViewById(R.id.iptv_player);
-        sidebar             = findViewById(R.id.iptv_sidebar);
-        topBar              = findViewById(R.id.iptv_top_bar);
-        loadingBar          = findViewById(R.id.iptv_loading);
-        currentChannelText  = findViewById(R.id.iptv_current_channel);
-        timeText            = findViewById(R.id.iptv_time);
-        recyclerView        = findViewById(R.id.iptv_recycler);
-        groupTabsContainer  = findViewById(R.id.iptv_group_tabs);
+        playerView         = findViewById(R.id.iptv_player);
+        sidebar            = findViewById(R.id.iptv_sidebar);
+        topBar             = findViewById(R.id.iptv_top_bar);
+        loadingBar         = findViewById(R.id.iptv_loading);
+        currentChannelText = findViewById(R.id.iptv_current_channel);
+        timeText           = findViewById(R.id.iptv_time);
+        recyclerView       = findViewById(R.id.iptv_recycler);
+        groupTabsContainer = findViewById(R.id.iptv_group_tabs);
 
-        // Sidebar hidden initially
         sidebar.setVisibility(View.GONE);
         topBar.setVisibility(View.GONE);
 
         EditText search = findViewById(R.id.iptv_search);
         findViewById(R.id.iptv_back_btn).setOnClickListener(v -> finish());
-
-        // Click on player toggles sidebar
         playerView.setOnClickListener(v -> toggleSidebar());
 
         search.addTextChangedListener(new TextWatcher() {
@@ -126,14 +131,43 @@ public class IPTVActivity extends AppCompatActivity {
 
         setupPlayer("");
         startClock();
-        loadChannels();
+
+        // Gate: fetch M3U URL from Worker — only approved devices get it
+        verifyAndLoadChannels();
+    }
+
+    // ── Activation gate ──────────────────────────────────────────────────────
+
+    /**
+     * Contacts the Worker via LicenseManager.fetchServers().
+     * If approved, the Worker also returns the M3U URL in the response.
+     * If not approved, redirect to ActivationActivity.
+     */
+    private void verifyAndLoadChannels() {
+        loadingBar.setVisibility(View.VISIBLE);
+        currentChannelText.setText("Verifying access...");
+
+        LicenseManager.fetchIptvAccess(this, result -> {
+            runOnUiThread(() -> {
+                if (result == null || result.m3uUrl == null || result.m3uUrl.isEmpty()) {
+                    // Not activated — go to activation screen
+                    loadingBar.setVisibility(View.GONE);
+                    Toast.makeText(this, "IPTV requires activation.", Toast.LENGTH_SHORT).show();
+                    startActivity(new Intent(this, ActivationActivity.class));
+                    finish();
+                    return;
+                }
+                m3uUrl = result.m3uUrl;
+                loadChannels(m3uUrl);
+            });
+        });
     }
 
     @Override
     protected void onResume() {
         super.onResume();
-        // FIX: resume playback when returning from background
-        if (player != null && !player.isPlaying() && player.getPlaybackState() == Player.STATE_READY) {
+        if (player != null && !player.isPlaying()
+                && player.getPlaybackState() == Player.STATE_READY) {
             player.play();
         }
     }
@@ -153,32 +187,24 @@ public class IPTVActivity extends AppCompatActivity {
 
     // ── Player setup ─────────────────────────────────────────────────────────
 
-    /**
-     * Build (or rebuild) ExoPlayer with the correct Referer for this channel.
-     * Only called when the referrer actually changes to avoid unnecessary rebuilds.
-     */
     private void setupPlayer(String referrer) {
         if (player != null) {
             player.removeListener(playerListener);
             player.stop();
             player.release();
         }
-
         final String ref = referrer == null ? "" : referrer.trim();
-
         OkHttpClient okHttpClient = new OkHttpClient.Builder()
             .addInterceptor(chain -> {
                 okhttp3.Request.Builder rb = chain.request().newBuilder()
                     .header("User-Agent", "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36");
                 if (!ref.isEmpty()) {
                     rb.header("Referer", ref);
-                    // Origin = scheme + host only (strip path)
                     rb.header("Origin", ref.replaceAll("(https?://[^/]+).*", "$1"));
                 }
                 return chain.proceed(rb.build());
             })
             .build();
-
         DataSource.Factory dsFactory = new OkHttpDataSource.Factory(okHttpClient);
         player = new ExoPlayer.Builder(this)
             .setMediaSourceFactory(new DefaultMediaSourceFactory(dsFactory))
@@ -190,35 +216,26 @@ public class IPTVActivity extends AppCompatActivity {
 
     // ── ExoPlayer listener ───────────────────────────────────────────────────
 
-    /**
-     * FIX: added listener so loading bar tracks buffering state
-     * and errors are shown to the user instead of silent black screen.
-     */
     private final Player.Listener playerListener = new Player.Listener() {
         @Override
         public void onPlaybackStateChanged(int state) {
             runOnUiThread(() -> {
                 switch (state) {
                     case Player.STATE_BUFFERING:
-                        loadingBar.setVisibility(View.VISIBLE);
-                        break;
+                        loadingBar.setVisibility(View.VISIBLE); break;
                     case Player.STATE_READY:
                     case Player.STATE_ENDED:
                     case Player.STATE_IDLE:
-                        loadingBar.setVisibility(View.GONE);
-                        break;
+                        loadingBar.setVisibility(View.GONE); break;
                 }
             });
         }
-
         @Override
         public void onPlayerError(@NonNull PlaybackException error) {
             runOnUiThread(() -> {
                 loadingBar.setVisibility(View.GONE);
                 String msg = error.getMessage() != null ? error.getMessage() : "Unknown error";
-                // Shorten ExoPlayer error codes to something readable
                 if (msg.contains("Response code")) {
-                    // e.g. "Response code: 403" → show friendly message
                     Toast.makeText(IPTVActivity.this,
                         "Stream unavailable — " + msg, Toast.LENGTH_LONG).show();
                 } else if (msg.contains("Unable to connect")) {
@@ -234,60 +251,11 @@ public class IPTVActivity extends AppCompatActivity {
 
     // ── Channel loading ──────────────────────────────────────────────────────
 
-    private static final String PREF_M3U_CACHE     = "iptv_m3u_cache";
-    private static final String PREF_M3U_CACHE_TS  = "iptv_m3u_cache_ts";
-    private static final long   M3U_CACHE_MAX_AGE  = 24 * 60 * 60 * 1000L;
-
-    private void loadChannels() {
+    private void loadChannels(String url) {
         loadingBar.setVisibility(View.VISIBLE);
-
-        // Check local M3U cache first — valid for 24h
-        android.content.SharedPreferences prefs =
-            getSharedPreferences("neroflix_iptv", MODE_PRIVATE);
-        String cachedM3u = prefs.getString(PREF_M3U_CACHE, null);
-        long cacheAge    = System.currentTimeMillis() - prefs.getLong(PREF_M3U_CACHE_TS, 0);
-
-        if (cachedM3u != null && cacheAge < M3U_CACHE_MAX_AGE) {
-            // Use cached M3U — no network call needed
-            List<com.neroflix.tv.app.iptv.M3UParser.Channel> cached =
-                com.neroflix.tv.app.iptv.M3UParser.parse(cachedM3u);
-            if (!cached.isEmpty()) {
-                channels = cached;
-                loadingBar.setVisibility(View.GONE);
-                buildGroupTabs();
-                setupRecycler();
-                if (!channels.isEmpty()) playChannel(0);
-                return;
-            }
-        }
-
-        com.neroflix.tv.app.LicenseManager.fetchIptvAccess(this, result -> {
-            if (result == null || result.m3uUrl == null || result.m3uUrl.isEmpty()) {
-                // Offline fallback — use expired cache if available
-                if (cachedM3u != null) {
-                    List<com.neroflix.tv.app.iptv.M3UParser.Channel> fallback =
-                        com.neroflix.tv.app.iptv.M3UParser.parse(cachedM3u);
-                    if (!fallback.isEmpty()) {
-                        runOnUiThread(() -> {
-                            channels = fallback;
-                            loadingBar.setVisibility(View.GONE);
-                            buildGroupTabs();
-                            setupRecycler();
-                            if (!channels.isEmpty()) playChannel(0);
-                        });
-                        return;
-                    }
-                }
-                runOnUiThread(() -> {
-                    loadingBar.setVisibility(View.GONE);
-                    Toast.makeText(this, "IPTV not available. Please activate first.", Toast.LENGTH_LONG).show();
-                });
-                return;
-            }
-            new Thread(() -> {
+        new Thread(() -> {
             try {
-                URL url = new URL(result.m3uUrl);
-                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
                 conn.setConnectTimeout(10000);
                 conn.setReadTimeout(15000);
                 conn.setRequestProperty("User-Agent", "Mozilla/5.0");
@@ -299,13 +267,7 @@ public class IPTVActivity extends AppCompatActivity {
                 while ((line = reader.readLine()) != null) sb.append(line).append("\n");
                 reader.close();
                 conn.disconnect();
-                String m3uContent = sb.toString();
-                // Save to cache
-                prefs.edit()
-                    .putString(PREF_M3U_CACHE,  m3uContent)
-                    .putLong(PREF_M3U_CACHE_TS, System.currentTimeMillis())
-                    .apply();
-                channels = M3UParser.parse(m3uContent);
+                channels = M3UParser.parse(sb.toString());
                 new Handler(Looper.getMainLooper()).post(() -> {
                     loadingBar.setVisibility(View.GONE);
                     buildGroupTabs();
@@ -320,27 +282,16 @@ public class IPTVActivity extends AppCompatActivity {
                         Toast.LENGTH_LONG).show();
                 });
             }
-            }).start();
-        });
+        }).start();
     }
 
     // ── Group tabs ───────────────────────────────────────────────────────────
 
-    /**
-     * Populates the group tab strip dynamically from channel groups.
-     * "All" tab is always first.
-     */
     private void buildGroupTabs() {
         groupTabsContainer.removeAllViews();
-
-        // Collect unique groups preserving insertion order
         LinkedHashSet<String> groups = new LinkedHashSet<>();
         for (M3UParser.Channel ch : channels) groups.add(ch.group);
-
-        // Add "All" first
         addGroupTab("All", null);
-
-        // Add one tab per group
         for (String g : groups) addGroupTab(g, g);
     }
 
@@ -352,21 +303,17 @@ public class IPTVActivity extends AppCompatActivity {
         tab.setPadding(dp(14), dp(6), dp(14), dp(6));
         tab.setFocusable(true);
         tab.setFocusableInTouchMode(false);
-
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT);
         lp.setMarginEnd(dp(6));
         tab.setLayoutParams(lp);
-
         boolean isActive = (groupKey == null && activeGroup == null)
                         || (groupKey != null && groupKey.equals(activeGroup));
         styleTab(tab, isActive);
-
         tab.setOnClickListener(v -> {
             activeGroup = groupKey;
             if (adapter != null) adapter.filterByGroup(groupKey);
-            // Update visual state of all tabs
             for (int i = 0; i < groupTabsContainer.getChildCount(); i++) {
                 View child = groupTabsContainer.getChildAt(i);
                 if (child instanceof TextView) {
@@ -377,7 +324,6 @@ public class IPTVActivity extends AppCompatActivity {
                 }
             }
         });
-
         tab.setTag(groupKey);
         groupTabsContainer.addView(tab);
     }
@@ -399,9 +345,7 @@ public class IPTVActivity extends AppCompatActivity {
     // ── Recycler setup ───────────────────────────────────────────────────────
 
     private void setupRecycler() {
-        adapter = new IPTVChannelAdapter(this, channels, idx -> {
-            playChannel(idx);
-        });
+        adapter = new IPTVChannelAdapter(this, channels, this::playChannel);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
         recyclerView.setAdapter(adapter);
     }
@@ -416,16 +360,10 @@ public class IPTVActivity extends AppCompatActivity {
 
         if (adapter != null) {
             adapter.setSelected(index);
-            // Scroll RecyclerView to the selected item if it's within the filtered list
             scrollToSelected(index);
         }
 
-        // FIX: removed blanket DEFAULT_M3U8_REFERRER.
-        // Each channel uses its own referrer, or no referrer if not specified.
-        // Injecting a wrong Referer causes 403s on most channels.
         String referrer = ch.referrer == null ? "" : ch.referrer.trim();
-
-        // Rebuild player only when referrer changes (avoids unnecessary rebuilds)
         if (!referrer.equals(lastReferrer)) {
             lastReferrer = referrer;
             setupPlayer(referrer);
@@ -435,21 +373,17 @@ public class IPTVActivity extends AppCompatActivity {
             MediaItem mediaItem;
 
             if ("clearkey".equals(ch.drmType) && !ch.clearKeyId.isEmpty()) {
-    androidx.media3.exoplayer.drm.LocalMediaDrmCallback drmCallback =
-        com.neroflix.tv.app.util.ClearKeyUtil.buildCallback(ch.clearKeyId, ch.clearKeyValue);
-
-    mediaItem = new MediaItem.Builder()
-        .setUri(ch.url)
-        .setMimeType(MimeTypes.APPLICATION_MPD)
-        .setDrmConfiguration(
-            new MediaItem.DrmConfiguration.Builder(C.CLEARKEY_UUID)
-                .setLicenseUri("https://clearkey/")  // placeholder, overridden by local callback
-                .build())
-        .build();
-
-    // Rebuild player with local DRM callback for this channel
-    setupPlayerWithDrm(drmCallback);
-
+                androidx.media3.exoplayer.drm.LocalMediaDrmCallback drmCallback =
+                    com.neroflix.tv.app.util.ClearKeyUtil.buildCallback(ch.clearKeyId, ch.clearKeyValue);
+                mediaItem = new MediaItem.Builder()
+                    .setUri(ch.url)
+                    .setMimeType(MimeTypes.APPLICATION_MPD)
+                    .setDrmConfiguration(
+                        new MediaItem.DrmConfiguration.Builder(C.CLEARKEY_UUID)
+                            .setLicenseUri("https://clearkey/")
+                            .build())
+                    .build();
+                setupPlayerWithDrm(drmCallback);
             } else if ("widevine".equals(ch.drmType) && !ch.licenseUrl.isEmpty()) {
                 mediaItem = new MediaItem.Builder()
                     .setUri(ch.url)
@@ -459,30 +393,17 @@ public class IPTVActivity extends AppCompatActivity {
                             .setLicenseUri(ch.licenseUrl)
                             .build())
                     .build();
-
             } else if (ch.isDash) {
                 mediaItem = new MediaItem.Builder()
-                    .setUri(ch.url)
-                    .setMimeType(MimeTypes.APPLICATION_MPD)
-                    .build();
-
-            } else if (ch.isHls) {
-                mediaItem = new MediaItem.Builder()
-                    .setUri(ch.url)
-                    .setMimeType(MimeTypes.APPLICATION_M3U8)
-                    .build();
-
+                    .setUri(ch.url).setMimeType(MimeTypes.APPLICATION_MPD).build();
             } else {
-    // Default to HLS hint for unknown URL formats (no extension)
-    mediaItem = new MediaItem.Builder()
-        .setUri(ch.url)
-        .setMimeType(MimeTypes.APPLICATION_M3U8)
-        .build();
-}
+                mediaItem = new MediaItem.Builder()
+                    .setUri(ch.url).setMimeType(MimeTypes.APPLICATION_M3U8).build();
+            }
 
             player.stop();
             player.setMediaItem(mediaItem);
-            player.prepare();  // loadingBar shown via playerListener STATE_BUFFERING
+            player.prepare();
             player.play();
 
         } catch (Exception e) {
@@ -490,13 +411,8 @@ public class IPTVActivity extends AppCompatActivity {
         }
     }
 
-    /**
-     * Scroll the RecyclerView so the currently playing channel is visible,
-     * accounting for the fact that the adapter may be filtered.
-     */
     private void scrollToSelected(int originalIndex) {
         if (adapter == null) return;
-        // Walk the filtered list to find the matching position
         for (int pos = 0; pos < adapter.getItemCount(); pos++) {
             if (adapter.getOriginalIndex(pos) == originalIndex) {
                 recyclerView.scrollToPosition(pos);
@@ -507,10 +423,6 @@ public class IPTVActivity extends AppCompatActivity {
 
     // ── Sidebar ───────────────────────────────────────────────────────────────
 
-    /**
-     * Toggle sidebar visibility on click or D-pad center/enter.
-     * No auto-hide — sidebar stays until explicitly toggled again.
-     */
     private void toggleSidebar() {
         sidebarVisible = !sidebarVisible;
         int vis = sidebarVisible ? View.VISIBLE : View.GONE;
@@ -518,9 +430,6 @@ public class IPTVActivity extends AppCompatActivity {
         topBar.setVisibility(vis);
     }
 
-    /**
-     * Show sidebar on touch or D-pad navigation (without hiding it automatically).
-     */
     private void showSidebar() {
         if (!sidebarVisible) {
             sidebarVisible = true;
@@ -545,23 +454,145 @@ public class IPTVActivity extends AppCompatActivity {
 
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
-        showSidebar();
-        switch (keyCode) {
-            case KeyEvent.KEYCODE_DPAD_UP:
-                if (currentIndex > 0) playChannel(currentIndex - 1);
-                return true;
-            case KeyEvent.KEYCODE_DPAD_DOWN:
-                if (currentIndex < channels.size() - 1) playChannel(currentIndex + 1);
-                return true;
-            case KeyEvent.KEYCODE_DPAD_CENTER:
-            case KeyEvent.KEYCODE_ENTER:
-                toggleSidebar();
-                return true;
-            case KeyEvent.KEYCODE_BACK:
-                finish();
-                return true;
+        // Any key press shows the sidebar
+        if (!sidebarVisible && keyCode != KeyEvent.KEYCODE_BACK) {
+            showSidebar();
+            focusZone = FocusZone.CHANNELS;
+            highlightChannel(focusedChannelIndex);
+            return true;
+        }
+
+        switch (focusZone) {
+
+            case PLAYER:
+                if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER) {
+                    showSidebar();
+                    focusZone = FocusZone.CHANNELS;
+                    highlightChannel(focusedChannelIndex);
+                    return true;
+                }
+                break;
+
+            case CHANNELS:
+                switch (keyCode) {
+                    case KeyEvent.KEYCODE_DPAD_UP:
+                        if (focusedChannelIndex > 0) {
+                            focusedChannelIndex--;
+                            highlightChannel(focusedChannelIndex);
+                        } else {
+                            // Move to group tabs
+                            focusZone = FocusZone.GROUPS;
+                            highlightGroup(focusedGroupIndex);
+                        }
+                        return true;
+                    case KeyEvent.KEYCODE_DPAD_DOWN:
+                        int max = adapter.getItemCount() - 1;
+                        if (focusedChannelIndex < max) {
+                            focusedChannelIndex++;
+                            highlightChannel(focusedChannelIndex);
+                        }
+                        return true;
+                    case KeyEvent.KEYCODE_DPAD_CENTER:
+                    case KeyEvent.KEYCODE_ENTER:
+                        // Play focused channel
+                        int origIdx = adapter.getOriginalIndex(focusedChannelIndex);
+                        if (origIdx >= 0) playChannel(origIdx);
+                        hideSidebar();
+                        focusZone = FocusZone.PLAYER;
+                        return true;
+                    case KeyEvent.KEYCODE_DPAD_RIGHT:
+                        // Move focus to search
+                        focusZone = FocusZone.SEARCH;
+                        EditText search = findViewById(R.id.iptv_search);
+                        if (search != null) search.requestFocus();
+                        return true;
+                    case KeyEvent.KEYCODE_BACK:
+                        hideSidebar();
+                        focusZone = FocusZone.PLAYER;
+                        return true;
+                }
+                break;
+
+            case GROUPS:
+                switch (keyCode) {
+                    case KeyEvent.KEYCODE_DPAD_LEFT:
+                        if (focusedGroupIndex > 0) {
+                            focusedGroupIndex--;
+                            highlightGroup(focusedGroupIndex);
+                        }
+                        return true;
+                    case KeyEvent.KEYCODE_DPAD_RIGHT:
+                        int maxG = groupTabsContainer.getChildCount() - 1;
+                        if (focusedGroupIndex < maxG) {
+                            focusedGroupIndex++;
+                            highlightGroup(focusedGroupIndex);
+                        }
+                        return true;
+                    case KeyEvent.KEYCODE_DPAD_DOWN:
+                        // Move back to channels
+                        focusZone = FocusZone.CHANNELS;
+                        highlightChannel(focusedChannelIndex);
+                        return true;
+                    case KeyEvent.KEYCODE_DPAD_CENTER:
+                    case KeyEvent.KEYCODE_ENTER:
+                        // Select this group tab
+                        View tab = groupTabsContainer.getChildAt(focusedGroupIndex);
+                        if (tab != null) tab.performClick();
+                        focusZone = FocusZone.CHANNELS;
+                        focusedChannelIndex = 0;
+                        highlightChannel(0);
+                        return true;
+                    case KeyEvent.KEYCODE_BACK:
+                        hideSidebar();
+                        focusZone = FocusZone.PLAYER;
+                        return true;
+                }
+                break;
+
+            case SEARCH:
+                if (keyCode == KeyEvent.KEYCODE_BACK || keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
+                    focusZone = FocusZone.CHANNELS;
+                    highlightChannel(focusedChannelIndex);
+                    EditText s = findViewById(R.id.iptv_search);
+                    if (s != null) s.clearFocus();
+                    return true;
+                }
+                // Let EditText handle typing
+                return false;
+        }
+
+        if (keyCode == KeyEvent.KEYCODE_BACK) {
+            finish();
+            return true;
         }
         return super.onKeyDown(keyCode, event);
+    }
+
+    private void highlightChannel(int filteredPos) {
+        if (filteredPos < 0 || filteredPos >= adapter.getItemCount()) return;
+        recyclerView.scrollToPosition(filteredPos);
+        int originalIndex = adapter.getOriginalIndex(filteredPos);
+        if (originalIndex >= 0) adapter.setSelected(originalIndex);
+    }
+
+    private void highlightGroup(int index) {
+        for (int i = 0; i < groupTabsContainer.getChildCount(); i++) {
+            View v = groupTabsContainer.getChildAt(i);
+            v.setSelected(i == index);
+            v.setAlpha(i == index ? 1f : 0.5f);
+        }
+        // Scroll group tabs to show focused tab
+        HorizontalScrollView hsv = findViewById(R.id.iptv_group_scroll);
+        if (hsv != null) {
+            View tab = groupTabsContainer.getChildAt(index);
+            if (tab != null) hsv.smoothScrollTo(tab.getLeft(), 0);
+        }
+    }
+
+    private void hideSidebar() {
+        sidebarVisible = false;
+        sidebar.setVisibility(View.GONE);
+        topBar.setVisibility(View.GONE);
     }
 
     @Override
@@ -570,53 +601,38 @@ public class IPTVActivity extends AppCompatActivity {
         return super.onTouchEvent(e);
     }
 
+    // ── DRM player ───────────────────────────────────────────────────────────
+
     private void setupPlayerWithDrm(androidx.media3.exoplayer.drm.LocalMediaDrmCallback drmCallback) {
-    if (player != null) {
-        player.removeListener(playerListener);
-        player.stop();
-        player.release();
+        if (player != null) {
+            player.removeListener(playerListener);
+            player.stop();
+            player.release();
+        }
+        OkHttpClient okHttpClient = new OkHttpClient.Builder()
+            .addInterceptor(chain -> {
+                okhttp3.Request.Builder rb = chain.request().newBuilder()
+                    .header("User-Agent", "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36");
+                return chain.proceed(rb.build());
+            })
+            .build();
+        DataSource.Factory dsFactory = new OkHttpDataSource.Factory(okHttpClient);
+        androidx.media3.exoplayer.drm.DrmSessionManager drmManager =
+            new androidx.media3.exoplayer.drm.DefaultDrmSessionManager.Builder()
+                .setUuidAndExoMediaDrmProvider(
+                    C.CLEARKEY_UUID,
+                    androidx.media3.exoplayer.drm.FrameworkMediaDrm.DEFAULT_PROVIDER)
+                .build(drmCallback);
+        player = new ExoPlayer.Builder(this)
+            .setMediaSourceFactory(new DefaultMediaSourceFactory(dsFactory)
+                .setDrmSessionManagerProvider(unusedItem -> drmManager))
+            .build();
+        player.addListener(playerListener);
+        playerView.setPlayer(player);
+        playerView.setUseController(false);
     }
 
-    OkHttpClient okHttpClient = new OkHttpClient.Builder()
-        .addInterceptor(chain -> {
-            okhttp3.Request.Builder rb = chain.request().newBuilder()
-                .header("User-Agent", "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36");
-            return chain.proceed(rb.build());
-        })
-        .build();
-
-    DataSource.Factory dsFactory = new OkHttpDataSource.Factory(okHttpClient);
-
-    androidx.media3.exoplayer.drm.DefaultDrmSessionManagerProvider drmProvider =
-        new androidx.media3.exoplayer.drm.DefaultDrmSessionManagerProvider();
-
-    androidx.media3.exoplayer.drm.DrmSessionManager drmManager =
-        new androidx.media3.exoplayer.drm.DefaultDrmSessionManager.Builder()
-            .setUuidAndExoMediaDrmProvider(
-                C.CLEARKEY_UUID,
-                androidx.media3.exoplayer.drm.FrameworkMediaDrm.DEFAULT_PROVIDER)
-            .build(drmCallback);
-
-    player = new ExoPlayer.Builder(this)
-        .setMediaSourceFactory(new DefaultMediaSourceFactory(dsFactory)
-            .setDrmSessionManagerProvider(unusedItem -> drmManager))
-        .build();
-    player.addListener(playerListener);
-    playerView.setPlayer(player);
-    playerView.setUseController(false);
-}
     // ── Utilities ────────────────────────────────────────────────────────────
-
-    private String hexToBase64Url(String hex) {
-        hex = hex.replaceAll("\\s", "");
-        byte[] bytes = new byte[hex.length() / 2];
-        for (int i = 0; i < bytes.length; i++)
-            bytes[i] = (byte) Integer.parseInt(hex.substring(2 * i, 2 * i + 2), 16);
-        return android.util.Base64.encodeToString(bytes,
-            android.util.Base64.URL_SAFE
-            | android.util.Base64.NO_WRAP
-            | android.util.Base64.NO_PADDING);
-    }
 
     private void hideSystemUI() {
         getWindow().getDecorView().setSystemUiVisibility(

@@ -132,6 +132,7 @@
 
         <!-- Group / category tabs (populated dynamically) -->
         <HorizontalScrollView
+            android:id="@+id/iptv_group_scroll"
             android:layout_width="match_parent"
             android:layout_height="38dp"
             android:scrollbars="none"
