@@ -441,7 +441,6 @@ public class MainActivity extends AppCompatActivity {
         {"Lionsgate",    "1632",  ""},
         {"Studio Ghibli","10342", ""},
         {"Star Cinema",  "3965",  ""},
-        {"Viva Films",   "5842",  ""},
     };
 
     private RecyclerView networkRecycler;
