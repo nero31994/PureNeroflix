@@ -28,13 +28,16 @@ public class NetworkActivity extends AppCompatActivity {
     private static final String EXTRA_NETWORK_ID    = "network_id";
     private static final String EXTRA_NETWORK_NAME  = "network_name";
     private static final String EXTRA_NETWORK_LOGO  = "network_logo";
+    private static final String EXTRA_ENDPOINT_TYPE = "endpoint_type";
+    private static final String EXTRA_MEDIA_TYPE    = "media_type";
 
     private RecyclerView recycler;
     private ProgressBar loading;
     private TextView countBadge;
 
     private String networkId, networkName, networkLogo;
-    private String currentTab = "tv"; // always tv for networks
+    private String endpointType = "with_networks"; // "with_networks" or "with_companies"
+    private String currentTab   = "tv";
     private int currentPage = 1;
     private boolean isLoading = false;
     private boolean hasMore = true;
@@ -45,9 +48,11 @@ public class NetworkActivity extends AppCompatActivity {
     public static void open(Context ctx, String networkId, String networkName,
                             String networkLogo, String endpointType, String mediaType) {
         Intent i = new Intent(ctx, NetworkActivity.class);
-        i.putExtra(EXTRA_NETWORK_ID,   networkId);
-        i.putExtra(EXTRA_NETWORK_NAME, networkName);
-        i.putExtra(EXTRA_NETWORK_LOGO, networkLogo);
+        i.putExtra(EXTRA_NETWORK_ID,    networkId);
+        i.putExtra(EXTRA_NETWORK_NAME,  networkName);
+        i.putExtra(EXTRA_NETWORK_LOGO,  networkLogo);
+        i.putExtra(EXTRA_ENDPOINT_TYPE, endpointType);
+        i.putExtra(EXTRA_MEDIA_TYPE,    mediaType);
         ctx.startActivity(i);
     }
 
@@ -63,9 +68,13 @@ public class NetworkActivity extends AppCompatActivity {
 
         setContentView(R.layout.activity_network);
 
-        networkId   = getIntent().getStringExtra(EXTRA_NETWORK_ID);
-        networkName = getIntent().getStringExtra(EXTRA_NETWORK_NAME);
-        networkLogo = getIntent().getStringExtra(EXTRA_NETWORK_LOGO);
+        networkId    = getIntent().getStringExtra(EXTRA_NETWORK_ID);
+        networkName  = getIntent().getStringExtra(EXTRA_NETWORK_NAME);
+        networkLogo  = getIntent().getStringExtra(EXTRA_NETWORK_LOGO);
+        endpointType = getIntent().getStringExtra(EXTRA_ENDPOINT_TYPE);
+        currentTab   = getIntent().getStringExtra(EXTRA_MEDIA_TYPE);
+        if (endpointType == null) endpointType = "with_networks";
+        if (currentTab == null)   currentTab   = "tv";
 
         ImageView logo = findViewById(R.id.network_header_logo);
         com.neroflix.tv.app.network.TmdbClient.getInstance().fetchNetwork(networkId, new com.neroflix.tv.app.network.TmdbClient.NetworkCallback() {
@@ -121,7 +130,12 @@ recycler = findViewById(R.id.network_recycler);
         loading.setVisibility(View.VISIBLE);
 
         String endpoint;
-        if (currentTab.equals("tv")) {
+        if ("with_companies".equals(endpointType)) {
+            // Studios — works for both movies and TV
+            String mediaType = currentTab.equals("tv") ? "tv" : "movie";
+            endpoint = "/discover/" + mediaType + "?with_companies=" + networkId +
+                       "&sort_by=popularity.desc&page=" + currentPage;
+        } else if (currentTab.equals("tv")) {
             endpoint = "/discover/tv?with_networks=" + networkId +
                        "&sort_by=popularity.desc&page=" + currentPage;
         } else {
