@@ -40,7 +40,9 @@ public class MainActivity extends AppCompatActivity {
     // Matches the value in LicenseManager.java
     private static String g() {
         return new StringBuilder()
-            .append("0663171A").append("9B2E8297").append("BFF8E077").append("179FE8EC").append("E1C10752").append("CFC57088").append("5E0AABD4").append("D429F6C1")
+            .append("849D0A8D").append("13865596").append("0999FD08")
+            .append("4B23A771").append("B105928D").append("6B27DDB5")
+            .append("9F1AF1C1").append("48411AFF")
             .toString();
     }
 
@@ -115,7 +117,29 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private boolean isSignatureValid() {
-        return true; // Disabled — security handled server-side by Worker
+        try {
+            // Use GET_SIGNING_CERTIFICATES on Android 9+ — GET_SIGNATURES is unreliable
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+                android.content.pm.PackageInfo pi = getPackageManager().getPackageInfo(
+                    getPackageName(), PackageManager.GET_SIGNING_CERTIFICATES);
+                android.content.pm.SigningInfo si = pi.signingInfo;
+                Signature[] sigs = si.hasMultipleSigners()
+                    ? si.getApkContentsSigners()
+                    : si.getSigningCertificateHistory();
+                for (Signature sig : sigs) {
+                    if (g().equalsIgnoreCase(sha256Hex(sig.toByteArray()))) return true;
+                }
+                return false;
+            } else {
+                PackageInfo info = getPackageManager().getPackageInfo(
+                    getPackageName(), PackageManager.GET_SIGNATURES);
+                for (Signature sig : info.signatures) {
+                    if (g().equalsIgnoreCase(sha256Hex(sig.toByteArray()))) return true;
+                }
+                return false;
+            }
+        } catch (Exception ignored) {}
+        return false;
     }
 
     private static String sha256Hex(byte[] data) throws Exception {
@@ -395,35 +419,35 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private static final String[][] NETWORKS = {
-        {"Netflix",    "213",  "https://image.tmdb.org/t/p/w500/wwemzKWzjKYJFfCeiB57q3r4Bcm.png"},
-        {"Apple TV+",  "2552", "https://image.tmdb.org/t/p/w500/pmvRmATOCaDykggv6ZutARe8d7U.png"},
-        {"Amazon",     "1024", "https://image.tmdb.org/t/p/w500/ifhbNuuVnlwYy5oXA5VIb2YR8AZ.png"},
-        {"Disney+",    "2739", "https://image.tmdb.org/t/p/w500/gJ8VX6JSu3ciXHuC2dDGAo2lvwM.png"},
-        {"HBO",        "49",   "https://image.tmdb.org/t/p/w500/pqUTCleNUiTLAVlelGe6WMM4a7k.png"},
-        {"Hulu",       "453",  "https://image.tmdb.org/t/p/w500/pqUTCleNUiTLAVlelGxUgWn1ELh.png"},
-        {"Paramount+", "4330", "https://image.tmdb.org/t/p/w500/fi83B1oztoS47xxcemFdPMhIzK.png"},
-        {"Peacock",    "3353", "https://image.tmdb.org/t/p/w500/xbhHHa26At9bTVmrmCfBJCGeHGT.png"},
-        {"Max",        "3186", "https://image.tmdb.org/t/p/w500/Ajqyt5aNxNx9mr1JojoRt6OVHM.png"},
-        {"Showtime",   "67",   "https://image.tmdb.org/t/p/w500/Allse9kbjiP6ExaQrnNCxLd5EEz.png"},
-        {"Crunchyroll","1112", "https://image.tmdb.org/t/p/w500/mO5jMHxNYHcWgxWpEHqpxVBpRV.png"},
-        {"BBC",        "4",    "https://image.tmdb.org/t/p/w500/mDDG8AzEYqU2d6LKZN4Gqt2GdlQ.png"},
+        {"Netflix",     "213",  ""},
+        {"Apple TV+",   "2552", ""},
+        {"Amazon",      "1024", ""},
+        {"Disney+",     "2739", ""},
+        {"HBO",         "49",   ""},
+        {"Hulu",        "453",  ""},
+        {"Paramount+",  "4330", ""},
+        {"Peacock",     "3353", ""},
+        {"Max",         "3186", ""},
+        {"Showtime",    "67",   ""},
+        {"Crunchyroll", "1112", ""},
+        {"BBC",         "4",    ""},
     };
 
     private static final String[][] STUDIOS = {
-        {"Marvel",     "420",   "https://image.tmdb.org/t/p/w500/hUzeosd33nzE5MCNsZxCGEKTXaQ.png"},
-        {"DC Films",   "9993",  "https://image.tmdb.org/t/p/w500/2Tc13eoJKtjBWjBCVmHOxNBP1T1.png"},
-        {"Warner Bros","174",   "https://image.tmdb.org/t/p/w500/IuAlhI9eVC9Z8UQWOIDdWRKSEJ.png"},
-        {"Universal",  "33",    "https://image.tmdb.org/t/p/w500/MLibEBtbSPFTBGrsqlJNKOFVR.png"},
-        {"Paramount",  "4",     "https://image.tmdb.org/t/p/w500/fycMZt242LVjagMByZOLUGbCvv.png"},
-        {"Sony",       "5",     "https://image.tmdb.org/t/p/w500/71BqEFAF4V3qjjMPCpLuyJFB9A.png"},
-        {"20th Century","25",   "https://image.tmdb.org/t/p/w500/qZCc1lty5FzX30aOCVRBLzaVmcp.png"},
-        {"A24",        "41077", "https://image.tmdb.org/t/p/w500/9KNIsFNFEQhkJuZiTPpRZB2YYQS.png"},
-        {"Pixar",      "3",     "https://image.tmdb.org/t/p/w500/1TjvGVDMYsj6JBxOAkUZStzomlX.png"},
-        {"DreamWorks", "521",   "https://image.tmdb.org/t/p/w500/vSDPD2J6jMHJKKMbRcwmHV8OAfO.png"},
-        {"Lionsgate",  "1632",  "https://image.tmdb.org/t/p/w500/oOKYaqtJMVjkfYnlLCJeznBhFcZ.png"},
-        {"Studio Ghibli","10342","https://image.tmdb.org/t/p/w500/yCCos2FBFKsSCbdxUsHgTM0lVhY.png"},
-        {"Star Cinema","3965",  "https://image.tmdb.org/t/p/w500/qV3d5KzirSqT5vOFD6Bmy8hHQPb.png"},
-        {"Viva Films", "5842",  "https://image.tmdb.org/t/p/w500/3dBmPCGrQSQWPnmvhWC8MZiD4lL.png"},
+        {"Marvel",       "420",   ""},
+        {"DC Films",     "9993",  ""},
+        {"Warner Bros",  "174",   ""},
+        {"Universal",    "33",    ""},
+        {"Paramount",    "4",     ""},
+        {"Sony",         "5",     ""},
+        {"20th Century", "25",    ""},
+        {"A24",          "41077", ""},
+        {"Pixar",        "3",     ""},
+        {"DreamWorks",   "521",   ""},
+        {"Lionsgate",    "1632",  ""},
+        {"Studio Ghibli","10342", ""},
+        {"Star Cinema",  "3965",  ""},
+        {"Viva Films",   "5842",  ""},
     };
 
     private RecyclerView networkRecycler;
