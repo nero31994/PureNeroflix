@@ -130,6 +130,7 @@ public class IPTVChannelAdapter extends RecyclerView.Adapter<IPTVChannelAdapter.
                     .load(ch.logo)
                     .placeholder(android.R.color.darker_gray)
                     .error(android.R.color.darker_gray)
+                    .diskCacheStrategy(com.bumptech.glide.load.engine.DiskCacheStrategy.ALL)
                     .fitCenter()
                     .into(holder.logo);
         } else {
