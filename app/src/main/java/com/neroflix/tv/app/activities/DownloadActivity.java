@@ -54,6 +54,7 @@ public class DownloadActivity extends AppCompatActivity {
 
         TextView backBtn = findViewById(R.id.download_back_btn);
         backBtn.setOnClickListener(v -> finish());
+        backBtn.setFocusable(true);
 
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
@@ -74,9 +75,16 @@ public class DownloadActivity extends AppCompatActivity {
                 }
                 return false;
             }
+            @Override
+            public void onPageFinished(WebView view, String url) {
+                // Inject D-pad key forwarding into the page
+                view.evaluateJavascript(
+                    "window.open=function(){return{focus:function(){},blur:function(){}}};" +
+                    "window.alert=function(){};", null);
+            }
         });
 
-        webView.setWebChromeClient(new WebChromeClient() {
+        webView.setWebChromeClient(new android.webkit.WebChromeClient() {
             @Override
             public void onProgressChanged(WebView view, int progress) {
                 progressBar.setProgress(progress);
@@ -87,7 +95,10 @@ public class DownloadActivity extends AppCompatActivity {
         webView.setDownloadListener((url, userAgent, contentDisposition, mimeType, contentLength) -> {
             startDownload(url);
         });
-    }
+
+        // Make WebView focusable for D-pad
+        webView.setFocusable(true);
+        webView.setFocusableInTouchMode(true);
 
     private void loadDownloadPage() {
         String url;
@@ -194,10 +205,35 @@ public class DownloadActivity extends AppCompatActivity {
 
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
-        if (keyCode == KeyEvent.KEYCODE_BACK) {
-            if (webView.canGoBack()) webView.goBack();
-            else finish();
-            return true;
+        switch (keyCode) {
+            case KeyEvent.KEYCODE_BACK:
+                if (webView.canGoBack()) webView.goBack();
+                else finish();
+                return true;
+            case KeyEvent.KEYCODE_DPAD_UP:
+                webView.scrollBy(0, -150);
+                return true;
+            case KeyEvent.KEYCODE_DPAD_DOWN:
+                webView.scrollBy(0, 150);
+                return true;
+            case KeyEvent.KEYCODE_DPAD_LEFT:
+                webView.scrollBy(-150, 0);
+                return true;
+            case KeyEvent.KEYCODE_DPAD_RIGHT:
+                webView.scrollBy(150, 0);
+                return true;
+            case KeyEvent.KEYCODE_DPAD_CENTER:
+            case KeyEvent.KEYCODE_ENTER:
+                // Simulate click at center of screen
+                webView.evaluateJavascript(
+                    "var el = document.elementFromPoint(window.innerWidth/2, window.innerHeight/2);" +
+                    "if(el) el.click();", null);
+                return true;
+            case KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE:
+            case KeyEvent.KEYCODE_MEDIA_PLAY:
+                webView.evaluateJavascript(
+                    "var v=document.querySelector('video');if(v){if(v.paused)v.play();else v.pause();}", null);
+                return true;
         }
         return super.onKeyDown(keyCode, event);
     }

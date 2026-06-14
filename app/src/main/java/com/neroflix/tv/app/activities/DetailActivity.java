@@ -72,11 +72,24 @@ public class DetailActivity extends AppCompatActivity {
 
         View downloadButton = findViewById(R.id.detail_download_btn);
         if (downloadButton != null) {
+            downloadButton.setFocusable(true);
             downloadButton.setOnClickListener(v -> openDownload());
+            setFocusAnimation(downloadButton);
+            downloadButton.setOnKeyListener((v, keyCode, event) -> {
+                if (event.getAction() == KeyEvent.ACTION_DOWN
+                        && (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER)) {
+                    openDownload(); return true;
+                }
+                if (event.getAction() == KeyEvent.ACTION_DOWN && keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
+                    playButton.requestFocus(); return true;
+                }
+                return false;
+            });
         }
 
         View watchlistBtn = findViewById(R.id.detail_watchlist_btn);
         if (watchlistBtn != null) {
+            watchlistBtn.setFocusable(true);
             updateWatchlistBtn(watchlistBtn);
             watchlistBtn.setOnClickListener(v -> {
                 if (movie != null) {
@@ -84,30 +97,59 @@ public class DetailActivity extends AppCompatActivity {
                     updateWatchlistBtn(watchlistBtn);
                 }
             });
+            setFocusAnimation(watchlistBtn);
+            watchlistBtn.setOnKeyListener((v, keyCode, event) -> {
+                if (event.getAction() == KeyEvent.ACTION_DOWN
+                        && (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER)) {
+                    if (movie != null) {
+                        com.neroflix.tv.app.WatchManager.toggleWatchlist(this, movie);
+                        updateWatchlistBtn(watchlistBtn);
+                    }
+                    return true;
+                }
+                if (event.getAction() == KeyEvent.ACTION_DOWN && keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
+                    playButton.requestFocus(); return true;
+                }
+                return false;
+            });
         }
 
         backButton.setOnClickListener(v -> finish());
 
+        // D-pad navigation between buttons: Back ← Play → Download → Watchlist
         playButton.setOnKeyListener((v, keyCode, event) -> {
-            if (event.getAction() == KeyEvent.ACTION_DOWN
-                    && (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER)) {
-                playMovie();
-                return true;
+            if (event.getAction() == KeyEvent.ACTION_DOWN) {
+                if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER) {
+                    playMovie(); return true;
+                }
+                if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
+                    backButton.requestFocus(); return true;
+                }
+                if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                    View dl = findViewById(R.id.detail_download_btn);
+                    if (dl != null) { dl.requestFocus(); return true; }
+                }
             }
             return false;
         });
 
         backButton.setOnKeyListener((v, keyCode, event) -> {
-            if (event.getAction() == KeyEvent.ACTION_DOWN
-                    && (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER)) {
-                finish();
-                return true;
+            if (event.getAction() == KeyEvent.ACTION_DOWN) {
+                if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER) {
+                    finish(); return true;
+                }
+                if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                    playButton.requestFocus(); return true;
+                }
             }
             return false;
         });
 
         setFocusAnimation(playButton);
         setFocusAnimation(backButton);
+
+        // Auto-focus play button on open
+        playButton.requestFocus();
     }
 
     private void setFocusAnimation(View view) {
