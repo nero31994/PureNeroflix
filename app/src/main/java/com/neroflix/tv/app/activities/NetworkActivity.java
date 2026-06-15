@@ -93,9 +93,9 @@ public class NetworkActivity extends AppCompatActivity {
                 }
             };
         if ("with_companies".equals(endpointType))
-            com.neroflix.tv.app.network.TmdbClient.getInstance().fetchCompany(networkId, logoCb);
+            TmdbClient.getInstance(NetworkActivity.this).fetchCompany(networkId, logoCb);
         else
-            com.neroflix.tv.app.network.TmdbClient.getInstance().fetchNetwork(networkId, logoCb);
+            TmdbClient.getInstance(NetworkActivity.this).fetchNetwork(networkId, logoCb);
 
         countBadge = findViewById(R.id.network_count_badge);
         loading    = findViewById(R.id.network_loading);
@@ -149,7 +149,7 @@ public class NetworkActivity extends AppCompatActivity {
                        "&watch_region=US&sort_by=popularity.desc&page=" + currentPage;
         }
 
-        TmdbClient.getInstance().fetchMovies(endpoint, currentTab, new TmdbClient.MovieListCallback() {
+        TmdbClient.getInstance(this).fetchMovies(endpoint, currentTab, new TmdbClient.MovieListCallback() {
             @Override public void onSuccess(List<Movie> result) {
                 runOnUiThread(() -> {
                     loading.setVisibility(View.GONE);
@@ -279,8 +279,10 @@ public class NetworkActivity extends AppCompatActivity {
                 android.content.res.Configuration.ORIENTATION_LANDSCAPE;
             int cols = isLandscape ? 6 : 4;
             int gap = 10;
-            int screenWidth = parent.getWidth();
-            int cardWidth = (screenWidth - gap * (cols + 1)) / cols;
+            // Use DisplayMetrics instead of parent.getWidth() which returns 0 before layout
+            android.util.DisplayMetrics dm = parent.getContext().getResources().getDisplayMetrics();
+            int screenWidth = dm.widthPixels;
+            int cardWidth = Math.max(1, (screenWidth - gap * (cols + 1)) / cols);
             int cardHeight = (int)(cardWidth * 1.5f);
             RecyclerView.LayoutParams lp = new RecyclerView.LayoutParams(cardWidth, cardHeight);
             lp.setMargins(gap/2, gap/2, gap/2, gap/2);

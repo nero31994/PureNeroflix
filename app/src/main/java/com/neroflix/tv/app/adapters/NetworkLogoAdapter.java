@@ -63,9 +63,9 @@ public class NetworkLogoAdapter extends RecyclerView.Adapter<NetworkLogoAdapter.
             }
         };
         if ("company".equals(type)) {
-            com.neroflix.tv.app.network.TmdbClient.getInstance().fetchCompany(network[1], cb);
+            com.neroflix.tv.app.network.TmdbClient.getInstance(context).fetchCompany(network[1], cb);
         } else {
-            com.neroflix.tv.app.network.TmdbClient.getInstance().fetchNetwork(network[1], cb);
+            com.neroflix.tv.app.network.TmdbClient.getInstance(context).fetchNetwork(network[1], cb);
         }
         holder.itemView.setOnClickListener(v -> listener.onClick(network[1], network[0], network[2]));
     }
