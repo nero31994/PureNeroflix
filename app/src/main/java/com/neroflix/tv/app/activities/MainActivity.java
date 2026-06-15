@@ -601,12 +601,23 @@ public class MainActivity extends AppCompatActivity {
             case NAV:
                 switch (keyCode) {
                     case KeyEvent.KEYCODE_DPAD_UP:
-                        if (focusedNavIndex > 0) { focusedNavIndex--; highlightNav(focusedNavIndex); }
+                        if (focusedNavIndex > 0) {
+                            focusedNavIndex--;
+                        } else {
+                            focusedNavIndex = 0; // clamp at top, keep highlight
+                        }
+                        highlightNav(focusedNavIndex);
                         return true;
                     case KeyEvent.KEYCODE_DPAD_DOWN:
                         RecyclerView nav = getNavRecycler();
-                        int navMax = nav != null ? nav.getAdapter().getItemCount() - 1 : 8;
-                        if (focusedNavIndex < navMax) { focusedNavIndex++; highlightNav(focusedNavIndex); }
+                        int navMax = nav != null && nav.getAdapter() != null
+                            ? nav.getAdapter().getItemCount() - 1 : 8;
+                        if (focusedNavIndex < navMax) {
+                            focusedNavIndex++;
+                        } else {
+                            focusedNavIndex = navMax; // clamp at bottom, keep highlight
+                        }
+                        highlightNav(focusedNavIndex);
                         return true;
                     case KeyEvent.KEYCODE_DPAD_RIGHT:
                         mainFocusZone = MainFocusZone.CONTENT;
