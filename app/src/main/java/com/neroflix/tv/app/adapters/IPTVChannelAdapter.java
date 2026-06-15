@@ -28,7 +28,8 @@ public class IPTVChannelAdapter extends RecyclerView.Adapter<IPTVChannelAdapter.
     private final List<M3UParser.Channel> allChannels;
     private final OnChannelClickListener listener;
 
-    private int selectedOriginalIndex = 0; // always an index into allChannels
+    private int selectedOriginalIndex = 0; // currently playing channel
+    private int focusedPosition = -1;      // D-pad highlighted position (filtered index)
     private String activeQuery = "";
     private String activeGroup = null;     // null = all groups
 
@@ -80,6 +81,14 @@ public class IPTVChannelAdapter extends RecyclerView.Adapter<IPTVChannelAdapter.
      * filtered list is smaller.  Now we walk the filtered list to find
      * the correct positions to notify.
      */
+    /** Highlight the D-pad focused item (before OK is pressed). */
+    public void setFocused(int filteredPos) {
+        int old = focusedPosition;
+        focusedPosition = filteredPos;
+        if (old >= 0 && old < channels.size()) notifyItemChanged(old);
+        if (filteredPos >= 0 && filteredPos < channels.size()) notifyItemChanged(filteredPos);
+    }
+
     public void setSelected(int originalIndex) {
         int oldOriginal    = selectedOriginalIndex;
         selectedOriginalIndex = originalIndex;
@@ -118,11 +127,27 @@ public class IPTVChannelAdapter extends RecyclerView.Adapter<IPTVChannelAdapter.
         holder.name.setText(ch.name);
         holder.group.setText(ch.group);
 
-        // Highlight selected channel
+        boolean focused = (position == focusedPosition);
+
+        // Playing highlight (red) — channel currently on air
         holder.name.setTextColor(selected  ? 0xFFFFFFFF : 0xFFCCCCCC);
         holder.number.setTextColor(selected ? 0xFFE50914 : 0xFF888888);
         holder.group.setTextColor(selected  ? 0xFFE50914 : 0xFF666688);
-        holder.itemView.setBackgroundColor(selected ? 0x22E50914 : 0x00000000);
+
+        // D-pad focus highlight (white overlay) + playing highlight (red overlay)
+        if (focused && selected) {
+            holder.itemView.setBackgroundColor(0x44FFFFFF); // bright white — focused + playing
+        } else if (focused) {
+            holder.itemView.setBackgroundColor(0x33FFFFFF); // white tint — D-pad focus
+        } else if (selected) {
+            holder.itemView.setBackgroundColor(0x22E50914); // red tint — playing
+        } else {
+            holder.itemView.setBackgroundColor(0x00000000); // transparent
+        }
+
+        // Scale up focused item slightly for TV visibility
+        holder.itemView.setScaleX(focused ? 1.03f : 1f);
+        holder.itemView.setScaleY(focused ? 1.03f : 1f);
 
         // Logo
         if (!ch.logo.isEmpty()) {

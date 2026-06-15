@@ -436,6 +436,16 @@ public class IPTVActivity extends AppCompatActivity {
             sidebarVisible = true;
             sidebar.setVisibility(View.VISIBLE);
             topBar.setVisibility(View.VISIBLE);
+            // Sync D-pad focus to currently playing channel
+            if (adapter != null) {
+                for (int i = 0; i < adapter.getItemCount(); i++) {
+                    if (adapter.getOriginalIndex(i) == currentIndex) {
+                        focusedChannelIndex = i;
+                        break;
+                    }
+                }
+                highlightChannel(focusedChannelIndex);
+            }
         }
     }
 
@@ -570,10 +580,10 @@ public class IPTVActivity extends AppCompatActivity {
     }
 
     private void highlightChannel(int filteredPos) {
+        if (adapter == null) return;
         if (filteredPos < 0 || filteredPos >= adapter.getItemCount()) return;
+        adapter.setFocused(filteredPos);
         recyclerView.scrollToPosition(filteredPos);
-        int originalIndex = adapter.getOriginalIndex(filteredPos);
-        if (originalIndex >= 0) adapter.setSelected(originalIndex);
     }
 
     private void highlightGroup(int index) {
@@ -594,6 +604,7 @@ public class IPTVActivity extends AppCompatActivity {
         sidebarVisible = false;
         sidebar.setVisibility(View.GONE);
         topBar.setVisibility(View.GONE);
+        if (adapter != null) adapter.setFocused(-1); // clear D-pad highlight
     }
 
     @Override
