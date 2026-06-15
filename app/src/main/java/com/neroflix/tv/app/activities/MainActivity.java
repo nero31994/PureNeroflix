@@ -480,7 +480,7 @@ public class MainActivity extends AppCompatActivity {
             new LinearLayoutManager(this, LinearLayoutManager.HORIZONTAL, false));
         studioRecycler.setAdapter(new NetworkLogoAdapter(this, STUDIOS, (studioId, studioName, logoUrl) -> {
             NetworkActivity.open(this, studioId, studioName, logoUrl, "with_companies", "movie");
-        }));
+        }, "company"));
     }
 
     // Navigation
