@@ -84,10 +84,7 @@ public class MainActivity extends AppCompatActivity {
             | View.SYSTEM_UI_FLAG_FULLSCREEN | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
 
         // Security checks
-        if (!isSignatureValid()) {
-            showSecurityError("This app has been tampered with.");
-            return;
-        }
+        // Signature check disabled — security handled server-side by Worker
         // Only block confirmed mod tools — removed isRooted(), isEmulator(), isDebugged()
         // because they produce false positives on legitimate TV boxes and budget Android devices
         if (isModToolPresent()) {
@@ -117,7 +114,8 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private boolean isSignatureValid() {
-        try {
+        return true; // disabled
+        /*
             // Use GET_SIGNING_CERTIFICATES on Android 9+ — GET_SIGNATURES is unreliable
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
                 android.content.pm.PackageInfo pi = getPackageManager().getPackageInfo(
@@ -139,7 +137,8 @@ public class MainActivity extends AppCompatActivity {
                 return false;
             }
         } catch (Exception ignored) {}
-        return false;
+        return false; */
+        return true;
     }
 
     private static String sha256Hex(byte[] data) throws Exception {
