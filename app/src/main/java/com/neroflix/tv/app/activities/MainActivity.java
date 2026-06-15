@@ -93,6 +93,9 @@ public class MainActivity extends AppCompatActivity {
         }
 
         setContentView(R.layout.activity_main);
+        // Take focus so onKeyDown always fires — prevents filter chips / nav from stealing it
+        findViewById(android.R.id.content).setFocusableInTouchMode(true);
+        findViewById(android.R.id.content).requestFocus();
         setupViews();
         setupBrowseRows("mixed");
         loadContent();
@@ -184,7 +187,7 @@ public class MainActivity extends AppCompatActivity {
             R.drawable.ic_download, R.drawable.ic_iptv, R.drawable.ic_genre
         };
         navRecycler.setLayoutManager(new LinearLayoutManager(this));
-        navRecycler.setAdapter(new NavAdapter(this, navIcons, pos -> {
+        navAdapter = new NavAdapter(this, navIcons, pos -> {
             switch (pos) {
                 case 0: openSearch(); break;
                 case 1: switchMode("movie"); break;
@@ -214,7 +217,8 @@ public class MainActivity extends AppCompatActivity {
                     break;
                 case 8: showGenrePicker(); break;
             }
-        }));
+        });
+        navRecycler.setAdapter(navAdapter);
     }
 
     private void setupFilterBar() {
@@ -534,18 +538,24 @@ public class MainActivity extends AppCompatActivity {
 
     private RecyclerView getNavRecycler() { return findViewById(R.id.nav_recycler); }
 
+    private NavAdapter navAdapter;
+
     private void highlightNav(int index) {
         RecyclerView nav = getNavRecycler();
         if (nav == null) return;
-        for (int i = 0; i < nav.getChildCount(); i++) {
-            View v = nav.getChildAt(i);
-            if (v != null) {
-                v.setScaleX(i == index ? 1.2f : 1f);
-                v.setScaleY(i == index ? 1.2f : 1f);
-                v.setAlpha(i == index ? 1f : 0.6f);
+        if (navAdapter != null) {
+            navAdapter.setSelectedPosition(index);
+        } else {
+            for (int i = 0; i < nav.getChildCount(); i++) {
+                View v = nav.getChildAt(i);
+                if (v != null) {
+                    v.setScaleX(i == index ? 1.2f : 1f);
+                    v.setScaleY(i == index ? 1.2f : 1f);
+                    v.setAlpha(i == index ? 1f : 0.6f);
+                }
             }
         }
-        nav.scrollToPosition(index);
+        if (index >= 0) nav.scrollToPosition(index);
     }
 
     private void highlightFilter(int index) {
@@ -607,7 +617,12 @@ public class MainActivity extends AppCompatActivity {
                         RecyclerView navRv = getNavRecycler();
                         if (navRv != null) {
                             View item = navRv.getLayoutManager().findViewByPosition(focusedNavIndex);
-                            if (item != null) item.performClick();
+                            if (item != null) {
+                                item.performClick();
+                            } else {
+                                // View not yet laid out — fire callback directly
+                                if (navAdapter != null) navAdapter.simulateClick(focusedNavIndex);
+                            }
                         }
                         return true;
                 }
