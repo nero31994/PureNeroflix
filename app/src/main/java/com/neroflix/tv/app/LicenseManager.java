@@ -198,6 +198,55 @@ public class LicenseManager {
     // -----------------------------------------------------------------------
     // check / checkWithCode — used by ActivationActivity (unchanged flow)
     // -----------------------------------------------------------------------
+    /**
+     * Force a fresh check using device ID only — no free_code, no cache.
+     * Used by the "Check Activation" button so the Worker always hits devices.json.
+     */
+    public static void checkDeviceOnly(Context context, LicenseCallback callback) {
+        if (!checkSignature(context) || !checkPackageName(context)) {
+            callback.onResult(Status.TAMPERED);
+            return;
+        }
+        String deviceId = getDeviceId(context);
+        new Thread(() -> {
+            try {
+                JSONObject body = new JSONObject();
+                body.put("device_id",    deviceId);
+                body.put("version_code", BuildConfig.VERSION_CODE);
+                // Intentionally NO free_code — forces Worker to check devices.json
+
+                String response = postToWorker(body.toString());
+                if (response != null) {
+                    JSONObject json = new JSONObject(response);
+                    lastMessage = json.optString("message", "");
+                    String status = json.optString("status", "");
+                    if ("approved".equals(status)) {
+                        // Save token + plan if returned
+                        String plan  = json.optString("plan", "free");
+                        String token = json.optString("token", "");
+                        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+                        SharedPreferences.Editor ed = prefs.edit();
+                        if (!token.isEmpty()) {
+                            ed.putString(PREF_TOKEN,  token)
+                              .putLong(PREF_TOKEN_TS, System.currentTimeMillis())
+                              .putString(PREF_PLAN,   plan);
+                        }
+                        ed.putString(PREF_CACHE,  response)
+                          .putLong(PREF_CACHE_TS, System.currentTimeMillis())
+                          .apply();
+                        callback.onResult(Status.APPROVED);
+                        return;
+                    }
+                    callback.onResult(Status.NOT_FOUND);
+                    return;
+                }
+            } catch (Exception e) {
+                Log.e("LicenseManager", "checkDeviceOnly failed", e);
+            }
+            callback.onResult(Status.NOT_FOUND);
+        }).start();
+    }
+
     public static void check(Context context, LicenseCallback callback) {
         if (!checkSignature(context) || !checkPackageName(context)) {
             callback.onResult(Status.TAMPERED);

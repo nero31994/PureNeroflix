@@ -63,7 +63,7 @@ public class ActivationActivity extends AppCompatActivity {
                 .remove("saved_free_code")  // important: so Worker checks devices list, not free code
                 .apply();
 
-            LicenseManager.check(this, status -> {
+            LicenseManager.checkDeviceOnly(this, status -> {
                 runOnUiThread(() -> {
                     loading.setVisibility(View.GONE);
                     submitBtn.setEnabled(true);
