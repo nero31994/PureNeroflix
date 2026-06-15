@@ -114,7 +114,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private boolean isSignatureValid() {
-        return true; // disabled — security handled server-side
+        return true;
     }
 
     private static String sha256Hex(byte[] data) throws Exception {
