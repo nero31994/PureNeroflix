@@ -208,28 +208,32 @@ public class LicenseManager {
             return;
         }
         String deviceId = getDeviceId(context);
+        Log.d("LicenseDebug", "checkDeviceOnly: device_id=" + deviceId);
         new Thread(() -> {
             try {
                 JSONObject body = new JSONObject();
                 body.put("device_id",    deviceId);
                 body.put("version_code", BuildConfig.VERSION_CODE);
-                // Intentionally NO free_code — forces Worker to check devices.json only
+                Log.d("LicenseDebug", "Sending to Worker: " + body.toString());
 
                 String response = postToWorker(body.toString());
+                Log.d("LicenseDebug", "Worker response: " + response);
+
                 if (response != null) {
                     JSONObject json = new JSONObject(response);
-                    // Save to cache so subsequent launches don't re-check immediately
                     SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
                     prefs.edit()
                         .putString(PREF_CACHE,  response)
                         .putLong(PREF_CACHE_TS, System.currentTimeMillis())
                         .apply();
-                    // parseStatus saves token + plan to prefs automatically
-                    callback.onResult(parseStatus(context, json));
+                    Status result = parseStatus(context, json);
+                    Log.d("LicenseDebug", "parseStatus result: " + result.name());
+                    callback.onResult(result);
                     return;
                 }
+                Log.d("LicenseDebug", "Worker returned null response");
             } catch (Exception e) {
-                Log.e("LicenseManager", "checkDeviceOnly failed", e);
+                Log.e("LicenseDebug", "checkDeviceOnly failed: " + e.getMessage(), e);
             }
             callback.onResult(Status.NOT_FOUND);
         }).start();
