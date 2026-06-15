@@ -46,6 +46,45 @@ public class ActivationActivity extends AppCompatActivity {
             Toast.makeText(this, "Device ID copied!", Toast.LENGTH_SHORT).show();
         });
 
+        // Check Activation button — re-checks license using device ID only (no code needed)
+        findViewById(R.id.check_activation_btn).setOnClickListener(v -> {
+            loading.setVisibility(View.VISIBLE);
+            submitBtn.setEnabled(false);
+            findViewById(R.id.check_activation_btn).setEnabled(false);
+            statusText.setText("Checking activation...");
+
+            // Clear ALL cache so Worker checks devices.json fresh with device ID only
+            getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+                .edit()
+                .remove("license_cache")
+                .remove("license_cache_time")
+                .remove("access_token")
+                .remove("token_issued_time")
+                .remove("saved_free_code")  // important: so Worker checks devices list, not free code
+                .apply();
+
+            LicenseManager.check(this, status -> {
+                runOnUiThread(() -> {
+                    loading.setVisibility(View.GONE);
+                    submitBtn.setEnabled(true);
+                    findViewById(R.id.check_activation_btn).setEnabled(true);
+
+                    switch (status) {
+                        case APPROVED:
+                            startActivity(new Intent(this, MainActivity.class));
+                            finish();
+                            break;
+                        case TAMPERED:
+                            statusText.setText("✗ App integrity check failed.");
+                            break;
+                        default:
+                            statusText.setText("✗ Device not activated yet.\nShare your Device ID with admin and try again.");
+                            break;
+                    }
+                });
+            });
+        });
+
         // Message admin
         findViewById(R.id.message_admin_btn).setOnClickListener(v -> {
             try {

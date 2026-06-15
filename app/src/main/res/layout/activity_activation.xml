@@ -110,6 +110,16 @@
             android:layout_marginBottom="12dp"/>
 
         <Button
+            android:id="@+id/check_activation_btn"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:text="🔄 Check Activation"
+            android:textColor="#FFFFFF"
+            android:backgroundTint="#1DB954"
+            android:textStyle="bold"
+            android:layout_marginBottom="12dp"/>
+
+        <Button
             android:id="@+id/message_admin_btn"
             android:layout_width="match_parent"
             android:layout_height="52dp"
