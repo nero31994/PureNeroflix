@@ -213,31 +213,19 @@ public class LicenseManager {
                 JSONObject body = new JSONObject();
                 body.put("device_id",    deviceId);
                 body.put("version_code", BuildConfig.VERSION_CODE);
-                // Intentionally NO free_code — forces Worker to check devices.json
+                // Intentionally NO free_code — forces Worker to check devices.json only
 
                 String response = postToWorker(body.toString());
                 if (response != null) {
                     JSONObject json = new JSONObject(response);
-                    lastMessage = json.optString("message", "");
-                    String status = json.optString("status", "");
-                    if ("approved".equals(status)) {
-                        // Save token + plan if returned
-                        String plan  = json.optString("plan", "free");
-                        String token = json.optString("token", "");
-                        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-                        SharedPreferences.Editor ed = prefs.edit();
-                        if (!token.isEmpty()) {
-                            ed.putString(PREF_TOKEN,  token)
-                              .putLong(PREF_TOKEN_TS, System.currentTimeMillis())
-                              .putString(PREF_PLAN,   plan);
-                        }
-                        ed.putString(PREF_CACHE,  response)
-                          .putLong(PREF_CACHE_TS, System.currentTimeMillis())
-                          .apply();
-                        callback.onResult(Status.APPROVED);
-                        return;
-                    }
-                    callback.onResult(Status.NOT_FOUND);
+                    // Save to cache so subsequent launches don't re-check immediately
+                    SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+                    prefs.edit()
+                        .putString(PREF_CACHE,  response)
+                        .putLong(PREF_CACHE_TS, System.currentTimeMillis())
+                        .apply();
+                    // parseStatus saves token + plan to prefs automatically
+                    callback.onResult(parseStatus(context, json));
                     return;
                 }
             } catch (Exception e) {
