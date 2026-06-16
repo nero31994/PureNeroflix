@@ -886,7 +886,6 @@ public class MainActivity extends AppCompatActivity {
                     adapter.setFocus(focusedCategoryRow, focusedCategoryCol)));
         }
     }
-    }
 
     private void openFocusedMovie() {
         if (focusedCategoryRow >= categories.size()) return;
