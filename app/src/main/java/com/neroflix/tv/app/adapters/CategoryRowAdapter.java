@@ -133,17 +133,45 @@ public class CategoryRowAdapter extends RecyclerView.Adapter<CategoryRowAdapter.
 
         void highlightCard(int colIndex) {
             clearHighlight();
-            moviesRecyclerView.scrollToPosition(colIndex);
-            moviesRecyclerView.post(() -> {
-                clearHighlight();
-                View card = moviesRecyclerView.getLayoutManager() != null
-                    ? moviesRecyclerView.getLayoutManager().findViewByPosition(colIndex) : null;
-                if (card != null) {
-                    card.setScaleX(1.1f); card.setScaleY(1.1f); card.setElevation(16f);
-                    View overlay = card.findViewById(R.id.focus_overlay);
-                    if (overlay != null) overlay.setVisibility(View.VISIBLE);
-                }
-            });
+
+            // Use SmoothScroller with SNAP_TO_START so card is always fully visible
+            androidx.recyclerview.widget.LinearSmoothScroller scroller =
+                new androidx.recyclerview.widget.LinearSmoothScroller(context) {
+                    @Override protected int getHorizontalSnapPreference() {
+                        return SNAP_TO_START;
+                    }
+                    @Override protected int getVerticalSnapPreference() {
+                        return SNAP_TO_START;
+                    }
+                    @Override
+                    public void onStop() {
+                        super.onStop();
+                        // After scroll settles, apply highlight
+                        applyHighlight(colIndex);
+                    }
+                };
+            scroller.setTargetPosition(colIndex);
+
+            RecyclerView.LayoutManager lm = moviesRecyclerView.getLayoutManager();
+            if (lm != null) {
+                lm.startSmoothScroll(scroller);
+            }
+
+            // Also apply immediately in case card is already visible
+            moviesRecyclerView.post(() -> applyHighlight(colIndex));
+        }
+
+        private void applyHighlight(int colIndex) {
+            clearHighlight();
+            RecyclerView.LayoutManager lm = moviesRecyclerView.getLayoutManager();
+            View card = lm != null ? lm.findViewByPosition(colIndex) : null;
+            if (card != null) {
+                card.setScaleX(1.1f);
+                card.setScaleY(1.1f);
+                card.setElevation(16f);
+                View overlay = card.findViewById(R.id.focus_overlay);
+                if (overlay != null) overlay.setVisibility(View.VISIBLE);
+            }
         }
 
         void saveScrollState() {}

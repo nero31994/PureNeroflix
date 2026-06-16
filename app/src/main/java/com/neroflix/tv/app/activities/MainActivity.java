@@ -847,9 +847,23 @@ public class MainActivity extends AppCompatActivity {
 
     private void scrollContentFocus() {
         if (categories == null || focusedCategoryRow >= categories.size()) return;
-        ((LinearLayoutManager) mainRecyclerView.getLayoutManager())
-            .scrollToPositionWithOffset(focusedCategoryRow, 0);
-        mainRecyclerView.post(() -> adapter.setFocus(focusedCategoryRow, focusedCategoryCol));
+        LinearLayoutManager lm = (LinearLayoutManager) mainRecyclerView.getLayoutManager();
+        if (lm == null) return;
+
+        int first = lm.findFirstCompletelyVisibleItemPosition();
+        int last  = lm.findLastCompletelyVisibleItemPosition();
+
+        if (focusedCategoryRow < first) {
+            lm.scrollToPositionWithOffset(focusedCategoryRow, 16);
+        } else if (focusedCategoryRow > last || focusedCategoryRow >= lm.findLastVisibleItemPosition()) {
+            lm.scrollToPositionWithOffset(focusedCategoryRow, -220);
+        }
+
+        // Double-post: first post queues after layout, second post fires after draw
+        // This ensures the row ViewHolder is attached before setFocus runs
+        mainRecyclerView.post(() ->
+            mainRecyclerView.post(() ->
+                adapter.setFocus(focusedCategoryRow, focusedCategoryCol)));
     }
 
     private void openFocusedMovie() {
@@ -868,9 +882,9 @@ public class MainActivity extends AppCompatActivity {
 
         dpadContainer = new android.widget.FrameLayout(this);
         android.widget.FrameLayout.LayoutParams containerLp = new android.widget.FrameLayout.LayoutParams(220, 220);
-        containerLp.gravity = android.view.Gravity.BOTTOM | android.view.Gravity.END;
-        containerLp.bottomMargin = 32;
-        containerLp.rightMargin  = 32;
+        containerLp.gravity = android.view.Gravity.TOP | android.view.Gravity.END;
+        containerLp.topMargin = 32;
+        containerLp.rightMargin = 32;
         dpadContainer.setLayoutParams(containerLp);
         dpadContainer.setAlpha(0.75f);
 
