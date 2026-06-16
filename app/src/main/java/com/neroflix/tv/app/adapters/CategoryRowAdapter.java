@@ -23,18 +23,20 @@ public class CategoryRowAdapter extends RecyclerView.Adapter<CategoryRowAdapter.
     private final List<Category> categories;
     private final MovieCardAdapter.OnMovieClickListener movieClickListener;
 
+    // Track which row+col has D-pad focus
+    private int focusRow = -1;
+    private int focusCol = -1;
+
     public CategoryRowAdapter(Context context, List<Category> categories,
                               MovieCardAdapter.OnMovieClickListener listener) {
         this.context = context;
         this.categories = categories;
         this.movieClickListener = listener;
-        setHasStableIds(true);
+        setHasStableIds(false); // avoid ID conflicts causing wrong rebinds
     }
 
     @Override
-    public long getItemId(int position) {
-        return categories.get(position).getTitle().hashCode();
-    }
+    public long getItemId(int position) { return position; }
 
     @NonNull
     @Override
@@ -45,135 +47,144 @@ public class CategoryRowAdapter extends RecyclerView.Adapter<CategoryRowAdapter.
 
     @Override
     public void onBindViewHolder(@NonNull CategoryViewHolder holder, int position) {
-        holder.bind(categories.get(position));
+        holder.bind(categories.get(position), position);
+    }
+
+    @Override
+    public void onBindViewHolder(@NonNull CategoryViewHolder holder, int position,
+                                 @NonNull List<Object> payloads) {
+        if (!payloads.isEmpty()) {
+            // Partial update — just update highlight, don't rebind data
+            holder.updateFocus(position, focusRow, focusCol);
+            return;
+        }
+        super.onBindViewHolder(holder, position, payloads);
     }
 
     @Override
     public void onViewRecycled(@NonNull CategoryViewHolder holder) {
-        holder.saveScrollState();
         super.onViewRecycled(holder);
     }
 
     @Override
     public int getItemCount() { return categories.size(); }
 
-    private int currentFocusRow = -1;
-    private int currentFocusCol = -1;
-
-    // Called by MainActivity D-pad to highlight a specific card
+    /**
+     * Called by MainActivity D-pad handler to move focus.
+     * Only triggers notifyItemChanged on affected rows — no full rebind.
+     */
     public void setFocus(int rowIndex, int colIndex) {
-        int prevRow = currentFocusRow;
-        currentFocusRow = rowIndex;
-        currentFocusCol = colIndex;
-        // Clear previous row highlight
-        if (prevRow >= 0 && prevRow < categories.size() && prevRow != rowIndex)
-            notifyItemChanged(prevRow, new int[]{-1}); // -1 = clear
-        // Highlight new row
-        if (rowIndex >= 0 && rowIndex < categories.size())
-            notifyItemChanged(rowIndex, new int[]{colIndex});
+        int prevRow = focusRow;
+        int prevCol = focusCol;
+        focusRow = rowIndex;
+        focusCol = colIndex;
+
+        // Clear previous row if different
+        if (prevRow >= 0 && prevRow < categories.size() && prevRow != rowIndex) {
+            notifyItemChanged(prevRow, "focus");
+        }
+        // Update new focused row
+        if (rowIndex >= 0 && rowIndex < categories.size()) {
+            notifyItemChanged(rowIndex, "focus");
+        }
     }
 
-    @Override
-    public void onBindViewHolder(@NonNull CategoryViewHolder holder, int position,
-                                 @NonNull java.util.List<Object> payloads) {
-        if (!payloads.isEmpty() && payloads.get(0) instanceof int[]) {
-            int colIndex = ((int[]) payloads.get(0))[0];
-            if (colIndex == -1) {
-                holder.clearHighlight();
-            } else {
-                holder.highlightCard(colIndex);
-            }
-            return;
-        }
-        super.onBindViewHolder(holder, position, payloads);
-    }
+    // ── ViewHolder ────────────────────────────────────────────────────────────
 
     class CategoryViewHolder extends RecyclerView.ViewHolder {
         private final TextView categoryTitle;
-        private final RecyclerView moviesRecyclerView;
+        private final RecyclerView moviesRv;
         private MovieCardAdapter movieAdapter;
+        private int boundPosition = -1;
 
         CategoryViewHolder(@NonNull View itemView) {
             super(itemView);
             categoryTitle = itemView.findViewById(R.id.category_title);
-            moviesRecyclerView = itemView.findViewById(R.id.movies_recycler_view);
+            moviesRv = itemView.findViewById(R.id.movies_recycler_view);
 
             LinearLayoutManager lm = new LinearLayoutManager(
                 context, LinearLayoutManager.HORIZONTAL, false);
-            lm.setInitialPrefetchItemCount(4);
-            moviesRecyclerView.setLayoutManager(lm);
-            moviesRecyclerView.setHasFixedSize(true);
-            moviesRecyclerView.setNestedScrollingEnabled(false);
-            moviesRecyclerView.setItemViewCacheSize(5);
-            // FIX: removed sharedPool — sharing ViewHolders across rows caused
-            // stale click listeners to fire the wrong movie when cards were recycled
+            lm.setInitialPrefetchItemCount(5);
+            moviesRv.setLayoutManager(lm);
+            moviesRv.setHasFixedSize(true);
+            moviesRv.setNestedScrollingEnabled(false);
+            moviesRv.setItemViewCacheSize(6);
 
-            // Each row gets its own adapter with its own click listener
             movieAdapter = new MovieCardAdapter(context, new ArrayList<>(), movieClickListener);
-            moviesRecyclerView.setAdapter(movieAdapter);
+            moviesRv.setAdapter(movieAdapter);
         }
 
-        void bind(Category category) {
+        void bind(Category category, int position) {
+            boundPosition = position;
             categoryTitle.setText(category.getTitle());
             List<Movie> movies = category.getMovies();
             movieAdapter.setMovies(movies != null ? movies : new ArrayList<>());
-            moviesRecyclerView.scrollToPosition(0);
+
+            // Only reset scroll if this row is NOT the focused one
+            if (position != focusRow) {
+                moviesRv.scrollToPosition(0);
+                clearHighlight();
+            } else {
+                // Restore focus on this row after rebind
+                highlightCard(focusCol);
+            }
+        }
+
+        void updateFocus(int position, int fRow, int fCol) {
+            if (position == fRow) {
+                highlightCard(fCol);
+            } else {
+                clearHighlight();
+            }
         }
 
         void clearHighlight() {
-            for (int i = 0; i < moviesRecyclerView.getChildCount(); i++) {
-                View v = moviesRecyclerView.getChildAt(i);
-                if (v != null) {
-                    v.setScaleX(1f); v.setScaleY(1f); v.setElevation(2f);
-                    View overlay = v.findViewById(R.id.focus_overlay);
-                    if (overlay != null) overlay.setVisibility(View.GONE);
-                }
+            for (int i = 0; i < moviesRv.getChildCount(); i++) {
+                applyCardState(moviesRv.getChildAt(i), false);
             }
         }
 
         void highlightCard(int colIndex) {
+            // Step 1: clear all currently visible cards
             clearHighlight();
 
-            // Use SmoothScroller with SNAP_TO_START so card is always fully visible
-            androidx.recyclerview.widget.LinearSmoothScroller scroller =
-                new androidx.recyclerview.widget.LinearSmoothScroller(context) {
-                    @Override protected int getHorizontalSnapPreference() {
-                        return SNAP_TO_START;
-                    }
-                    @Override protected int getVerticalSnapPreference() {
-                        return SNAP_TO_START;
-                    }
-                    @Override
-                    public void onStop() {
-                        super.onStop();
-                        // After scroll settles, apply highlight
-                        applyHighlight(colIndex);
-                    }
-                };
-            scroller.setTargetPosition(colIndex);
+            // Step 2: scroll to target position
+            LinearLayoutManager lm = (LinearLayoutManager) moviesRv.getLayoutManager();
+            if (lm == null) return;
 
-            RecyclerView.LayoutManager lm = moviesRecyclerView.getLayoutManager();
-            if (lm != null) {
-                lm.startSmoothScroll(scroller);
+            int first = lm.findFirstVisibleItemPosition();
+            int last  = lm.findLastVisibleItemPosition();
+
+            if (colIndex < first || colIndex > last) {
+                // Card not visible — scroll then highlight
+                lm.scrollToPositionWithOffset(colIndex, 0);
+                moviesRv.post(() -> moviesRv.post(() -> applyHighlight(colIndex)));
+            } else {
+                // Card already visible — highlight immediately
+                moviesRv.post(() -> applyHighlight(colIndex));
             }
-
-            // Also apply immediately in case card is already visible
-            moviesRecyclerView.post(() -> applyHighlight(colIndex));
         }
 
         private void applyHighlight(int colIndex) {
-            clearHighlight();
-            RecyclerView.LayoutManager lm = moviesRecyclerView.getLayoutManager();
+            // Clear all first
+            for (int i = 0; i < moviesRv.getChildCount(); i++) {
+                applyCardState(moviesRv.getChildAt(i), false);
+            }
+            // Find and highlight target
+            LinearLayoutManager lm = (LinearLayoutManager) moviesRv.getLayoutManager();
             View card = lm != null ? lm.findViewByPosition(colIndex) : null;
             if (card != null) {
-                card.setScaleX(1.1f);
-                card.setScaleY(1.1f);
-                card.setElevation(16f);
-                View overlay = card.findViewById(R.id.focus_overlay);
-                if (overlay != null) overlay.setVisibility(View.VISIBLE);
+                applyCardState(card, true);
             }
         }
 
-        void saveScrollState() {}
+        private void applyCardState(View card, boolean focused) {
+            if (card == null) return;
+            card.setScaleX(focused ? 1.08f : 1f);
+            card.setScaleY(focused ? 1.08f : 1f);
+            card.setElevation(focused ? 14f : 2f);
+            View overlay = card.findViewById(R.id.focus_overlay);
+            if (overlay != null) overlay.setVisibility(focused ? View.VISIBLE : View.GONE);
+        }
     }
 }

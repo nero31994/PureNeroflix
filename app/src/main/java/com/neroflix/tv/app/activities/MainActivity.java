@@ -373,10 +373,19 @@ public class MainActivity extends AppCompatActivity {
     private void reloadWithDefs(String[][] defs) {
         categories.clear();
         for (String[] def : defs) categories.add(new Category(def[0], def[1], def[2]));
+        // Reset D-pad focus to top before notify so bind() doesn't restore wrong state
+        focusedCategoryRow = 0;
+        focusedCategoryCol = 0;
+        if (adapter != null) adapter.setFocus(-1, -1); // clear highlight
         adapter.notifyDataSetChanged();
         progressBar.setVisibility(View.VISIBLE);
         loadCategories();
         mainRecyclerView.scrollToPosition(0);
+        // Switch zone to CONTENT and show focus on first card after load
+        mainFocusZone = MainFocusZone.CONTENT;
+        mainRecyclerView.post(() ->
+            mainRecyclerView.post(() ->
+                adapter.setFocus(0, 0)));
     }
 
     // Genre / network pickers
@@ -850,20 +859,21 @@ public class MainActivity extends AppCompatActivity {
         LinearLayoutManager lm = (LinearLayoutManager) mainRecyclerView.getLayoutManager();
         if (lm == null) return;
 
-        int first = lm.findFirstCompletelyVisibleItemPosition();
-        int last  = lm.findLastCompletelyVisibleItemPosition();
+        // Scroll outer RecyclerView to make the row visible
+        int first = lm.findFirstVisibleItemPosition();
+        int last  = lm.findLastVisibleItemPosition();
 
         if (focusedCategoryRow < first) {
-            lm.scrollToPositionWithOffset(focusedCategoryRow, 16);
-        } else if (focusedCategoryRow > last || focusedCategoryRow >= lm.findLastVisibleItemPosition()) {
-            lm.scrollToPositionWithOffset(focusedCategoryRow, -220);
+            lm.scrollToPositionWithOffset(focusedCategoryRow, 8);
+        } else if (focusedCategoryRow > last) {
+            lm.scrollToPositionWithOffset(focusedCategoryRow, 8);
         }
 
-        // Double-post: first post queues after layout, second post fires after draw
-        // This ensures the row ViewHolder is attached before setFocus runs
+        // Triple-post: ensures ViewHolder is fully laid out before highlight
         mainRecyclerView.post(() ->
             mainRecyclerView.post(() ->
-                adapter.setFocus(focusedCategoryRow, focusedCategoryCol)));
+                mainRecyclerView.post(() ->
+                    adapter.setFocus(focusedCategoryRow, focusedCategoryCol))));
     }
 
     private void openFocusedMovie() {
