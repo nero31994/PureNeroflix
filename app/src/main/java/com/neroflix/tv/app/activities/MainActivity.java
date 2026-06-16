@@ -699,7 +699,6 @@ public class MainActivity extends AppCompatActivity {
                         focusedCategoryCol = 0;
                         scrollContentFocus();
                         return true;
-                    case KeyEvent.KEYCODE_DPAD_CENTER:
                     case KeyEvent.KEYCODE_ENTER:
                         RecyclerView active = null;
                         if (studioRecycler != null && studioRecycler.getVisibility() == View.VISIBLE)
@@ -786,11 +785,13 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private void scrollContentFocus() {
-        if (focusedCategoryRow < categories.size()) {
-            mainRecyclerView.scrollToPosition(focusedCategoryRow);
-            // Tell the CategoryRowAdapter which item is focused
+        if (categories == null || focusedCategoryRow >= categories.size()) return;
+        // Scroll outer recycler to the focused row
+        mainRecyclerView.scrollToPosition(focusedCategoryRow);
+        // Post highlight AFTER the outer scroll settles so the row view is attached
+        mainRecyclerView.post(() -> {
             adapter.setFocus(focusedCategoryRow, focusedCategoryCol);
-        }
+        });
     }
 
     private void openFocusedMovie() {

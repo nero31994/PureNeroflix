@@ -109,25 +109,32 @@ public class CategoryRowAdapter extends RecyclerView.Adapter<CategoryRowAdapter.
         }
 
         void highlightCard(int colIndex) {
-            moviesRecyclerView.scrollToPosition(colIndex);
-            View card = moviesRecyclerView.getLayoutManager() != null
-                ? moviesRecyclerView.getLayoutManager().findViewByPosition(colIndex)
-                : null;
-            // Clear highlight on all visible cards first
+            // Clear all cards first
             for (int i = 0; i < moviesRecyclerView.getChildCount(); i++) {
                 View v = moviesRecyclerView.getChildAt(i);
                 if (v != null) {
-                    v.setScaleX(1f); v.setScaleY(1f);
+                    v.setScaleX(1f);
+                    v.setScaleY(1f);
                     v.setElevation(2f);
-                    v.setBackgroundResource(R.drawable.card_squircle);
+                    View overlay = v.findViewById(R.id.focus_overlay);
+                    if (overlay != null) overlay.setVisibility(View.GONE);
                 }
             }
-            // Highlight the focused card
-            if (card != null) {
-                card.setScaleX(1.1f); card.setScaleY(1.1f);
-                card.setElevation(12f);
-                card.setBackgroundResource(R.drawable.card_focus_border);
-            }
+
+            // Scroll first, then highlight AFTER layout pass
+            moviesRecyclerView.scrollToPosition(colIndex);
+            moviesRecyclerView.post(() -> {
+                View card = moviesRecyclerView.getLayoutManager() != null
+                    ? moviesRecyclerView.getLayoutManager().findViewByPosition(colIndex)
+                    : null;
+                if (card != null) {
+                    card.setScaleX(1.12f);
+                    card.setScaleY(1.12f);
+                    card.setElevation(16f);
+                    View overlay = card.findViewById(R.id.focus_overlay);
+                    if (overlay != null) overlay.setVisibility(View.VISIBLE);
+                }
+            });
         }
 
         void saveScrollState() {}
