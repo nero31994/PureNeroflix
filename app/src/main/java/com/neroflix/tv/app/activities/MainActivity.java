@@ -187,7 +187,7 @@ public class MainActivity extends AppCompatActivity {
             R.drawable.ic_download, R.drawable.ic_iptv, R.drawable.ic_genre
         };
         navRecycler.setLayoutManager(new LinearLayoutManager(this));
-        navRecycler.setAdapter(new NavAdapter(this, navIcons, pos -> {
+        navAdapter = new NavAdapter(this, navIcons, pos -> {
             switch (pos) {
                 case 0: openSearch(); break;
                 case 1: switchMode("movie"); break;
@@ -217,7 +217,8 @@ public class MainActivity extends AppCompatActivity {
                     break;
                 case 8: showGenrePicker(); break;
             }
-        }));
+        });
+        navRecycler.setAdapter(navAdapter);
     }
 
     private void setupFilterBar() {
@@ -535,6 +536,8 @@ public class MainActivity extends AppCompatActivity {
     private int focusedFilterIndex  = 0;
     private int focusedBrowseIndex  = 0;
 
+    private NavAdapter navAdapter;
+
     private RecyclerView getNavRecycler() { return findViewById(R.id.nav_recycler); }
 
     private void highlightNav(int index) {
@@ -594,16 +597,22 @@ public class MainActivity extends AppCompatActivity {
             case NAV:
                 switch (keyCode) {
                     case KeyEvent.KEYCODE_DPAD_UP:
-                        if (focusedNavIndex > 0) { focusedNavIndex--; highlightNav(focusedNavIndex); }
+                        if (focusedNavIndex > 0) focusedNavIndex--;
+                        // clamp at top — keep highlight
+                        highlightNav(focusedNavIndex);
                         return true;
                     case KeyEvent.KEYCODE_DPAD_DOWN:
                         RecyclerView nav = getNavRecycler();
-                        int navMax = nav != null ? nav.getAdapter().getItemCount() - 1 : 8;
-                        if (focusedNavIndex < navMax) { focusedNavIndex++; highlightNav(focusedNavIndex); }
+                        int navMax = (nav != null && nav.getAdapter() != null)
+                            ? nav.getAdapter().getItemCount() - 1 : 8;
+                        if (focusedNavIndex < navMax) focusedNavIndex++;
+                        // clamp at bottom — keep highlight
+                        highlightNav(focusedNavIndex);
                         return true;
                     case KeyEvent.KEYCODE_DPAD_RIGHT:
-                        mainFocusZone = MainFocusZone.CONTENT;
-                        highlightNav(-1); // clear nav highlight
+                        mainFocusZone = MainFocusZone.FILTER;
+                        highlightNav(-1);
+                        highlightFilter(focusedFilterIndex);
                         return true;
                     case KeyEvent.KEYCODE_DPAD_CENTER:
                     case KeyEvent.KEYCODE_ENTER:
@@ -611,6 +620,7 @@ public class MainActivity extends AppCompatActivity {
                         if (navRv != null) {
                             View item = navRv.getLayoutManager().findViewByPosition(focusedNavIndex);
                             if (item != null) item.performClick();
+                            else if (navAdapter != null) navAdapter.simulateClick(focusedNavIndex);
                         }
                         return true;
                 }
@@ -619,15 +629,28 @@ public class MainActivity extends AppCompatActivity {
             case FILTER:
                 switch (keyCode) {
                     case KeyEvent.KEYCODE_DPAD_LEFT:
-                        if (focusedFilterIndex > 0) { focusedFilterIndex--; highlightFilter(focusedFilterIndex); }
+                        if (focusedFilterIndex > 0) focusedFilterIndex--;
+                        highlightFilter(focusedFilterIndex);
                         return true;
                     case KeyEvent.KEYCODE_DPAD_RIGHT:
-                        if (focusedFilterIndex < 3) { focusedFilterIndex++; highlightFilter(focusedFilterIndex); }
+                        if (focusedFilterIndex < 3) focusedFilterIndex++;
+                        highlightFilter(focusedFilterIndex);
                         return true;
                     case KeyEvent.KEYCODE_DPAD_DOWN:
-                        mainFocusZone = MainFocusZone.BROWSE_ROW;
-                        highlightFilter(-1);
-                        highlightBrowse(focusedBrowseIndex);
+                        // Go to BROWSE_ROW if visible, else CONTENT
+                        boolean browseVisible = (studioRecycler != null && studioRecycler.getVisibility() == View.VISIBLE)
+                            || (networkRecycler != null && networkRecycler.getVisibility() == View.VISIBLE);
+                        if (browseVisible) {
+                            mainFocusZone = MainFocusZone.BROWSE_ROW;
+                            highlightFilter(-1);
+                            highlightBrowse(focusedBrowseIndex);
+                        } else {
+                            mainFocusZone = MainFocusZone.CONTENT;
+                            highlightFilter(-1);
+                            focusedCategoryRow = 0;
+                            focusedCategoryCol = 0;
+                            scrollContentFocus();
+                        }
                         return true;
                     case KeyEvent.KEYCODE_DPAD_UP:
                         mainFocusZone = MainFocusZone.NAV;
@@ -647,10 +670,22 @@ public class MainActivity extends AppCompatActivity {
             case BROWSE_ROW:
                 switch (keyCode) {
                     case KeyEvent.KEYCODE_DPAD_LEFT:
-                        if (focusedBrowseIndex > 0) { focusedBrowseIndex--; highlightBrowse(focusedBrowseIndex); }
+                        if (focusedBrowseIndex > 0) focusedBrowseIndex--;
+                        // clamp at left edge
+                        highlightBrowse(focusedBrowseIndex);
                         return true;
                     case KeyEvent.KEYCODE_DPAD_RIGHT:
-                        focusedBrowseIndex++; highlightBrowse(focusedBrowseIndex);
+                        // Get max from active recycler adapter
+                        RecyclerView activeRv = null;
+                        if (studioRecycler != null && studioRecycler.getVisibility() == View.VISIBLE)
+                            activeRv = studioRecycler;
+                        else if (networkRecycler != null && networkRecycler.getVisibility() == View.VISIBLE)
+                            activeRv = networkRecycler;
+                        int browseMax = (activeRv != null && activeRv.getAdapter() != null)
+                            ? activeRv.getAdapter().getItemCount() - 1 : 10;
+                        if (focusedBrowseIndex < browseMax) focusedBrowseIndex++;
+                        // clamp at right edge
+                        highlightBrowse(focusedBrowseIndex);
                         return true;
                     case KeyEvent.KEYCODE_DPAD_UP:
                         mainFocusZone = MainFocusZone.FILTER;
@@ -660,6 +695,9 @@ public class MainActivity extends AppCompatActivity {
                     case KeyEvent.KEYCODE_DPAD_DOWN:
                         mainFocusZone = MainFocusZone.CONTENT;
                         highlightBrowse(-1);
+                        focusedCategoryRow = 0;
+                        focusedCategoryCol = 0;
+                        scrollContentFocus();
                         return true;
                     case KeyEvent.KEYCODE_DPAD_CENTER:
                     case KeyEvent.KEYCODE_ENTER:
@@ -679,30 +717,62 @@ public class MainActivity extends AppCompatActivity {
             case CONTENT:
                 switch (keyCode) {
                     case KeyEvent.KEYCODE_DPAD_LEFT:
-                        if (focusedCategoryCol > 0) focusedCategoryCol--;
-                        else {
+                        if (focusedCategoryCol > 0) {
+                            focusedCategoryCol--;
+                            scrollContentFocus();
+                        } else {
+                            // At left edge — go to NAV
                             mainFocusZone = MainFocusZone.NAV;
                             highlightNav(focusedNavIndex);
-                            return true;
                         }
-                        scrollContentFocus();
                         return true;
                     case KeyEvent.KEYCODE_DPAD_RIGHT:
-                        focusedCategoryCol++;
+                        // Clamp to last card in current row
+                        int maxCol = 0;
+                        if (focusedCategoryRow < categories.size()) {
+                            List<Movie> rowMovies = categories.get(focusedCategoryRow).getMovies();
+                            if (rowMovies != null) maxCol = rowMovies.size() - 1;
+                        }
+                        if (focusedCategoryCol < maxCol) focusedCategoryCol++;
+                        // clamp at right edge — keep focus
                         scrollContentFocus();
                         return true;
                     case KeyEvent.KEYCODE_DPAD_UP:
                         if (focusedCategoryRow > 0) {
                             focusedCategoryRow--;
+                            // Clamp col to new row's size
+                            if (focusedCategoryRow < categories.size()) {
+                                List<Movie> rowMovies = categories.get(focusedCategoryRow).getMovies();
+                                if (rowMovies != null && focusedCategoryCol >= rowMovies.size())
+                                    focusedCategoryCol = rowMovies.size() - 1;
+                            }
                             scrollContentFocus();
                         } else {
-                            mainFocusZone = MainFocusZone.BROWSE_ROW;
-                            highlightBrowse(focusedBrowseIndex);
+                            // At top row — go to BROWSE_ROW or FILTER
+                            boolean browseVis = (studioRecycler != null && studioRecycler.getVisibility() == View.VISIBLE)
+                                || (networkRecycler != null && networkRecycler.getVisibility() == View.VISIBLE);
+                            if (browseVis) {
+                                mainFocusZone = MainFocusZone.BROWSE_ROW;
+                                highlightBrowse(focusedBrowseIndex);
+                            } else {
+                                mainFocusZone = MainFocusZone.FILTER;
+                                highlightFilter(focusedFilterIndex);
+                            }
                         }
                         return true;
                     case KeyEvent.KEYCODE_DPAD_DOWN:
-                        focusedCategoryRow++;
-                        scrollContentFocus();
+                        int maxRow = categories.size() - 1;
+                        if (focusedCategoryRow < maxRow) {
+                            focusedCategoryRow++;
+                            // Clamp col to new row's size
+                            if (focusedCategoryRow < categories.size()) {
+                                List<Movie> rowMovies = categories.get(focusedCategoryRow).getMovies();
+                                if (rowMovies != null && focusedCategoryCol >= rowMovies.size())
+                                    focusedCategoryCol = rowMovies.size() - 1;
+                            }
+                            scrollContentFocus();
+                        }
+                        // At bottom — clamp, keep focus on last row
                         return true;
                     case KeyEvent.KEYCODE_DPAD_CENTER:
                     case KeyEvent.KEYCODE_ENTER:
