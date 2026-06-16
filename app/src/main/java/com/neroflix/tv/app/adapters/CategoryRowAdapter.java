@@ -144,6 +144,8 @@ public class CategoryRowAdapter extends RecyclerView.Adapter<CategoryRowAdapter.
                     if (overlay != null) overlay.setVisibility(View.VISIBLE);
                 }
             });
+        }
+
         void saveScrollState() {}
     }
 }
