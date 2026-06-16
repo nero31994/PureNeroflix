@@ -152,26 +152,22 @@ public class CategoryRowAdapter extends RecyclerView.Adapter<CategoryRowAdapter.
             int last  = lm.findLastVisibleItemPosition();
 
             if (colIndex < first) {
-                // Card is to the left — scroll just enough to show it
-                lm.scrollToPositionWithOffset(colIndex, 8);
-                moviesRv.post(() -> applyHighlight(colIndex));
+                lm.scrollToPositionWithOffset(colIndex, 0);
             } else if (colIndex > last) {
-                // Card is to the right — scroll so it appears at end of visible area
-                // Calculate how many cards fit, scroll by exactly 1
+                // Scroll so target appears at right edge
                 View firstView = lm.findViewByPosition(first);
-                int cardWidth = firstView != null ? firstView.getWidth() + 8 : 0;
+                int cardWidth = firstView != null ? (firstView.getWidth() + 8) : 0;
                 if (cardWidth > 0) {
-                    int visibleCount = moviesRv.getWidth() / cardWidth;
-                    int targetFirst  = Math.max(0, colIndex - visibleCount + 1);
-                    lm.scrollToPositionWithOffset(targetFirst, 8);
+                    int visible = moviesRv.getWidth() / cardWidth;
+                    int targetFirst = Math.max(0, colIndex - visible + 1);
+                    lm.scrollToPositionWithOffset(targetFirst, 0);
                 } else {
-                    lm.scrollToPositionWithOffset(colIndex, 8);
+                    lm.scrollToPositionWithOffset(colIndex, 0);
                 }
-                moviesRv.post(() -> applyHighlight(colIndex));
-            } else {
-                // Card already visible — just highlight, no scroll
-                applyHighlight(colIndex);
             }
+
+            // Single post — same as nav pattern
+            moviesRv.post(() -> applyHighlight(colIndex));
         }
 
         private void applyHighlight(int colIndex) {

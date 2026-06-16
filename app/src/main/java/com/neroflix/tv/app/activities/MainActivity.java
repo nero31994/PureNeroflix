@@ -860,14 +860,11 @@ public class MainActivity extends AppCompatActivity {
         LinearLayoutManager lm = (LinearLayoutManager) mainRecyclerView.getLayoutManager();
         if (lm == null) return;
 
-        // Always scroll focused row to top of visible area
-        // This guarantees it's never cut off regardless of row height
+        // Scroll exactly like nav sidebar — direct, immediate, no conditions
         lm.scrollToPositionWithOffset(focusedCategoryRow, 0);
 
-        // Wait for layout then apply card highlight
-        mainRecyclerView.post(() ->
-            mainRecyclerView.post(() ->
-                adapter.setFocus(focusedCategoryRow, focusedCategoryCol)));
+        // Single post is enough — layout happens synchronously after scrollToPositionWithOffset
+        mainRecyclerView.post(() -> adapter.setFocus(focusedCategoryRow, focusedCategoryCol));
     }
 
     private void openFocusedMovie() {
