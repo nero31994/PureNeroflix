@@ -48,6 +48,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     private RecyclerView mainRecyclerView;
+    private androidx.core.widget.NestedScrollView mainScrollView;
     private ProgressBar progressBar;
     private View heroSection;
     private ImageView heroBackdrop;
@@ -156,6 +157,7 @@ public class MainActivity extends AppCompatActivity {
 
     private void setupViews() {
         mainRecyclerView = findViewById(R.id.main_recycler_view);
+        mainScrollView   = findViewById(R.id.main_scroll_view);
         progressBar      = findViewById(R.id.progress_bar);
         heroSection      = findViewById(R.id.hero_section);
         heroBackdrop     = findViewById(R.id.hero_backdrop);
@@ -170,8 +172,10 @@ public class MainActivity extends AppCompatActivity {
         setupFilterBar();
         setupHeroButtons();
 
-        mainRecyclerView.setHasFixedSize(true);
+        mainRecyclerView.setHasFixedSize(false);
         mainRecyclerView.setItemViewCacheSize(6);
+        // CRITICAL: must enable nested scrolling for programmatic scroll to work
+        mainRecyclerView.setNestedScrollingEnabled(true);
         LinearLayoutManager lm = new LinearLayoutManager(this);
         lm.setInitialPrefetchItemCount(4);
         mainRecyclerView.setLayoutManager(lm);
@@ -857,14 +861,34 @@ public class MainActivity extends AppCompatActivity {
 
     private void scrollContentFocus() {
         if (categories == null || focusedCategoryRow >= categories.size()) return;
+
+        // The outer container is a NestedScrollView — scroll that, not the RecyclerView
+        androidx.core.widget.NestedScrollView scrollView = findViewById(R.id.main_scroll_view);
+        if (scrollView == null) return;
+
+        // Find the row ViewHolder and scroll to its Y position
         LinearLayoutManager lm = (LinearLayoutManager) mainRecyclerView.getLayoutManager();
         if (lm == null) return;
 
-        // Scroll exactly like nav sidebar — direct, immediate, no conditions
-        lm.scrollToPositionWithOffset(focusedCategoryRow, 0);
+        // Force RecyclerView to layout the target row first
+        lm.scrollToPosition(focusedCategoryRow);
 
-        // Single post is enough — layout happens synchronously after scrollToPositionWithOffset
-        mainRecyclerView.post(() -> adapter.setFocus(focusedCategoryRow, focusedCategoryCol));
+        mainRecyclerView.post(() -> {
+            View rowView = lm.findViewByPosition(focusedCategoryRow);
+            if (rowView != null) {
+                // Get absolute Y position of row relative to NestedScrollView
+                int[] rvLocation = new int[2];
+                int[] rowLocation = new int[2];
+                mainRecyclerView.getLocationOnScreen(rvLocation);
+                rowView.getLocationOnScreen(rowLocation);
+                int currentScroll = scrollView.getScrollY();
+                int rowY = currentScroll + (rowLocation[1] - rvLocation[1])
+                         + mainRecyclerView.getTop();
+                scrollView.smoothScrollTo(0, Math.max(0, rowY - 8));
+            }
+            // Apply card highlight after scroll
+            mainRecyclerView.post(() -> adapter.setFocus(focusedCategoryRow, focusedCategoryCol));
+        });
     }
 
     private void openFocusedMovie() {
