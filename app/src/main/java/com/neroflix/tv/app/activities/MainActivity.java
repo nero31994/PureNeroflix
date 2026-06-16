@@ -17,6 +17,7 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
@@ -859,21 +860,32 @@ public class MainActivity extends AppCompatActivity {
         LinearLayoutManager lm = (LinearLayoutManager) mainRecyclerView.getLayoutManager();
         if (lm == null) return;
 
-        // Scroll outer RecyclerView to make the row visible
-        int first = lm.findFirstVisibleItemPosition();
-        int last  = lm.findLastVisibleItemPosition();
+        int first = lm.findFirstCompletelyVisibleItemPosition();
+        int last  = lm.findLastCompletelyVisibleItemPosition();
 
-        if (focusedCategoryRow < first) {
-            lm.scrollToPositionWithOffset(focusedCategoryRow, 8);
-        } else if (focusedCategoryRow > last) {
-            lm.scrollToPositionWithOffset(focusedCategoryRow, 8);
-        }
+        boolean needsScroll = (focusedCategoryRow < first || focusedCategoryRow > last
+            || first == RecyclerView.NO_ID || last == RecyclerView.NO_ID);
 
-        // Triple-post: ensures ViewHolder is fully laid out before highlight
-        mainRecyclerView.post(() ->
+        if (needsScroll) {
+            // smoothScrollToPosition moves exactly to make item visible without overshoot
+            mainRecyclerView.smoothScrollToPosition(focusedCategoryRow);
+            // Wait for smooth scroll to finish then highlight
+            mainRecyclerView.addOnScrollListener(new RecyclerView.OnScrollListener() {
+                @Override
+                public void onScrollStateChanged(@NonNull RecyclerView rv, int state) {
+                    if (state == RecyclerView.SCROLL_STATE_IDLE) {
+                        rv.removeOnScrollListener(this);
+                        adapter.setFocus(focusedCategoryRow, focusedCategoryCol);
+                    }
+                }
+            });
+        } else {
+            // Row already visible — highlight immediately
             mainRecyclerView.post(() ->
                 mainRecyclerView.post(() ->
-                    adapter.setFocus(focusedCategoryRow, focusedCategoryCol))));
+                    adapter.setFocus(focusedCategoryRow, focusedCategoryCol)));
+        }
+    }
     }
 
     private void openFocusedMovie() {
