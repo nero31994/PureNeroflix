@@ -145,36 +145,56 @@ public class CategoryRowAdapter extends RecyclerView.Adapter<CategoryRowAdapter.
         }
 
         void highlightCard(int colIndex) {
-            // Step 1: clear all currently visible cards
-            clearHighlight();
-
-            // Step 2: scroll to target position
             LinearLayoutManager lm = (LinearLayoutManager) moviesRv.getLayoutManager();
             if (lm == null) return;
 
             int first = lm.findFirstVisibleItemPosition();
             int last  = lm.findLastVisibleItemPosition();
 
-            if (colIndex < first || colIndex > last) {
-                // Card not visible — scroll then highlight
-                lm.scrollToPositionWithOffset(colIndex, 0);
-                moviesRv.post(() -> moviesRv.post(() -> applyHighlight(colIndex)));
-            } else {
-                // Card already visible — highlight immediately
+            if (colIndex < first) {
+                // Card is to the left — scroll just enough to show it
+                lm.scrollToPositionWithOffset(colIndex, 8);
                 moviesRv.post(() -> applyHighlight(colIndex));
+            } else if (colIndex > last) {
+                // Card is to the right — scroll so it appears at end of visible area
+                // Calculate how many cards fit, scroll by exactly 1
+                View firstView = lm.findViewByPosition(first);
+                int cardWidth = firstView != null ? firstView.getWidth() + 8 : 0;
+                if (cardWidth > 0) {
+                    int visibleCount = moviesRv.getWidth() / cardWidth;
+                    int targetFirst  = Math.max(0, colIndex - visibleCount + 1);
+                    lm.scrollToPositionWithOffset(targetFirst, 8);
+                } else {
+                    lm.scrollToPositionWithOffset(colIndex, 8);
+                }
+                moviesRv.post(() -> applyHighlight(colIndex));
+            } else {
+                // Card already visible — just highlight, no scroll
+                applyHighlight(colIndex);
             }
         }
 
         private void applyHighlight(int colIndex) {
-            // Clear all first
+            // Clear all visible cards
             for (int i = 0; i < moviesRv.getChildCount(); i++) {
                 applyCardState(moviesRv.getChildAt(i), false);
             }
-            // Find and highlight target
+            // Highlight target card
             LinearLayoutManager lm = (LinearLayoutManager) moviesRv.getLayoutManager();
             View card = lm != null ? lm.findViewByPosition(colIndex) : null;
             if (card != null) {
                 applyCardState(card, true);
+            } else {
+                // Card not yet laid out — retry once more after next frame
+                moviesRv.post(() -> {
+                    LinearLayoutManager lm2 = (LinearLayoutManager) moviesRv.getLayoutManager();
+                    View c = lm2 != null ? lm2.findViewByPosition(colIndex) : null;
+                    if (c != null) {
+                        for (int i = 0; i < moviesRv.getChildCount(); i++)
+                            applyCardState(moviesRv.getChildAt(i), false);
+                        applyCardState(c, true);
+                    }
+                });
             }
         }
 
