@@ -57,20 +57,32 @@ public class CategoryRowAdapter extends RecyclerView.Adapter<CategoryRowAdapter.
     @Override
     public int getItemCount() { return categories.size(); }
 
+    private int currentFocusRow = -1;
+    private int currentFocusCol = -1;
+
     // Called by MainActivity D-pad to highlight a specific card
     public void setFocus(int rowIndex, int colIndex) {
-        if (rowIndex < 0 || rowIndex >= categories.size()) return;
-        // Notify the row to scroll and highlight the focused card
-        notifyItemChanged(rowIndex, new int[]{colIndex});
+        int prevRow = currentFocusRow;
+        currentFocusRow = rowIndex;
+        currentFocusCol = colIndex;
+        // Clear previous row highlight
+        if (prevRow >= 0 && prevRow < categories.size() && prevRow != rowIndex)
+            notifyItemChanged(prevRow, new int[]{-1}); // -1 = clear
+        // Highlight new row
+        if (rowIndex >= 0 && rowIndex < categories.size())
+            notifyItemChanged(rowIndex, new int[]{colIndex});
     }
 
     @Override
     public void onBindViewHolder(@NonNull CategoryViewHolder holder, int position,
                                  @NonNull java.util.List<Object> payloads) {
         if (!payloads.isEmpty() && payloads.get(0) instanceof int[]) {
-            // Partial update: just scroll and highlight the focused card
             int colIndex = ((int[]) payloads.get(0))[0];
-            holder.highlightCard(colIndex);
+            if (colIndex == -1) {
+                holder.clearHighlight();
+            } else {
+                holder.highlightCard(colIndex);
+            }
             return;
         }
         super.onBindViewHolder(holder, position, payloads);
@@ -108,35 +120,30 @@ public class CategoryRowAdapter extends RecyclerView.Adapter<CategoryRowAdapter.
             moviesRecyclerView.scrollToPosition(0);
         }
 
-        void highlightCard(int colIndex) {
-            // Clear all cards first
+        void clearHighlight() {
             for (int i = 0; i < moviesRecyclerView.getChildCount(); i++) {
                 View v = moviesRecyclerView.getChildAt(i);
                 if (v != null) {
-                    v.setScaleX(1f);
-                    v.setScaleY(1f);
-                    v.setElevation(2f);
+                    v.setScaleX(1f); v.setScaleY(1f); v.setElevation(2f);
                     View overlay = v.findViewById(R.id.focus_overlay);
                     if (overlay != null) overlay.setVisibility(View.GONE);
                 }
             }
+        }
 
-            // Scroll first, then highlight AFTER layout pass
+        void highlightCard(int colIndex) {
+            clearHighlight();
             moviesRecyclerView.scrollToPosition(colIndex);
             moviesRecyclerView.post(() -> {
+                clearHighlight();
                 View card = moviesRecyclerView.getLayoutManager() != null
-                    ? moviesRecyclerView.getLayoutManager().findViewByPosition(colIndex)
-                    : null;
+                    ? moviesRecyclerView.getLayoutManager().findViewByPosition(colIndex) : null;
                 if (card != null) {
-                    card.setScaleX(1.12f);
-                    card.setScaleY(1.12f);
-                    card.setElevation(16f);
+                    card.setScaleX(1.1f); card.setScaleY(1.1f); card.setElevation(16f);
                     View overlay = card.findViewById(R.id.focus_overlay);
                     if (overlay != null) overlay.setVisibility(View.VISIBLE);
                 }
             });
-        }
-
         void saveScrollState() {}
     }
 }
