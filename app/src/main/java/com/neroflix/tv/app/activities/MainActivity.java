@@ -93,7 +93,6 @@ public class MainActivity extends AppCompatActivity {
         }
 
         setContentView(R.layout.activity_main);
-        // Take focus so onKeyDown always fires — prevents filter chips / nav from stealing it
         findViewById(android.R.id.content).setFocusableInTouchMode(true);
         findViewById(android.R.id.content).requestFocus();
         setupViews();
@@ -103,6 +102,7 @@ public class MainActivity extends AppCompatActivity {
         AnnouncementChecker.check(this);
         RemoteConfig.fetch(this, url -> {});
         RemoteConfig.enforceMinVersion(this);
+        addFloatingDpad();
     }
 
     // Security
@@ -187,7 +187,7 @@ public class MainActivity extends AppCompatActivity {
             R.drawable.ic_download, R.drawable.ic_iptv, R.drawable.ic_genre
         };
         navRecycler.setLayoutManager(new LinearLayoutManager(this));
-        navAdapter = new NavAdapter(this, navIcons, pos -> {
+        navRecycler.setAdapter(new NavAdapter(this, navIcons, pos -> {
             switch (pos) {
                 case 0: openSearch(); break;
                 case 1: switchMode("movie"); break;
@@ -217,8 +217,7 @@ public class MainActivity extends AppCompatActivity {
                     break;
                 case 8: showGenrePicker(); break;
             }
-        });
-        navRecycler.setAdapter(navAdapter);
+        }));
     }
 
     private void setupFilterBar() {
@@ -538,24 +537,18 @@ public class MainActivity extends AppCompatActivity {
 
     private RecyclerView getNavRecycler() { return findViewById(R.id.nav_recycler); }
 
-    private NavAdapter navAdapter;
-
     private void highlightNav(int index) {
         RecyclerView nav = getNavRecycler();
         if (nav == null) return;
-        if (navAdapter != null) {
-            navAdapter.setSelectedPosition(index);
-        } else {
-            for (int i = 0; i < nav.getChildCount(); i++) {
-                View v = nav.getChildAt(i);
-                if (v != null) {
-                    v.setScaleX(i == index ? 1.2f : 1f);
-                    v.setScaleY(i == index ? 1.2f : 1f);
-                    v.setAlpha(i == index ? 1f : 0.6f);
-                }
+        for (int i = 0; i < nav.getChildCount(); i++) {
+            View v = nav.getChildAt(i);
+            if (v != null) {
+                v.setScaleX(i == index ? 1.2f : 1f);
+                v.setScaleY(i == index ? 1.2f : 1f);
+                v.setAlpha(i == index ? 1f : 0.6f);
             }
         }
-        if (index >= 0) nav.scrollToPosition(index);
+        nav.scrollToPosition(index);
     }
 
     private void highlightFilter(int index) {
@@ -601,23 +594,12 @@ public class MainActivity extends AppCompatActivity {
             case NAV:
                 switch (keyCode) {
                     case KeyEvent.KEYCODE_DPAD_UP:
-                        if (focusedNavIndex > 0) {
-                            focusedNavIndex--;
-                        } else {
-                            focusedNavIndex = 0; // clamp at top, keep highlight
-                        }
-                        highlightNav(focusedNavIndex);
+                        if (focusedNavIndex > 0) { focusedNavIndex--; highlightNav(focusedNavIndex); }
                         return true;
                     case KeyEvent.KEYCODE_DPAD_DOWN:
                         RecyclerView nav = getNavRecycler();
-                        int navMax = nav != null && nav.getAdapter() != null
-                            ? nav.getAdapter().getItemCount() - 1 : 8;
-                        if (focusedNavIndex < navMax) {
-                            focusedNavIndex++;
-                        } else {
-                            focusedNavIndex = navMax; // clamp at bottom, keep highlight
-                        }
-                        highlightNav(focusedNavIndex);
+                        int navMax = nav != null ? nav.getAdapter().getItemCount() - 1 : 8;
+                        if (focusedNavIndex < navMax) { focusedNavIndex++; highlightNav(focusedNavIndex); }
                         return true;
                     case KeyEvent.KEYCODE_DPAD_RIGHT:
                         mainFocusZone = MainFocusZone.CONTENT;
@@ -628,12 +610,7 @@ public class MainActivity extends AppCompatActivity {
                         RecyclerView navRv = getNavRecycler();
                         if (navRv != null) {
                             View item = navRv.getLayoutManager().findViewByPosition(focusedNavIndex);
-                            if (item != null) {
-                                item.performClick();
-                            } else {
-                                // View not yet laid out — fire callback directly
-                                if (navAdapter != null) navAdapter.simulateClick(focusedNavIndex);
-                            }
+                            if (item != null) item.performClick();
                         }
                         return true;
                 }
@@ -752,5 +729,88 @@ public class MainActivity extends AppCompatActivity {
         if (movies != null && focusedCategoryCol < movies.size()) {
             openDetail(movies.get(focusedCategoryCol));
         }
+    }
+
+    // ── Floating Virtual D-pad (debug tool) ─────────────────────────────
+    private android.widget.FrameLayout dpadContainer;
+    private float dpadDragX, dpadDragY;
+
+    private void addFloatingDpad() {
+        android.widget.FrameLayout root = findViewById(android.R.id.content);
+
+        dpadContainer = new android.widget.FrameLayout(this);
+        android.widget.FrameLayout.LayoutParams containerLp = new android.widget.FrameLayout.LayoutParams(220, 220);
+        containerLp.gravity = android.view.Gravity.BOTTOM | android.view.Gravity.END;
+        containerLp.bottomMargin = 32;
+        containerLp.rightMargin  = 32;
+        dpadContainer.setLayoutParams(containerLp);
+        dpadContainer.setAlpha(0.75f);
+
+        // D-pad buttons layout
+        android.widget.RelativeLayout dpad = new android.widget.RelativeLayout(this);
+        android.widget.FrameLayout.LayoutParams dpadLp = new android.widget.FrameLayout.LayoutParams(220, 220);
+        dpad.setLayoutParams(dpadLp);
+
+        // Button size
+        int btnSize = 60;
+        int center  = 80; // center offset
+
+        String[] labels   = { "▲", "▼", "◀", "▶", "OK", "↩" };
+        int[]    dxList   = { center, center, 0,   center*2, center, center };
+        int[]    dyList   = { 0,      center*2, center, center, center, center*3-10 };
+        int[]    keyCodes = {
+            android.view.KeyEvent.KEYCODE_DPAD_UP,
+            android.view.KeyEvent.KEYCODE_DPAD_DOWN,
+            android.view.KeyEvent.KEYCODE_DPAD_LEFT,
+            android.view.KeyEvent.KEYCODE_DPAD_RIGHT,
+            android.view.KeyEvent.KEYCODE_DPAD_CENTER,
+            android.view.KeyEvent.KEYCODE_BACK
+        };
+
+        for (int i = 0; i < labels.length; i++) {
+            android.widget.Button btn = new android.widget.Button(this);
+            btn.setText(labels[i]);
+            btn.setTextSize(14);
+            btn.setTextColor(0xFFFFFFFF);
+            btn.setPadding(0,0,0,0);
+            btn.setBackgroundColor(i == 4 ? 0xCCE50914 : 0xCC222222);
+            android.widget.RelativeLayout.LayoutParams lp =
+                new android.widget.RelativeLayout.LayoutParams(btnSize, btnSize);
+            lp.leftMargin = dxList[i];
+            lp.topMargin  = dyList[i];
+            btn.setLayoutParams(lp);
+
+            final int keyCode = keyCodes[i];
+            btn.setOnClickListener(v -> {
+                // Dispatch key event to activity
+                long now = android.os.SystemClock.uptimeMillis();
+                android.view.KeyEvent down = new android.view.KeyEvent(now, now,
+                    android.view.KeyEvent.ACTION_DOWN, keyCode, 0);
+                android.view.KeyEvent up = new android.view.KeyEvent(now, now,
+                    android.view.KeyEvent.ACTION_UP, keyCode, 0);
+                dispatchKeyEvent(down);
+                dispatchKeyEvent(up);
+            });
+            dpad.addView(btn);
+        }
+
+        dpadContainer.addView(dpad);
+
+        // Drag to reposition
+        dpadContainer.setOnTouchListener((v, e) -> {
+            switch (e.getAction()) {
+                case android.view.MotionEvent.ACTION_DOWN:
+                    dpadDragX = e.getRawX() - v.getX();
+                    dpadDragY = e.getRawY() - v.getY();
+                    break;
+                case android.view.MotionEvent.ACTION_MOVE:
+                    v.setX(e.getRawX() - dpadDragX);
+                    v.setY(e.getRawY() - dpadDragY);
+                    break;
+            }
+            return false;
+        });
+
+        root.addView(dpadContainer);
     }
 }
