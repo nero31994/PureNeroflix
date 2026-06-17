@@ -21,18 +21,25 @@ public class SplashActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
+        getWindow().getDecorView().setSystemUiVisibility(
+            android.view.View.SYSTEM_UI_FLAG_FULLSCREEN |
+            android.view.View.SYSTEM_UI_FLAG_HIDE_NAVIGATION |
+            android.view.View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY |
+            android.view.View.SYSTEM_UI_FLAG_LAYOUT_STABLE |
+            android.view.View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
         setContentView(R.layout.activity_splash);
 
-        ImageView logo = findViewById(R.id.splash_logo);
+        // Load GIF background via Glide
+        ImageView bgView = findViewById(R.id.splash_bg_view);
+        if (bgView != null) {
+            com.bumptech.glide.Glide.with(this)
+                .asGif()
+                .load(R.drawable.splash_bg)
+                .into(bgView);
+        }
+
         TextView statusText = findViewById(R.id.splash_status);
-
-        // Fade in
-        AlphaAnimation fadeIn = new AlphaAnimation(0f, 1f);
-        fadeIn.setDuration(800);
-        fadeIn.setFillAfter(true);
-        logo.startAnimation(fadeIn);
-
-        statusText.setText("Checking license...");
+        statusText.setText("Loading your entertainment...");
 
         // Check license after 1s
         new Handler(Looper.getMainLooper()).postDelayed(() ->

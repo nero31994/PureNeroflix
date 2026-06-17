@@ -2,45 +2,37 @@
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@color/bg_primary">
+    android:background="#000000">
 
+    <!-- GIF background loaded via Glide -->
     <ImageView
-        android:id="@+id/splash_logo"
-        android:layout_width="180dp"
-        android:layout_height="180dp"
-        android:layout_centerInParent="true"
-        android:src="@drawable/ic_launcher_foreground"
-        android:scaleType="fitCenter" />
+        android:id="@+id/splash_bg_view"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="centerCrop"/>
 
+    <!-- Loading bar -->
     <ProgressBar
         android:id="@+id/splash_progress"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:layout_below="@id/splash_logo"
+        style="@android:style/Widget.ProgressBar.Horizontal"
+        android:layout_width="200dp"
+        android:layout_height="4dp"
+        android:layout_above="@+id/splash_status"
         android:layout_centerHorizontal="true"
-        android:layout_marginTop="24dp"
-        android:indeterminateTint="@color/neon_red" />
+        android:layout_marginBottom="8dp"
+        android:indeterminate="true"
+        android:indeterminateTint="#E50914"/>
 
+    <!-- Status text -->
     <TextView
         android:id="@+id/splash_status"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_below="@id/splash_progress"
-        android:layout_centerHorizontal="true"
-        android:layout_marginTop="12dp"
-        android:text="Loading..."
-        android:textColor="@color/text_secondary"
-        android:textSize="12sp" />
-
-    <TextView
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
         android:layout_alignParentBottom="true"
         android:layout_centerHorizontal="true"
-        android:layout_marginBottom="24dp"
-        android:text="NeroFlix"
-        android:textColor="@color/neon_red"
-        android:textSize="14sp"
-        android:textStyle="bold" />
+        android:layout_marginBottom="48dp"
+        android:text="Loading your entertainment..."
+        android:textColor="#AAAAAA"
+        android:textSize="13sp"/>
 
 </RelativeLayout>
