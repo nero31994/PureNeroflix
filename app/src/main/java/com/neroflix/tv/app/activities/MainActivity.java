@@ -862,32 +862,32 @@ public class MainActivity extends AppCompatActivity {
     private void scrollContentFocus() {
         if (categories == null || focusedCategoryRow >= categories.size()) return;
 
-        // The outer container is a NestedScrollView — scroll that, not the RecyclerView
-        androidx.core.widget.NestedScrollView scrollView = findViewById(R.id.main_scroll_view);
+        androidx.core.widget.NestedScrollView scrollView = mainScrollView;
         if (scrollView == null) return;
 
-        // Find the row ViewHolder and scroll to its Y position
         LinearLayoutManager lm = (LinearLayoutManager) mainRecyclerView.getLayoutManager();
         if (lm == null) return;
 
-        // Force RecyclerView to layout the target row first
+        // First make sure RecyclerView has the row laid out
         lm.scrollToPosition(focusedCategoryRow);
 
         mainRecyclerView.post(() -> {
             View rowView = lm.findViewByPosition(focusedCategoryRow);
             if (rowView != null) {
-                // Get absolute Y position of row relative to NestedScrollView
-                int[] rvLocation = new int[2];
-                int[] rowLocation = new int[2];
-                mainRecyclerView.getLocationOnScreen(rvLocation);
-                rowView.getLocationOnScreen(rowLocation);
-                int currentScroll = scrollView.getScrollY();
-                int rowY = currentScroll + (rowLocation[1] - rvLocation[1])
-                         + mainRecyclerView.getTop();
-                scrollView.smoothScrollTo(0, Math.max(0, rowY - 8));
+                // Get row's top position relative to the NestedScrollView content
+                int rowTop = rowView.getTop() + mainRecyclerView.getTop();
+
+                // Netflix style: center the row vertically on screen
+                int screenHeight = scrollView.getHeight();
+                int rowHeight    = rowView.getHeight();
+                int targetScroll = rowTop - (screenHeight / 2) + (rowHeight / 2);
+
+                scrollView.smoothScrollTo(0, Math.max(0, targetScroll));
             }
-            // Apply card highlight after scroll
-            mainRecyclerView.post(() -> adapter.setFocus(focusedCategoryRow, focusedCategoryCol));
+
+            // Apply highlight after scroll
+            mainRecyclerView.post(() ->
+                adapter.setFocus(focusedCategoryRow, focusedCategoryCol));
         });
     }
 
