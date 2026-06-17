@@ -152,13 +152,17 @@ public class CategoryRowAdapter extends RecyclerView.Adapter<CategoryRowAdapter.
             int last  = lm.findLastVisibleItemPosition();
 
             if (colIndex < first) {
-                // Scroll left by one card
-                lm.scrollToPositionWithOffset(colIndex, 0);
+                // Going left — scroll by negative one card width
+                View anyCard = lm.findViewByPosition(first);
+                int cardW = anyCard != null ? anyCard.getWidth() : 0;
+                if (cardW > 0) moviesRv.scrollBy(-cardW, 0);
             } else if (colIndex > last) {
-                // Scroll right by one card only — move first visible by 1
-                lm.scrollToPositionWithOffset(first + 1, 0);
+                // Going right — scroll by positive one card width
+                View anyCard = lm.findViewByPosition(last);
+                int cardW = anyCard != null ? anyCard.getWidth() : 0;
+                if (cardW > 0) moviesRv.scrollBy(cardW, 0);
             }
-            // No else — card already visible, no scroll needed
+            // If card already visible — no scroll at all
 
             moviesRv.post(() -> applyHighlight(colIndex));
         }
