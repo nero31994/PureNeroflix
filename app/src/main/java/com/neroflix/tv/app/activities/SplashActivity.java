@@ -41,13 +41,13 @@ public class SplashActivity extends AppCompatActivity {
         TextView statusText = findViewById(R.id.splash_status);
         statusText.setText("Loading your entertainment...");
 
-        // Check license after 1s
+        // Check license after 10s splash
         new Handler(Looper.getMainLooper()).postDelayed(() ->
             LicenseManager.check(this, status ->
                 new Handler(Looper.getMainLooper()).post(() ->
                     fadeOutAndLaunch(status)
                 )
-            ), 1000);
+            ), 10000);
     }
 
     private void fadeOutAndLaunch(LicenseManager.Status status) {
