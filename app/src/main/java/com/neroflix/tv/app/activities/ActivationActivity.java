@@ -27,6 +27,22 @@ public class ActivationActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // Full screen — hide status bar and navigation bar
+        getWindow().setFlags(
+            android.view.WindowManager.LayoutParams.FLAG_FULLSCREEN,
+            android.view.WindowManager.LayoutParams.FLAG_FULLSCREEN);
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+            getWindow().getInsetsController().hide(
+                android.view.WindowInsets.Type.statusBars() |
+                android.view.WindowInsets.Type.navigationBars());
+        } else {
+            getWindow().getDecorView().setSystemUiVisibility(
+                android.view.View.SYSTEM_UI_FLAG_FULLSCREEN |
+                android.view.View.SYSTEM_UI_FLAG_HIDE_NAVIGATION |
+                android.view.View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
+        }
+
         setContentView(R.layout.activity_activation);
 
         String deviceId = Settings.Secure.getString(getContentResolver(), Settings.Secure.ANDROID_ID);
@@ -144,5 +160,62 @@ public class ActivationActivity extends AppCompatActivity {
                 });
             });
         });
+
+        setupDpadNavigation();
+    }
+
+    // D-pad focus order: code_input → submit → copy → check → message_admin
+    private int focusedIndex = 0;
+    private final int[] focusOrder = {
+        R.id.code_input,
+        R.id.submit_code_btn,
+        R.id.copy_btn,
+        R.id.check_activation_btn,
+        R.id.message_admin_btn
+    };
+
+    private void setupDpadNavigation() {
+        applyFocus(focusedIndex);
+    }
+
+    private void applyFocus(int index) {
+        for (int id : focusOrder) {
+            View v = findViewById(id);
+            if (v != null) {
+                v.setScaleX(1f); v.setScaleY(1f); v.setAlpha(0.7f);
+            }
+        }
+        View focused = findViewById(focusOrder[index]);
+        if (focused != null) {
+            focused.setScaleX(1.04f); focused.setScaleY(1.04f); focused.setAlpha(1f);
+            focused.requestFocus();
+        }
+    }
+
+    @Override
+    public boolean onKeyDown(int keyCode, android.view.KeyEvent event) {
+        switch (keyCode) {
+            case android.view.KeyEvent.KEYCODE_DPAD_DOWN:
+                if (focusedIndex < focusOrder.length - 1) {
+                    focusedIndex++;
+                    applyFocus(focusedIndex);
+                }
+                return true;
+            case android.view.KeyEvent.KEYCODE_DPAD_UP:
+                if (focusedIndex > 0) {
+                    focusedIndex--;
+                    applyFocus(focusedIndex);
+                }
+                return true;
+            case android.view.KeyEvent.KEYCODE_DPAD_CENTER:
+            case android.view.KeyEvent.KEYCODE_ENTER:
+                View v = findViewById(focusOrder[focusedIndex]);
+                if (v != null) v.performClick();
+                return true;
+            case android.view.KeyEvent.KEYCODE_BACK:
+                finish();
+                return true;
+        }
+        return super.onKeyDown(keyCode, event);
     }
 }
