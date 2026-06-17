@@ -884,48 +884,41 @@ public class MainActivity extends AppCompatActivity {
         LinearLayoutManager lm = (LinearLayoutManager) mainRecyclerView.getLayoutManager();
         if (lm == null) return;
 
-        // Try to get the row view if already laid out
         View rowView = lm.findViewByPosition(focusedCategoryRow);
 
         if (rowView != null) {
-            // Row visible — center it and highlight card
+            // Row already visible — center it exactly like network/studio does
             scrollToViewCentered(rowView);
             mainRecyclerView.post(() -> adapter.setFocus(focusedCategoryRow, focusedCategoryCol));
         } else {
-            // Row not visible — calculate its absolute Y position from top of RecyclerView
-            // Use the first visible row's position + height * row difference to estimate
+            // Row not visible — scroll NestedScrollView by one estimated row height
+            // then wait for layout and center accurately
             int firstVisible = lm.findFirstVisibleItemPosition();
-            View firstView   = lm.findViewByPosition(firstVisible);
-            if (firstView == null) {
-                // Nothing visible yet — just post and try again
-                mainRecyclerView.post(() -> scrollContentFocus());
-                return;
-            }
+            View firstView = lm.findViewByPosition(firstVisible >= 0 ? firstVisible : 0);
+            int rowHeight = firstView != null ? firstView.getHeight() : 300;
 
-            int rowHeight    = firstView.getHeight();
-            int rowsFromTop  = focusedCategoryRow - firstVisible;
-            int[] rvLoc      = new int[2];
-            int[] svLoc      = new int[2];
-            mainRecyclerView.getLocationOnScreen(rvLoc);
-            mainScrollView.getLocationOnScreen(svLoc);
+            // Scroll NestedScrollView up or down by one row height
+            int direction = focusedCategoryRow > firstVisible ? 1 : -1;
+            int current = mainScrollView.getScrollY();
+            mainScrollView.smoothScrollTo(0, Math.max(0, current + direction * rowHeight));
 
-            int firstViewTop = mainScrollView.getScrollY() + (rvLoc[1] - svLoc[1])
-                             + firstView.getTop();
-            int estimatedTop = firstViewTop + (rowsFromTop * rowHeight);
-            int screenHeight = mainScrollView.getHeight();
-            int target       = estimatedTop - (screenHeight / 2) + (rowHeight / 2);
-
-            // Smooth scroll NestedScrollView to estimated position — NO RecyclerView jump
-            mainScrollView.smoothScrollTo(0, Math.max(0, target));
-
-            // After scroll settles, apply accurate highlight
+            // After scroll settles, center on the actual row view
             mainScrollView.postDelayed(() -> {
                 View v = lm.findViewByPosition(focusedCategoryRow);
                 if (v != null) {
-                    scrollToViewCentered(v); // fine-tune position
+                    scrollToViewCentered(v);
                     adapter.setFocus(focusedCategoryRow, focusedCategoryCol);
+                } else {
+                    // Still not visible — try once more
+                    mainScrollView.postDelayed(() -> {
+                        View v2 = lm.findViewByPosition(focusedCategoryRow);
+                        if (v2 != null) {
+                            scrollToViewCentered(v2);
+                            adapter.setFocus(focusedCategoryRow, focusedCategoryCol);
+                        }
+                    }, 150);
                 }
-            }, 150);
+            }, 200);
         }
     }
 
