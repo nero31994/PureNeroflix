@@ -602,6 +602,8 @@ public class MainActivity extends AppCompatActivity {
                 v.setScaleX(1.15f); v.setScaleY(1.15f); v.setElevation(12f); v.setAlpha(1f);
             }
         });
+        // Center the entire row section on screen
+        scrollToViewCentered(rv);
     }
 
     private void clearBrowseHighlight(RecyclerView rv) {
@@ -859,36 +861,50 @@ public class MainActivity extends AppCompatActivity {
         if (adapter != null) adapter.setFocus(-1, -1);
     }
 
+    // ── Netflix-style centered scroll ─────────────────────────────────────────
+
+    private void scrollToViewCentered(View targetView) {
+        if (targetView == null || mainScrollView == null) return;
+        mainScrollView.post(() -> {
+            // Get Y position of target view relative to NestedScrollView
+            int[] scrollLoc = new int[2];
+            int[] viewLoc   = new int[2];
+            mainScrollView.getLocationOnScreen(scrollLoc);
+            targetView.getLocationOnScreen(viewLoc);
+
+            int currentScroll = mainScrollView.getScrollY();
+            int relativeTop   = currentScroll + (viewLoc[1] - scrollLoc[1]);
+            int screenHeight  = mainScrollView.getHeight();
+            int viewHeight    = targetView.getHeight();
+
+            // Center the view vertically on screen
+            int target = relativeTop - (screenHeight / 2) + (viewHeight / 2);
+            mainScrollView.smoothScrollTo(0, Math.max(0, target));
+        });
+    }
+
     private void scrollContentFocus() {
         if (categories == null || focusedCategoryRow >= categories.size()) return;
-
-        androidx.core.widget.NestedScrollView scrollView = mainScrollView;
-        if (scrollView == null) return;
 
         LinearLayoutManager lm = (LinearLayoutManager) mainRecyclerView.getLayoutManager();
         if (lm == null) return;
 
-        // First make sure RecyclerView has the row laid out
-        lm.scrollToPosition(focusedCategoryRow);
+        // Get the row view without forcing a scroll first (avoids jump bug)
+        View rowView = lm.findViewByPosition(focusedCategoryRow);
 
-        mainRecyclerView.post(() -> {
-            View rowView = lm.findViewByPosition(focusedCategoryRow);
-            if (rowView != null) {
-                // Get row's top position relative to the NestedScrollView content
-                int rowTop = rowView.getTop() + mainRecyclerView.getTop();
-
-                // Netflix style: center the row vertically on screen
-                int screenHeight = scrollView.getHeight();
-                int rowHeight    = rowView.getHeight();
-                int targetScroll = rowTop - (screenHeight / 2) + (rowHeight / 2);
-
-                scrollView.smoothScrollTo(0, Math.max(0, targetScroll));
-            }
-
-            // Apply highlight after scroll
-            mainRecyclerView.post(() ->
-                adapter.setFocus(focusedCategoryRow, focusedCategoryCol));
-        });
+        if (rowView != null) {
+            // Row already laid out — scroll NestedScrollView to center it
+            scrollToViewCentered(rowView);
+            mainRecyclerView.post(() -> adapter.setFocus(focusedCategoryRow, focusedCategoryCol));
+        } else {
+            // Row not laid out yet — scroll RecyclerView to attach it, then center
+            lm.scrollToPosition(focusedCategoryRow);
+            mainRecyclerView.post(() -> {
+                View v = lm.findViewByPosition(focusedCategoryRow);
+                scrollToViewCentered(v);
+                mainRecyclerView.post(() -> adapter.setFocus(focusedCategoryRow, focusedCategoryCol));
+            });
+        }
     }
 
     private void openFocusedMovie() {
