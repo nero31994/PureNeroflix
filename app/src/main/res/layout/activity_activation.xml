@@ -1,60 +1,88 @@
 <?xml version="1.0" encoding="utf-8"?>
-<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#000000">
+    android:orientation="horizontal"
+    android:background="#0D0D0F"
+    android:gravity="center"
+    android:padding="24dp">
 
+    <!-- LEFT PANEL: Logo + Code Input -->
     <LinearLayout
-        android:layout_width="match_parent"
+        android:layout_width="0dp"
         android:layout_height="wrap_content"
+        android:layout_weight="1"
         android:orientation="vertical"
         android:gravity="center"
-        android:padding="32dp">
+        android:background="@drawable/card_glass_dark"
+        android:padding="32dp"
+        android:layout_marginEnd="12dp">
 
-        <!-- Logo -->
+        <!-- App Icon -->
+        <ImageView
+            android:layout_width="72dp"
+            android:layout_height="72dp"
+            android:src="@drawable/ic_launcher_foreground"
+            android:background="@drawable/circle_red"
+            android:padding="8dp"
+            android:scaleType="fitCenter"
+            android:layout_marginBottom="12dp"/>
+
+        <!-- App Name -->
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="N"
-            android:textColor="#E50914"
-            android:textSize="72sp"
-            android:textStyle="bold"
-            android:layout_marginBottom="8dp"/>
-
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="NeroFlix"
+            android:text="PureNeroflix"
             android:textColor="#FFFFFF"
-            android:textSize="24sp"
+            android:textSize="22sp"
             android:textStyle="bold"
-            android:layout_marginBottom="24dp"/>
+            android:fontFamily="@font/orbitron_bold"
+            android:layout_marginBottom="6dp"/>
 
-        <!-- Status -->
+        <!-- Status text -->
         <TextView
             android:id="@+id/activation_status"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:textColor="#FFAA00"
-            android:textSize="14sp"
+            android:textSize="13sp"
             android:gravity="center"
+            android:text="Enter your access code to continue.\nOr contact admin to get activated."
             android:layout_marginBottom="24dp"/>
 
-        <!-- Code input -->
-        <EditText
-            android:id="@+id/code_input"
+        <!-- Code Input -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="52dp"
-            android:hint="Enter access code"
-            android:textColor="#FFFFFF"
-            android:textColorHint="#666666"
-            android:textSize="16sp"
-            android:gravity="center"
-            android:inputType="textCapCharacters"
+            android:orientation="horizontal"
             android:background="@drawable/input_bg"
-            android:layout_marginBottom="12dp"
-            android:padding="12dp"/>
+            android:gravity="center_vertical"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:layout_marginBottom="12dp">
 
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="🔒"
+                android:textSize="16sp"
+                android:layout_marginEnd="8dp"/>
+
+            <EditText
+                android:id="@+id/code_input"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:hint="Enter access code"
+                android:textColor="#FFFFFF"
+                android:textColorHint="#555555"
+                android:textSize="15sp"
+                android:inputType="textCapCharacters"
+                android:background="@null"
+                android:padding="0dp"/>
+        </LinearLayout>
+
+        <!-- Activate Button -->
         <Button
             android:id="@+id/submit_code_btn"
             android:layout_width="match_parent"
@@ -62,6 +90,7 @@
             android:text="ACTIVATE"
             android:textColor="#FFFFFF"
             android:textStyle="bold"
+            android:textSize="15sp"
             android:backgroundTint="#E50914"
             android:layout_marginBottom="16dp"/>
 
@@ -70,63 +99,158 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:visibility="gone"
-            android:layout_marginBottom="16dp"/>
-
-        <!-- Divider -->
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:background="#222222"
-            android:layout_marginBottom="16dp"/>
-
-        <!-- Device ID section -->
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Your Device ID:"
-            android:textColor="#AAAAAA"
-            android:textSize="12sp"
             android:layout_marginBottom="8dp"/>
 
-        <TextView
-            android:id="@+id/device_id_text"
+        <!-- OR divider -->
+        <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:textColor="#FFFFFF"
-            android:textSize="14sp"
-            android:textStyle="bold"
-            android:gravity="center"
-            android:background="@drawable/input_bg"
-            android:padding="12dp"
-            android:layout_marginBottom="12dp"/>
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="0dp">
 
-        <Button
-            android:id="@+id/copy_btn"
+            <View
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1"
+                android:background="#2A2A2A"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="  OR  "
+                android:textColor="#444444"
+                android:textSize="12sp"/>
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1"
+                android:background="#2A2A2A"/>
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- RIGHT PANEL: Device ID + Actions -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:background="@drawable/card_glass_dark"
+        android:padding="32dp"
+        android:layout_marginStart="12dp">
+
+        <!-- Device ID label -->
+        <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:text="📋 Copy Device ID"
-            android:textColor="#FFFFFF"
-            android:backgroundTint="#222222"
-            android:layout_marginBottom="12dp"/>
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="12dp">
 
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="🖥️"
+                android:textSize="16sp"
+                android:layout_marginEnd="8dp"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Your Device ID"
+                android:textColor="#CCCCCC"
+                android:textSize="14sp"
+                android:textStyle="bold"/>
+        </LinearLayout>
+
+        <!-- Device ID box with copy button -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:orientation="horizontal"
+            android:background="@drawable/input_bg"
+            android:gravity="center_vertical"
+            android:paddingStart="14dp"
+            android:paddingEnd="8dp"
+            android:layout_marginBottom="16dp">
+
+            <TextView
+                android:id="@+id/device_id_text"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textColor="#FFFFFF"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:ellipsize="end"
+                android:maxLines="1"/>
+
+            <Button
+                android:id="@+id/copy_btn"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:text="COPY"
+                android:textColor="#FFFFFF"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:backgroundTint="#2A2A2A"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"/>
+        </LinearLayout>
+
+        <!-- Check Activation -->
         <Button
             android:id="@+id/check_activation_btn"
             android:layout_width="match_parent"
             android:layout_height="52dp"
-            android:text="🔄 Check Activation"
+            android:text="🔄  CHECK ACTIVATION"
             android:textColor="#FFFFFF"
-            android:backgroundTint="#1DB954"
             android:textStyle="bold"
+            android:textSize="14sp"
+            android:backgroundTint="#1DB954"
             android:layout_marginBottom="12dp"/>
 
+        <!-- Message Admin -->
         <Button
             android:id="@+id/message_admin_btn"
             android:layout_width="match_parent"
             android:layout_height="52dp"
-            android:text="💬 Message Admin on Messenger"
+            android:text="💬  MESSAGE ADMIN ON MESSENGER"
             android:textColor="#FFFFFF"
+            android:textStyle="bold"
+            android:textSize="13sp"
             android:backgroundTint="#0084FF"
-            android:textStyle="bold"/>
+            android:layout_marginBottom="16dp"/>
+
+        <!-- Help text -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:background="@drawable/input_bg"
+            android:padding="12dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="🛡️"
+                android:textSize="14sp"
+                android:layout_marginEnd="8dp"/>
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Need help? Contact our admin on Messenger for quick activation support."
+                android:textColor="#888888"
+                android:textSize="11sp"
+                android:lineSpacingExtra="2dp"/>
+        </LinearLayout>
 
     </LinearLayout>
-</ScrollView>
+
+</LinearLayout>
