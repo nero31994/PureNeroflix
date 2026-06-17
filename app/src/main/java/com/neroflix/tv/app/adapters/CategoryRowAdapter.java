@@ -145,26 +145,9 @@ public class CategoryRowAdapter extends RecyclerView.Adapter<CategoryRowAdapter.
         }
 
         void highlightCard(int colIndex) {
-            LinearLayoutManager lm = (LinearLayoutManager) moviesRv.getLayoutManager();
-            if (lm == null) return;
-
-            int first = lm.findFirstVisibleItemPosition();
-            int last  = lm.findLastVisibleItemPosition();
-
-            if (colIndex < first) {
-                // Going left — scroll by negative one card width
-                View anyCard = lm.findViewByPosition(first);
-                int cardW = anyCard != null ? anyCard.getWidth() : 0;
-                if (cardW > 0) moviesRv.scrollBy(-cardW, 0);
-            } else if (colIndex > last) {
-                // Going right — scroll by positive one card width
-                View anyCard = lm.findViewByPosition(last);
-                int cardW = anyCard != null ? anyCard.getWidth() : 0;
-                if (cardW > 0) moviesRv.scrollBy(cardW, 0);
-            }
-            // If card already visible — no scroll at all
-
-            moviesRv.post(() -> applyHighlight(colIndex));
+            // Highlighting is now handled by MainActivity.highlightMovieCard()
+            // Adapter only clears previous highlights on non-focused rows
+            clearHighlight();
         }
 
         private void applyHighlight(int colIndex) {

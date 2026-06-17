@@ -587,7 +587,6 @@ public class MainActivity extends AppCompatActivity {
 
     private void highlightBrowseRow(RecyclerView rv, int index) {
         if (rv == null) return;
-        // Clear all
         for (int i = 0; i < rv.getChildCount(); i++) {
             View v = rv.getChildAt(i);
             if (v != null) {
@@ -602,8 +601,32 @@ public class MainActivity extends AppCompatActivity {
                 v.setScaleX(1.15f); v.setScaleY(1.15f); v.setElevation(12f); v.setAlpha(1f);
             }
         });
-        // Center the entire row section on screen
         scrollToViewCentered(rv);
+    }
+
+    // Same logic as highlightBrowseRow but for movie card rows
+    private void highlightMovieCard(RecyclerView moviesRv, int colIndex) {
+        if (moviesRv == null) return;
+        // Clear all cards
+        for (int i = 0; i < moviesRv.getChildCount(); i++) {
+            View v = moviesRv.getChildAt(i);
+            if (v != null) {
+                v.setScaleX(1f); v.setScaleY(1f); v.setElevation(2f);
+                View overlay = v.findViewById(R.id.focus_overlay);
+                if (overlay != null) overlay.setVisibility(View.GONE);
+            }
+        }
+        // Scroll to position - same as highlightBrowseRow
+        moviesRv.scrollToPosition(colIndex);
+        moviesRv.post(() -> {
+            View card = moviesRv.getLayoutManager() != null
+                ? moviesRv.getLayoutManager().findViewByPosition(colIndex) : null;
+            if (card != null) {
+                card.setScaleX(1.08f); card.setScaleY(1.08f); card.setElevation(14f);
+                View overlay = card.findViewById(R.id.focus_overlay);
+                if (overlay != null) overlay.setVisibility(View.VISIBLE);
+            }
+        });
     }
 
     private void clearBrowseHighlight(RecyclerView rv) {
@@ -887,34 +910,31 @@ public class MainActivity extends AppCompatActivity {
         View rowView = lm.findViewByPosition(focusedCategoryRow);
 
         if (rowView != null) {
-            // Row already visible — center it exactly like network/studio does
             scrollToViewCentered(rowView);
-            mainRecyclerView.post(() -> adapter.setFocus(focusedCategoryRow, focusedCategoryCol));
+            // Get the inner RecyclerView from the row and highlight directly
+            RecyclerView moviesRv = rowView.findViewById(R.id.movies_recycler_view);
+            highlightMovieCard(moviesRv, focusedCategoryCol);
         } else {
-            // Row not visible — scroll NestedScrollView by one estimated row height
-            // then wait for layout and center accurately
             int firstVisible = lm.findFirstVisibleItemPosition();
-            View firstView = lm.findViewByPosition(firstVisible >= 0 ? firstVisible : 0);
+            View firstView = lm.findViewByPosition(Math.max(0, firstVisible));
             int rowHeight = firstView != null ? firstView.getHeight() : 300;
-
-            // Scroll NestedScrollView up or down by one row height
             int direction = focusedCategoryRow > firstVisible ? 1 : -1;
             int current = mainScrollView.getScrollY();
             mainScrollView.smoothScrollTo(0, Math.max(0, current + direction * rowHeight));
 
-            // After scroll settles, center on the actual row view
             mainScrollView.postDelayed(() -> {
                 View v = lm.findViewByPosition(focusedCategoryRow);
                 if (v != null) {
                     scrollToViewCentered(v);
-                    adapter.setFocus(focusedCategoryRow, focusedCategoryCol);
+                    RecyclerView moviesRv = v.findViewById(R.id.movies_recycler_view);
+                    highlightMovieCard(moviesRv, focusedCategoryCol);
                 } else {
-                    // Still not visible — try once more
                     mainScrollView.postDelayed(() -> {
                         View v2 = lm.findViewByPosition(focusedCategoryRow);
                         if (v2 != null) {
                             scrollToViewCentered(v2);
-                            adapter.setFocus(focusedCategoryRow, focusedCategoryCol);
+                            RecyclerView rv2 = v2.findViewById(R.id.movies_recycler_view);
+                            highlightMovieCard(rv2, focusedCategoryCol);
                         }
                     }, 150);
                 }
