@@ -61,7 +61,11 @@ public class NavAdapter extends RecyclerView.Adapter<NavAdapter.ViewHolder> {
 
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
-        holder.icon.setImageResource(icons[position]);
+        if (position == 0) {
+            holder.icon.setImageResource(expanded ? com.neroflix.tv.app.R.drawable.ic_menu_collapse : com.neroflix.tv.app.R.drawable.ic_menu_toggle);
+        } else {
+            holder.icon.setImageResource(icons[position]);
+        }
 
         // Show/hide label based on expanded state
         if (holder.label != null) {

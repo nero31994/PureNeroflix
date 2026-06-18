@@ -187,11 +187,13 @@ public class MainActivity extends AppCompatActivity {
         if (navRecycler == null) return;
 
         int[] navIcons = {
+            R.drawable.ic_menu_toggle,
             R.drawable.ic_search, R.drawable.ic_movies, R.drawable.ic_tv,
             R.drawable.ic_anime,  R.drawable.ic_watchlist, R.drawable.ic_history,
             R.drawable.ic_download, R.drawable.ic_iptv, R.drawable.ic_genre
         };
         String[] navLabels = {
+            "Menu",
             "Search", "Movies", "TV Shows",
             "Anime", "Watchlist", "History",
             "Downloads", "Live TV", "Genre"
@@ -200,33 +202,44 @@ public class MainActivity extends AppCompatActivity {
         navRecycler.setLayoutManager(new LinearLayoutManager(this));
         navAdapter = new NavAdapter(this, navIcons, navLabels, pos -> {
             switch (pos) {
-                case 0: openSearch(); break;
-                case 1: switchMode("movie"); break;
-                case 2: switchMode("tv"); break;
-                case 3: switchMode("anime"); break;
-                case 4: {
+                case 0: {
+                    navAdapter.setExpanded(exp);
+                    View sb = findViewById(R.id.left_sidebar);
+                    int tw = exp ? (int)(180*getResources().getDisplayMetrics().density) : (int)(52*getResources().getDisplayMetrics().density);
+                    android.animation.ValueAnimator anim = android.animation.ValueAnimator.ofInt(sb.getWidth(), tw);
+                    anim.setDuration(250);
+                    anim.addUpdateListener(a -> { sb.getLayoutParams().width=(int)a.getAnimatedValue(); sb.requestLayout(); });
+                    anim.start();
+                    navAdapter.notifyItemChanged(0);
+                    break;
+                }
+                case 1: openSearch(); break;
+                case 2: switchMode("movie"); break;
+                case 3: switchMode("tv"); break;
+                case 4: switchMode("anime"); break;
+                case 5: {
                     Intent wi = new Intent(this, WatchlistActivity.class);
                     wi.putExtra("mode", "watchlist");
                     startActivity(wi);
                     overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
                     break;
                 }
-                case 5: {
+                case 6: {
                     Intent hi = new Intent(this, WatchlistActivity.class);
                     hi.putExtra("mode", "history");
                     startActivity(hi);
                     overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
                     break;
                 }
-                case 6:
+                case 7:
                     startActivity(new Intent(this, MyDownloadsActivity.class));
                     overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
                     break;
-                case 7:
+                case 8:
                     startActivity(new Intent(this, IPTVActivity.class));
                     overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
                     break;
-                case 8: showGenrePicker(); break;
+                case 9: showGenrePicker(); break;
             }
         });
         navRecycler.setAdapter(navAdapter);
