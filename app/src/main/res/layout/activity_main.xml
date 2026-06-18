@@ -32,7 +32,7 @@
             android:focusableInTouchMode="true"
             android:textSize="16sp"
             android:textStyle="bold"
-            android:background="#CC1A1A1A"
+            android:background="#E50914"
             android:nextFocusDown="@id/nav_recycler"
             android:nextFocusRight="@id/filter_bar"/>
 
