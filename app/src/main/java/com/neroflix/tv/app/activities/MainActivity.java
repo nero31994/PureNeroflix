@@ -203,6 +203,7 @@ public class MainActivity extends AppCompatActivity {
         navAdapter = new NavAdapter(this, navIcons, navLabels, pos -> {
             switch (pos) {
                 case 0: {
+                    final boolean exp = !navAdapter.isExpanded();
                     navAdapter.setExpanded(exp);
                     View sb = findViewById(R.id.left_sidebar);
                     int tw = exp ? (int)(180*getResources().getDisplayMetrics().density) : (int)(52*getResources().getDisplayMetrics().density);
