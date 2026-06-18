@@ -243,6 +243,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
         navRecycler.setAdapter(navAdapter);
+    }
 
     private void setupFilterBar() {
         View fp = findViewById(R.id.filter_popular);
