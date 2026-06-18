@@ -17,6 +17,19 @@
         android:background="@color/bg_secondary"
         android:elevation="4dp">
 
+        <!-- Toggle expand/collapse button -->
+        <TextView
+            android:id="@+id/nav_toggle_btn"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:text="»"
+            android:textColor="#FFFFFF"
+            android:textSize="18sp"
+            android:gravity="center"
+            android:background="?android:attr/selectableItemBackground"
+            android:focusable="true"
+            android:clickable="true"/>
+
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/nav_recycler"
             android:layout_width="match_parent"

@@ -5,6 +5,8 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.TextView;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
@@ -19,19 +21,28 @@ public class NavAdapter extends RecyclerView.Adapter<NavAdapter.ViewHolder> {
 
     private final Context context;
     private final int[] icons;
+    private final String[] labels;
     private final OnNavClickListener listener;
     private int selectedPosition = -1;
+    private boolean expanded = false;
 
-    public NavAdapter(Context context, int[] icons, OnNavClickListener listener) {
+    public NavAdapter(Context context, int[] icons, String[] labels, OnNavClickListener listener) {
         this.context = context;
         this.icons = icons;
+        this.labels = labels;
         this.listener = listener;
     }
 
+    public void setExpanded(boolean expanded) {
+        this.expanded = expanded;
+        notifyDataSetChanged();
+    }
+
+    public boolean isExpanded() { return expanded; }
+
     public void simulateClick(int position) {
-        if (position >= 0 && position < icons.length && listener != null) {
+        if (position >= 0 && position < icons.length && listener != null)
             listener.onClick(position);
-        }
     }
 
     public void setSelectedPosition(int position) {
@@ -51,14 +62,21 @@ public class NavAdapter extends RecyclerView.Adapter<NavAdapter.ViewHolder> {
     @Override
     public void onBindViewHolder(@NonNull ViewHolder holder, int position) {
         holder.icon.setImageResource(icons[position]);
-        // Click listener on itemView (root) so both touch AND D-pad performClick() fire correctly
+
+        // Show/hide label based on expanded state
+        if (holder.label != null) {
+            holder.label.setText(labels[position]);
+            holder.label.setVisibility(expanded ? View.VISIBLE : View.GONE);
+        }
+
+        boolean selected = (position == selectedPosition);
+        holder.itemView.setBackgroundColor(selected ? 0x33E50914 : 0x00000000);
+        holder.itemView.setScaleX(selected ? 1.1f : 1f);
+        holder.itemView.setScaleY(selected ? 1.1f : 1f);
+        holder.itemView.setAlpha(selected ? 1f : 0.65f);
+
         holder.itemView.setOnClickListener(v -> listener.onClick(position));
         holder.icon.setOnClickListener(v -> listener.onClick(position));
-        // Visual selected state
-        boolean selected = (position == selectedPosition);
-        holder.itemView.setScaleX(selected ? 1.2f : 1f);
-        holder.itemView.setScaleY(selected ? 1.2f : 1f);
-        holder.itemView.setAlpha(selected ? 1f : 0.6f);
     }
 
     @Override
@@ -66,9 +84,12 @@ public class NavAdapter extends RecyclerView.Adapter<NavAdapter.ViewHolder> {
 
     static class ViewHolder extends RecyclerView.ViewHolder {
         ImageView icon;
+        TextView label;
+
         ViewHolder(View v) {
             super(v);
-            icon = v.findViewById(R.id.nav_icon_img);
+            icon  = v.findViewById(R.id.nav_icon_img);
+            label = v.findViewById(R.id.nav_icon_label);
         }
     }
 }

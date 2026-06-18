@@ -185,13 +185,20 @@ public class MainActivity extends AppCompatActivity {
     private void setupNavSidebar() {
         RecyclerView navRecycler = findViewById(R.id.nav_recycler);
         if (navRecycler == null) return;
+
         int[] navIcons = {
             R.drawable.ic_search, R.drawable.ic_movies, R.drawable.ic_tv,
             R.drawable.ic_anime,  R.drawable.ic_watchlist, R.drawable.ic_history,
             R.drawable.ic_download, R.drawable.ic_iptv, R.drawable.ic_genre
         };
+        String[] navLabels = {
+            "Search", "Movies", "TV Shows",
+            "Anime", "Watchlist", "History",
+            "Downloads", "Live TV", "Genre"
+        };
+
         navRecycler.setLayoutManager(new LinearLayoutManager(this));
-        navAdapter = new NavAdapter(this, navIcons, pos -> {
+        navAdapter = new NavAdapter(this, navIcons, navLabels, pos -> {
             switch (pos) {
                 case 0: openSearch(); break;
                 case 1: switchMode("movie"); break;
@@ -223,6 +230,29 @@ public class MainActivity extends AppCompatActivity {
             }
         });
         navRecycler.setAdapter(navAdapter);
+
+        // Toggle expand/collapse
+        View sidebar = findViewById(R.id.left_sidebar);
+        TextView toggleBtn = findViewById(R.id.nav_toggle_btn);
+        if (toggleBtn != null && sidebar != null) {
+            toggleBtn.setOnClickListener(v -> {
+                boolean expanded = !navAdapter.isExpanded();
+                navAdapter.setExpanded(expanded);
+                // Animate sidebar width
+                int targetWidth = expanded
+                    ? (int)(180 * getResources().getDisplayMetrics().density)
+                    : (int)(52 * getResources().getDisplayMetrics().density);
+                android.animation.ValueAnimator anim = android.animation.ValueAnimator.ofInt(
+                    sidebar.getWidth(), targetWidth);
+                anim.setDuration(250);
+                anim.addUpdateListener(a -> {
+                    sidebar.getLayoutParams().width = (int) a.getAnimatedValue();
+                    sidebar.requestLayout();
+                });
+                anim.start();
+                toggleBtn.setText(expanded ? "«" : "»");
+            });
+        }
     }
 
     private void setupFilterBar() {
