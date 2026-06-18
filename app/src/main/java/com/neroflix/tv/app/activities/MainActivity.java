@@ -235,10 +235,9 @@ public class MainActivity extends AppCompatActivity {
         View sidebar = findViewById(R.id.left_sidebar);
         TextView toggleBtn = findViewById(R.id.nav_toggle_btn);
         if (toggleBtn != null && sidebar != null) {
-            toggleBtn.setOnClickListener(v -> {
+            View.OnClickListener toggleAction = v -> {
                 boolean expanded = !navAdapter.isExpanded();
                 navAdapter.setExpanded(expanded);
-                // Animate sidebar width
                 int targetWidth = expanded
                     ? (int)(180 * getResources().getDisplayMetrics().density)
                     : (int)(52 * getResources().getDisplayMetrics().density);
@@ -250,7 +249,17 @@ public class MainActivity extends AppCompatActivity {
                     sidebar.requestLayout();
                 });
                 anim.start();
-                toggleBtn.setText(expanded ? "«" : "»");
+                toggleBtn.setText(expanded ? "\u00AB" : "\u00BB");
+            };
+            toggleBtn.setOnClickListener(toggleAction);
+            toggleBtn.setOnKeyListener((v, kc, e) -> {
+                if (e.getAction() == android.view.KeyEvent.ACTION_DOWN &&
+                        (kc == android.view.KeyEvent.KEYCODE_DPAD_CENTER ||
+                         kc == android.view.KeyEvent.KEYCODE_ENTER)) {
+                    toggleAction.onClick(v);
+                    return true;
+                }
+                return false;
             });
         }
     }
