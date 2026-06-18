@@ -22,7 +22,7 @@
             android:id="@+id/nav_toggle_btn"
             android:layout_width="match_parent"
             android:layout_height="48dp"
-            android:text="»"
+            android:text="&gt;&gt;"
             android:textColor="#FFFFFF"
             android:textSize="20sp"
             android:gravity="center"
