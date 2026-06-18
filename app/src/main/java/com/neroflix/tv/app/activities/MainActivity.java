@@ -244,39 +244,6 @@ public class MainActivity extends AppCompatActivity {
         });
         navRecycler.setAdapter(navAdapter);
 
-        // Toggle expand/collapse
-        View sidebar = findViewById(R.id.left_sidebar);
-        android.widget.ImageView toggleBtn = findViewById(R.id.nav_toggle_btn);
-        if (toggleBtn != null && sidebar != null) {
-            View.OnClickListener toggleAction = v -> {
-                boolean expanded = !navAdapter.isExpanded();
-                navAdapter.setExpanded(expanded);
-                int targetWidth = expanded
-                    ? (int)(180 * getResources().getDisplayMetrics().density)
-                    : (int)(52 * getResources().getDisplayMetrics().density);
-                android.animation.ValueAnimator anim = android.animation.ValueAnimator.ofInt(
-                    sidebar.getWidth(), targetWidth);
-                anim.setDuration(250);
-                anim.addUpdateListener(a -> {
-                    sidebar.getLayoutParams().width = (int) a.getAnimatedValue();
-                    sidebar.requestLayout();
-                });
-                anim.start();
-                toggleBtn.setImageResource(expanded ? R.drawable.ic_menu_collapse : R.drawable.ic_menu_toggle);
-            };
-            toggleBtn.setOnClickListener(toggleAction);
-            toggleBtn.setOnKeyListener((v, kc, e) -> {
-                if (e.getAction() == android.view.KeyEvent.ACTION_DOWN &&
-                        (kc == android.view.KeyEvent.KEYCODE_DPAD_CENTER ||
-                         kc == android.view.KeyEvent.KEYCODE_ENTER)) {
-                    toggleAction.onClick(v);
-                    return true;
-                }
-                return false;
-            });
-        }
-    }
-
     private void setupFilterBar() {
         View fp = findViewById(R.id.filter_popular);
         View ft = findViewById(R.id.filter_top_rated);
