@@ -249,7 +249,7 @@ public class MainActivity extends AppCompatActivity {
                     sidebar.requestLayout();
                 });
                 anim.start();
-                toggleBtn.setText(expanded ? "\u00AB" : "\u00BB");
+                toggleBtn.setText(expanded ? "<<" : ">>"); 
             };
             toggleBtn.setOnClickListener(toggleAction);
             toggleBtn.setOnKeyListener((v, kc, e) -> {
