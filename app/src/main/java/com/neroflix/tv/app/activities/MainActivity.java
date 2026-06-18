@@ -233,7 +233,7 @@ public class MainActivity extends AppCompatActivity {
 
         // Toggle expand/collapse
         View sidebar = findViewById(R.id.left_sidebar);
-        TextView toggleBtn = findViewById(R.id.nav_toggle_btn);
+        android.widget.ImageButton toggleBtn = findViewById(R.id.nav_toggle_btn);
         if (toggleBtn != null && sidebar != null) {
             View.OnClickListener toggleAction = v -> {
                 boolean expanded = !navAdapter.isExpanded();
@@ -249,7 +249,7 @@ public class MainActivity extends AppCompatActivity {
                     sidebar.requestLayout();
                 });
                 anim.start();
-                toggleBtn.setText(expanded ? "<<" : ">>"); 
+                toggleBtn.setImageResource(expanded ? R.drawable.ic_menu_collapse : R.drawable.ic_menu_toggle);
             };
             toggleBtn.setOnClickListener(toggleAction);
             toggleBtn.setOnKeyListener((v, kc, e) -> {

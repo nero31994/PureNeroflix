@@ -18,21 +18,17 @@
         android:elevation="4dp">
 
         <!-- Toggle expand/collapse button -->
-        <TextView
+        <ImageButton
             android:id="@+id/nav_toggle_btn"
             android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:text="&gt;&gt;"
-            android:textColor="#FFFFFF"
-            
-            android:gravity="center"
-            
+            android:layout_height="52dp"
+            android:src="@drawable/ic_menu_toggle"
+            android:scaleType="center"
+            android:background="@drawable/nav_item_focus_bg"
+            android:contentDescription="Toggle sidebar"
             android:focusable="true"
             android:clickable="true"
             android:focusableInTouchMode="true"
-            android:textSize="16sp"
-            android:textStyle="bold"
-            android:background="#E50914"
             android:nextFocusDown="@id/nav_recycler"
             android:nextFocusRight="@id/filter_bar"/>
 
