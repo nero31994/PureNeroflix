@@ -233,7 +233,7 @@ public class MainActivity extends AppCompatActivity {
 
         // Toggle expand/collapse
         View sidebar = findViewById(R.id.left_sidebar);
-        android.widget.ImageButton toggleBtn = findViewById(R.id.nav_toggle_btn);
+        android.widget.ImageView toggleBtn = findViewById(R.id.nav_toggle_btn);
         if (toggleBtn != null && sidebar != null) {
             View.OnClickListener toggleAction = v -> {
                 boolean expanded = !navAdapter.isExpanded();
