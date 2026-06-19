@@ -100,6 +100,46 @@ public class IPTVActivity extends AppCompatActivity {
     // ── Lifecycle ────────────────────────────────────────────────────────────
 
 
+    private void showDpadTutorial() {
+        androidx.appcompat.app.AlertDialog.Builder builder = new androidx.appcompat.app.AlertDialog.Builder(this);
+        android.widget.LinearLayout layout = new android.widget.LinearLayout(this);
+        layout.setOrientation(android.widget.LinearLayout.VERTICAL);
+        layout.setPadding(48, 32, 48, 16);
+
+        android.widget.TextView title = new android.widget.TextView(this);
+        title.setText("D-Pad Navigation Guide");
+        title.setTextSize(18f);
+        title.setTextColor(0xFFFFFFFF);
+        title.setTypeface(null, android.graphics.Typeface.BOLD);
+        layout.addView(title);
+
+        android.widget.TextView body = new android.widget.TextView(this);
+        body.setText("\n▲ ▼  Browse channels\n◀  Open group filter\n▶  Open search\nOK  Play selected channel\nBACK  Return to player / exit\n\nPress any key to dismiss this guide.");
+        body.setTextSize(14f);
+        body.setTextColor(0xFFCCCCCC);
+        body.setLineSpacing(8f, 1f);
+        layout.addView(body);
+
+        builder.setView(layout);
+        builder.setCancelable(true);
+        final androidx.appcompat.app.AlertDialog dialog = builder.create();
+        dialog.show();
+
+        // Auto close after 10 seconds
+        new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+            if (dialog.isShowing()) dialog.dismiss();
+        }, 10000);
+
+        // Dismiss on any key press too
+        dialog.setOnKeyListener((d, keyCode, event) -> {
+            if (event.getAction() == android.view.KeyEvent.ACTION_DOWN) {
+                dialog.dismiss();
+                return true;
+            }
+            return false;
+        });
+    }
+
     private void initVirtualDpad() {
         android.widget.FrameLayout pad = new android.widget.FrameLayout(this);
         int bs = 90;
@@ -203,6 +243,7 @@ public class IPTVActivity extends AppCompatActivity {
         hideSystemUI();
         setContentView(R.layout.activity_iptv);
         initVirtualDpad();
+        showDpadTutorial();
 
         playerView         = findViewById(R.id.iptv_player);
         sidebar            = findViewById(R.id.iptv_sidebar);
