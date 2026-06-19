@@ -25,7 +25,22 @@
             android:scrollbars="none"
             android:focusable="false"/>
 
-    </LinearLayout>
+        <TextView
+        android:id="@+id/dpad_debug_label"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_margin="16dp"
+        android:background="#EE000000"
+        android:textColor="#00FF00"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        android:fontFamily="monospace"
+        android:padding="10dp"
+        android:text="Zone: NAV"
+        android:elevation="999dp"/>
+
+</LinearLayout>
 
     <!-- MAIN CONTENT -->
     <RelativeLayout
@@ -205,20 +220,6 @@
             android:layout_centerInParent="true"
             android:indeterminateTint="@color/neon_red"
             android:visibility="gone" />
-
-    <TextView
-        android:id="@+id/dpad_debug_label"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignParentBottom="true"
-        android:layout_alignParentEnd="true"
-        android:layout_margin="12dp"
-        android:background="#CC000000"
-        android:textColor="#00FF00"
-        android:textSize="11sp"
-        android:padding="8dp"
-        android:text="Zone: NAV"
-        android:elevation="20dp"/>
 
     </RelativeLayout>
 
