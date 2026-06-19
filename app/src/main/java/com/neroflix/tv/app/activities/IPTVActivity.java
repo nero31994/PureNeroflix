@@ -516,6 +516,11 @@ public class IPTVActivity extends AppCompatActivity {
                         hideSidebar();
                         focusZone = FocusZone.PLAYER;
                         return true;
+                    case KeyEvent.KEYCODE_DPAD_LEFT:
+                        focusZone = FocusZone.GROUPS;
+                        adapter.setFocused(-1);
+                        highlightGroup(focusedGroupIndex);
+                        return true;
                     case KeyEvent.KEYCODE_DPAD_RIGHT:
                         focusZone = FocusZone.SEARCH;
                         EditText search = findViewById(R.id.iptv_search);
@@ -530,6 +535,10 @@ public class IPTVActivity extends AppCompatActivity {
 
             case GROUPS:
                 switch (keyCode) {
+                    case KeyEvent.KEYCODE_DPAD_UP:
+                        hideSidebar();
+                        focusZone = FocusZone.PLAYER;
+                        return true;
                     case KeyEvent.KEYCODE_DPAD_LEFT:
                         if (focusedGroupIndex > 0) {
                             focusedGroupIndex--;
