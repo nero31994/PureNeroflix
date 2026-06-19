@@ -4,13 +4,11 @@
     android:layout_height="match_parent"
     android:background="#111111">
 
-    <!-- Dark radial glow background -->
     <View
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:background="@drawable/splash_radial_bg"/>
 
-    <!-- Center content -->
     <LinearLayout
         android:id="@+id/splash_center"
         android:layout_width="wrap_content"
@@ -19,23 +17,19 @@
         android:orientation="horizontal"
         android:gravity="center_vertical">
 
-        <!-- Nero play icon (left) -->
         <ImageView
-            android:id="@+id/splash_icon"
             android:layout_width="180dp"
             android:layout_height="180dp"
             android:src="@drawable/splash_nero_logo"
             android:scaleType="fitCenter"
             android:layout_marginEnd="48dp"/>
 
-        <!-- NeroTv text + subtitle (right) -->
         <LinearLayout
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:orientation="vertical"
             android:gravity="start">
 
-            <!-- NeroTv title -->
             <LinearLayout
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
@@ -46,41 +40,36 @@
                     android:text="Nero"
                     android:textColor="#FFFFFF"
                     android:textSize="64sp"
-                    android:textStyle="bold"
-                    android:fontFamily="sans-serif-light"/>
+                    android:textStyle="bold"/>
                 <TextView
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="Tv"
                     android:textColor="#E50914"
                     android:textSize="64sp"
-                    android:textStyle="bold"
-                    android:fontFamily="sans-serif-light"/>
+                    android:textStyle="bold"/>
             </LinearLayout>
 
-            <!-- Red divider line -->
             <View
                 android:layout_width="160dp"
-                android:layout_height="1.5dp"
+                android:layout_height="2dp"
                 android:background="#E50914"
                 android:layout_marginTop="8dp"
                 android:layout_marginBottom="16dp"/>
 
-            <!-- Subtitle -->
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:text="THE ENTERTAINMENT EXPERIENCE"
                 android:textColor="#AAAAAA"
                 android:textSize="13sp"
-                android:letterSpacing="0.2"
-                android:fontFamily="sans-serif-light"/>
+                android:letterSpacing="0.2"/>
 
         </LinearLayout>
     </LinearLayout>
 
-    <!-- Spinner + Version below center -->
     <LinearLayout
+        android:id="@+id/splash_spinner_block"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_below="@id/splash_center"
@@ -93,7 +82,6 @@
             android:id="@+id/splash_progress"
             android:layout_width="32dp"
             android:layout_height="32dp"
-            android:indeterminateDrawable="@drawable/splash_spinner"
             android:indeterminateTint="#CCCCCC"/>
 
         <TextView
@@ -106,10 +94,50 @@
 
     </LinearLayout>
 
-    <!-- Hidden for Java compat -->
     <TextView
         android:id="@+id/splash_status"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:visibility="gone"/>
 
+    <LinearLayout
+        android:id="@+id/splash_footer"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:paddingTop="12dp"
+        android:paddingBottom="20dp"
+        android:background="#1A000000">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Developed By: "
+                android:textColor="#CCCCCC"
+                android:textSize="13sp"/>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="NeroTv"
+                android:textColor="#E50914"
+                android:textSize="13sp"
+                android:textStyle="bold"/>
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Copyrighted © 2026 - All rights reserved"
+            android:textColor="#888888"
+            android:textSize="12sp"
+            android:layout_marginTop="4dp"/>
+
+    </LinearLayout>
+
+</RelativeLayout>
