@@ -95,7 +95,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         setContentView(R.layout.activity_main);
-        initDebugOverlay();
+        initVirtualDpad();
         findViewById(android.R.id.content).setFocusableInTouchMode(true);
         findViewById(android.R.id.content).requestFocus();
         setupViews();
@@ -987,6 +987,68 @@ public class MainActivity extends AppCompatActivity {
         if (movies != null && focusedCategoryCol < movies.size())
             openDetail(movies.get(focusedCategoryCol));
     }
+
+    private void initVirtualDpad() {
+        android.widget.FrameLayout pad = new android.widget.FrameLayout(this);
+        int bs = 90; // button size px
+        int gap = 8;
+
+        android.widget.Button btnUp    = makeBtn("▲");
+        android.widget.Button btnDown  = makeBtn("▼");
+        android.widget.Button btnLeft  = makeBtn("◀");
+        android.widget.Button btnRight = makeBtn("▶");
+        android.widget.Button btnOk    = makeBtn("OK");
+
+        btnUp.setOnClickListener(v    -> simulateDpad(android.view.KeyEvent.KEYCODE_DPAD_UP));
+        btnDown.setOnClickListener(v  -> simulateDpad(android.view.KeyEvent.KEYCODE_DPAD_DOWN));
+        btnLeft.setOnClickListener(v  -> simulateDpad(android.view.KeyEvent.KEYCODE_DPAD_LEFT));
+        btnRight.setOnClickListener(v -> simulateDpad(android.view.KeyEvent.KEYCODE_DPAD_RIGHT));
+        btnOk.setOnClickListener(v    -> simulateDpad(android.view.KeyEvent.KEYCODE_DPAD_CENTER));
+
+        android.widget.FrameLayout.LayoutParams up    = new android.widget.FrameLayout.LayoutParams(bs, bs); up.leftMargin = bs+gap; up.topMargin = 0;
+        android.widget.FrameLayout.LayoutParams down  = new android.widget.FrameLayout.LayoutParams(bs, bs); down.leftMargin = bs+gap; down.topMargin = (bs+gap)*2;
+        android.widget.FrameLayout.LayoutParams left  = new android.widget.FrameLayout.LayoutParams(bs, bs); left.leftMargin = 0; left.topMargin = bs+gap;
+        android.widget.FrameLayout.LayoutParams right = new android.widget.FrameLayout.LayoutParams(bs, bs); right.leftMargin = (bs+gap)*2; right.topMargin = bs+gap;
+        android.widget.FrameLayout.LayoutParams ok    = new android.widget.FrameLayout.LayoutParams(bs, bs); ok.leftMargin = bs+gap; ok.topMargin = bs+gap;
+
+        pad.addView(btnUp, up);
+        pad.addView(btnDown, down);
+        pad.addView(btnLeft, left);
+        pad.addView(btnRight, right);
+        pad.addView(btnOk, ok);
+
+        int padSize = (bs+gap)*3;
+        android.view.WindowManager.LayoutParams params = new android.view.WindowManager.LayoutParams(
+            padSize, padSize,
+            android.view.WindowManager.LayoutParams.TYPE_APPLICATION,
+            android.view.WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+            android.graphics.PixelFormat.TRANSLUCENT
+        );
+        params.gravity = android.view.Gravity.BOTTOM | android.view.Gravity.START;
+        params.x = 16; params.y = 16;
+        getWindowManager().addView(pad, params);
+        debugView = new android.widget.TextView(this);
+    }
+
+    private android.widget.Button makeBtn(String label) {
+        android.widget.Button b = new android.widget.Button(this);
+        b.setText(label);
+        b.setTextSize(16f);
+        b.setTextColor(0xFFFFFFFF);
+        b.setBackgroundColor(0xCC111111);
+        b.setPadding(0,0,0,0);
+        b.setAlpha(0.85f);
+        return b;
+    }
+
+    private void simulateDpad(int keyCode) {
+        android.view.KeyEvent down = new android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, keyCode);
+        android.view.KeyEvent up   = new android.view.KeyEvent(android.view.KeyEvent.ACTION_UP, keyCode);
+        onKeyDown(keyCode, down);
+        onKeyUp(keyCode, up);
+        updateDebug();
+    }
+
 
     private android.widget.TextView debugView;
 
