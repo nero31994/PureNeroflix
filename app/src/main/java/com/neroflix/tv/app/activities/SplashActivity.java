@@ -30,8 +30,8 @@ public class SplashActivity extends AppCompatActivity {
         setContentView(R.layout.activity_splash);
 
         // Load GIF background via Glide - check activity is alive first
-        ImageView bgView = findViewById(R.id.splash_bg_view);
-        if (bgView != null && !isDestroyed() && !isFinishing()) {
+        
+        if (false) {
             com.bumptech.glide.Glide.with(getApplicationContext())
                 .asGif()
                 .load(R.drawable.splash_bg)
