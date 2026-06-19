@@ -605,7 +605,7 @@ public class MainActivity extends AppCompatActivity {
                     v.setScaleX(1f);
                     v.setScaleY(1f);
                     if (v instanceof android.widget.TextView) {
-                        ((android.widget.TextView) v).setTextColor(0xFFFFFFFF);
+                        ((android.widget.TextView) v).setTextColor(0xFF000000);
                     }
                 } else {
                     v.setBackgroundColor(0x22FFFFFF);
