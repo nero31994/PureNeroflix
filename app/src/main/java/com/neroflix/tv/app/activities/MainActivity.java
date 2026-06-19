@@ -907,8 +907,7 @@ public class MainActivity extends AppCompatActivity {
                 break;
         }
 
-        updateDebug();
-        return super.onKeyDown(keyCode, event);
+        updateDebug(); return super.onKeyDown(keyCode, event);
     }
 
     private void clampCol() {
@@ -986,6 +985,23 @@ public class MainActivity extends AppCompatActivity {
         List<Movie> movies = categories.get(focusedCategoryRow).getMovies();
         if (movies != null && focusedCategoryCol < movies.size())
             openDetail(movies.get(focusedCategoryCol));
+    }
+
+    private void updateDebug() {
+        android.widget.TextView dbg = findViewById(R.id.dpad_debug_label);
+        if (dbg == null) return;
+        String zone = mainFocusZone != null ? mainFocusZone.name() : "?";
+        String info = "";
+        if (mainFocusZone != null) {
+            switch (mainFocusZone) {
+                case NAV:         info = "Nav[" + focusedNavIndex + "]"; break;
+                case FILTER:      info = "Filter[" + focusedFilterIndex + "]"; break;
+                case NETWORK_ROW: info = "Network[" + focusedNetworkIndex + "]"; break;
+                case STUDIO_ROW:  info = "Studio[" + focusedStudioIndex + "]"; break;
+                case CONTENT:     info = "Row[" + focusedCategoryRow + "] Col[" + focusedCategoryCol + "]"; break;
+            }
+        }
+        dbg.setText("Zone: " + zone + " | " + info);
     }
 
 }
