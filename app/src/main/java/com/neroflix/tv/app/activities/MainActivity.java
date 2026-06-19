@@ -642,7 +642,23 @@ public class MainActivity extends AppCompatActivity {
     }
 
     // Same logic as highlightBrowseRow but for movie card rows
+    private RecyclerView lastHighlightedRv = null;
+
     private void highlightMovieCard(RecyclerView moviesRv, int colIndex) {
+        // Clear previous row highlight if it's a different RecyclerView
+        if (lastHighlightedRv != null && lastHighlightedRv != moviesRv) {
+            for (int i = 0; i < lastHighlightedRv.getChildCount(); i++) {
+                View v = lastHighlightedRv.getChildAt(i);
+                if (v != null) {
+                    v.setScaleX(1f); v.setScaleY(1f); v.setElevation(2f);
+                    v.setBackgroundColor(0x00000000);
+                    View ov = v.findViewById(R.id.focus_overlay);
+                    if (ov != null) ov.setVisibility(View.GONE);
+                }
+            }
+        }
+        lastHighlightedRv = moviesRv;
+
         if (moviesRv == null) return;
         // Clear all cards
         for (int i = 0; i < moviesRv.getChildCount(); i++) {
