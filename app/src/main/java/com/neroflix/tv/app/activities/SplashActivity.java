@@ -29,14 +29,6 @@ public class SplashActivity extends AppCompatActivity {
             android.view.View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN);
         setContentView(R.layout.activity_splash);
 
-        // Load GIF background via Glide - check activity is alive first
-        
-        if (false) {
-            com.bumptech.glide.Glide.with(getApplicationContext())
-                .asGif()
-                .load(R.drawable.splash_bg)
-                .into(bgView);
-        }
 
         TextView statusText = findViewById(R.id.splash_status);
         statusText.setText("Loading your entertainment...");
