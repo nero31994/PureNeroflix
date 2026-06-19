@@ -95,6 +95,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         setContentView(R.layout.activity_main);
+        initDebugOverlay();
         findViewById(android.R.id.content).setFocusableInTouchMode(true);
         findViewById(android.R.id.content).requestFocus();
         setupViews();
@@ -987,8 +988,36 @@ public class MainActivity extends AppCompatActivity {
             openDetail(movies.get(focusedCategoryCol));
     }
 
+    private android.widget.TextView debugView;
+
+    private void initDebugOverlay() {
+        debugView = new android.widget.TextView(this);
+        debugView.setBackgroundColor(0xEE000000);
+        debugView.setTextColor(0xFF00FF00);
+        debugView.setTextSize(14f);
+        debugView.setPadding(16, 10, 16, 10);
+        debugView.setText("Zone: INIT");
+        android.view.WindowManager.LayoutParams params = new android.view.WindowManager.LayoutParams(
+            android.view.WindowManager.LayoutParams.WRAP_CONTENT,
+            android.view.WindowManager.LayoutParams.WRAP_CONTENT,
+            android.view.WindowManager.LayoutParams.TYPE_APPLICATION,
+            android.view.WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+            android.graphics.PixelFormat.TRANSLUCENT
+        );
+        params.gravity = android.view.Gravity.BOTTOM | android.view.Gravity.END;
+        params.x = 16;
+        params.y = 16;
+        getWindowManager().addView(debugView, params);
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (debugView != null) try { getWindowManager().removeView(debugView); } catch (Exception e) {}
+    }
+
     private void updateDebug() {
-        android.widget.TextView dbg = findViewById(R.id.dpad_debug_label);
+        android.widget.TextView dbg = debugView;
         if (dbg == null) return;
         String zone = mainFocusZone != null ? mainFocusZone.name() : "?";
         String info = "";
