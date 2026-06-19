@@ -60,11 +60,11 @@
 
             <!-- Red divider line -->
             <View
-                android:layout_width="200dp"
-                android:layout_height="2dp"
+                android:layout_width="160dp"
+                android:layout_height="1.5dp"
                 android:background="#E50914"
-                android:layout_marginTop="4dp"
-                android:layout_marginBottom="12dp"/>
+                android:layout_marginTop="8dp"
+                android:layout_marginBottom="16dp"/>
 
             <!-- Subtitle -->
             <TextView
@@ -83,16 +83,17 @@
     <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_below="@id/splash_center"
+        android:layout_above="@id/splash_footer"
         android:layout_centerHorizontal="true"
-        android:layout_marginTop="48dp"
+        android:layout_marginBottom="32dp"
         android:orientation="vertical"
         android:gravity="center">
 
         <ProgressBar
             android:id="@+id/splash_progress"
-            android:layout_width="36dp"
-            android:layout_height="36dp"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:indeterminateDrawable="@drawable/splash_spinner"
             android:indeterminateTint="#CCCCCC"/>
 
         <TextView
