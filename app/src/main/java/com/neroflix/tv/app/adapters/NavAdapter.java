@@ -74,10 +74,15 @@ public class NavAdapter extends RecyclerView.Adapter<NavAdapter.ViewHolder> {
         }
 
         boolean selected = (position == selectedPosition);
-        holder.itemView.setBackgroundColor(selected ? 0x33E50914 : 0x00000000);
-        holder.itemView.setScaleX(selected ? 1.1f : 1f);
-        holder.itemView.setScaleY(selected ? 1.1f : 1f);
-        holder.itemView.setAlpha(selected ? 1f : 0.65f);
+        holder.itemView.setBackgroundColor(selected ? 0xFFE50914 : 0x00000000);
+        holder.itemView.setScaleX(1f);
+        holder.itemView.setScaleY(1f);
+        holder.itemView.setAlpha(selected ? 1f : 0.75f);
+        if (holder.label != null) {
+            holder.label.setTextColor(selected ? 0xFFFFFFFF : 0xAAFFFFFF);
+            holder.label.setTextSize(selected ? 15f : 13f);
+        }
+        holder.icon.setAlpha(selected ? 1f : 0.75f);
 
         holder.itemView.setOnClickListener(v -> listener.onClick(position));
         holder.icon.setOnClickListener(v -> listener.onClick(position));
