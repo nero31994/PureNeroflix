@@ -622,7 +622,14 @@ public class IPTVActivity extends AppCompatActivity {
                     case KeyEvent.KEYCODE_DPAD_RIGHT:
                         focusZone = FocusZone.SEARCH;
                         EditText search = findViewById(R.id.iptv_search);
-                        if (search != null) search.requestFocus();
+                        if (search != null) {
+                            search.requestFocus();
+                            search.post(() -> {
+                                android.view.inputmethod.InputMethodManager imm =
+                                    (android.view.inputmethod.InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
+                                if (imm != null) imm.showSoftInput(search, android.view.inputmethod.InputMethodManager.SHOW_FORCED);
+                            });
+                        }
                         return true;
                     case KeyEvent.KEYCODE_BACK:
                         hideSidebar();
