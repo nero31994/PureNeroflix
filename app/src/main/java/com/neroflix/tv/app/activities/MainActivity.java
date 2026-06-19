@@ -600,7 +600,7 @@ public class MainActivity extends AppCompatActivity {
             View v = findViewById(ids[i]);
             if (v != null) {
                 if (i == index) {
-                    v.setBackgroundColor(0xFFE50914);
+                    v.setBackground(null);
                     v.setAlpha(1f);
                     v.setScaleX(1f);
                     v.setScaleY(1f);
@@ -626,7 +626,7 @@ public class MainActivity extends AppCompatActivity {
             View v = rv.getChildAt(i);
             if (v != null) {
                 v.setScaleX(1f); v.setScaleY(1f); v.setElevation(2f); v.setAlpha(0.6f);
-                v.setBackgroundColor(0x00000000);
+                v.setBackground(null);
             }
         }
         rv.scrollToPosition(index);
@@ -635,7 +635,7 @@ public class MainActivity extends AppCompatActivity {
                 ? rv.getLayoutManager().findViewByPosition(index) : null;
             if (v != null) {
                 v.setScaleX(1.1f); v.setScaleY(1.1f); v.setElevation(12f); v.setAlpha(1f);
-                v.setBackgroundColor(0xFFE50914);
+                v.setBackground(null);
             }
         });
         scrollToViewCentered(rv);
@@ -649,7 +649,7 @@ public class MainActivity extends AppCompatActivity {
             View v = moviesRv.getChildAt(i);
             if (v != null) {
                 v.setScaleX(1f); v.setScaleY(1f); v.setElevation(2f);
-                v.setBackgroundColor(0x00000000);
+                v.setBackground(null);
                 View overlay = v.findViewById(R.id.focus_overlay);
                 if (overlay != null) overlay.setVisibility(View.GONE);
             }
