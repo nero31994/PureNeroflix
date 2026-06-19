@@ -907,6 +907,7 @@ public class MainActivity extends AppCompatActivity {
                 break;
         }
 
+        updateDebug();
         return super.onKeyDown(keyCode, event);
     }
 
