@@ -40,6 +40,8 @@ public class SplashActivity extends AppCompatActivity {
 
         TextView statusText = findViewById(R.id.splash_status);
         statusText.setText("Loading your entertainment...");
+        TextView versionView = findViewById(R.id.splash_version);
+        if (versionView != null) { try { String v = getPackageManager().getPackageInfo(getPackageName(), 0).versionName; versionView.setText("Version " + v); } catch (Exception e) { versionView.setText("Version 1.4.1"); } }
 
         // Check license after 10s splash
         new Handler(Looper.getMainLooper()).postDelayed(() ->

@@ -2,26 +2,161 @@
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#000000">
+    android:background="#111111">
 
-    <!-- GIF background loaded via Glide - fullscreen, no overlays -->
-    <ImageView
-        android:id="@+id/splash_bg_view"
+    <!-- Dark radial glow background -->
+    <View
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:scaleType="centerCrop"/>
+        android:background="@drawable/splash_radial_bg"/>
 
-    <!-- Hidden views kept for Java compatibility -->
-    <ProgressBar
-        android:id="@+id/splash_progress"
+    <!-- Center content -->
+    <LinearLayout
+        android:id="@+id/splash_center"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:visibility="gone"/>
+        android:layout_centerInParent="true"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
 
+        <!-- Nero play icon (left) -->
+        <ImageView
+            android:id="@+id/splash_icon"
+            android:layout_width="180dp"
+            android:layout_height="180dp"
+            android:src="@drawable/splash_nero_icon"
+            android:scaleType="fitCenter"
+            android:layout_marginEnd="48dp"/>
+
+        <!-- NeroTv text + subtitle (right) -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="start">
+
+            <!-- NeroTv title -->
+            <LinearLayout
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal">
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Nero"
+                    android:textColor="#FFFFFF"
+                    android:textSize="64sp"
+                    android:textStyle="bold"
+                    android:fontFamily="sans-serif-light"/>
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Tv"
+                    android:textColor="#E50914"
+                    android:textSize="64sp"
+                    android:textStyle="bold"
+                    android:fontFamily="sans-serif-light"/>
+            </LinearLayout>
+
+            <!-- Red divider line -->
+            <View
+                android:layout_width="200dp"
+                android:layout_height="2dp"
+                android:background="#E50914"
+                android:layout_marginTop="4dp"
+                android:layout_marginBottom="12dp"/>
+
+            <!-- Subtitle -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="THE ENTERTAINMENT EXPERIENCE"
+                android:textColor="#AAAAAA"
+                android:textSize="13sp"
+                android:letterSpacing="0.2"
+                android:fontFamily="sans-serif-light"/>
+
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Spinner + Version below center -->
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@id/splash_center"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="48dp"
+        android:orientation="vertical"
+        android:gravity="center">
+
+        <ProgressBar
+            android:id="@+id/splash_progress"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:indeterminateTint="#CCCCCC"/>
+
+        <TextView
+            android:id="@+id/splash_version"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:textColor="#CCCCCC"
+            android:textSize="14sp"/>
+
+    </LinearLayout>
+
+    <!-- Hidden for Java compat -->
     <TextView
         android:id="@+id/splash_status"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:visibility="gone"/>
+
+    <!-- Red bottom line -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="3dp"
+        android:layout_above="@id/splash_footer"
+        android:background="#E50914"/>
+
+    <!-- Footer -->
+    <LinearLayout
+        android:id="@+id/splash_footer"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:layout_centerHorizontal="true"
+        android:layout_marginBottom="24dp"
+        android:orientation="vertical"
+        android:gravity="center">
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal">
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Developed By: "
+                android:textColor="#CCCCCC"
+                android:textSize="13sp"/>
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="NeroTv"
+                android:textColor="#E50914"
+                android:textSize="13sp"
+                android:textStyle="bold"/>
+        </LinearLayout>
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Copyrighted © 2026 - All rights reserved"
+            android:textColor="#888888"
+            android:textSize="12sp"
+            android:layout_marginTop="4dp"/>
+
+    </LinearLayout>
 
 </RelativeLayout>
