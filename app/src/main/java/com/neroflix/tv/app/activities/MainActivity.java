@@ -598,9 +598,23 @@ public class MainActivity extends AppCompatActivity {
         for (int i = 0; i < ids.length; i++) {
             View v = findViewById(ids[i]);
             if (v != null) {
-                v.setScaleX(i == index ? 1.15f : 1f);
-                v.setScaleY(i == index ? 1.15f : 1f);
-                v.setAlpha(i == index ? 1f : 0.55f);
+                if (i == index) {
+                    v.setBackgroundColor(0xFFE50914);
+                    v.setAlpha(1f);
+                    v.setScaleX(1f);
+                    v.setScaleY(1f);
+                    if (v instanceof android.widget.TextView) {
+                        ((android.widget.TextView) v).setTextColor(0xFFFFFFFF);
+                    }
+                } else {
+                    v.setBackgroundColor(0x22FFFFFF);
+                    v.setAlpha(0.7f);
+                    v.setScaleX(1f);
+                    v.setScaleY(1f);
+                    if (v instanceof android.widget.TextView) {
+                        ((android.widget.TextView) v).setTextColor(0xAAFFFFFF);
+                    }
+                }
             }
         }
     }
@@ -610,7 +624,8 @@ public class MainActivity extends AppCompatActivity {
         for (int i = 0; i < rv.getChildCount(); i++) {
             View v = rv.getChildAt(i);
             if (v != null) {
-                v.setScaleX(1f); v.setScaleY(1f); v.setElevation(2f); v.setAlpha(0.7f);
+                v.setScaleX(1f); v.setScaleY(1f); v.setElevation(2f); v.setAlpha(0.6f);
+                v.setBackgroundColor(0x00000000);
             }
         }
         rv.scrollToPosition(index);
@@ -618,7 +633,8 @@ public class MainActivity extends AppCompatActivity {
             View v = rv.getLayoutManager() != null
                 ? rv.getLayoutManager().findViewByPosition(index) : null;
             if (v != null) {
-                v.setScaleX(1.15f); v.setScaleY(1.15f); v.setElevation(12f); v.setAlpha(1f);
+                v.setScaleX(1.1f); v.setScaleY(1.1f); v.setElevation(12f); v.setAlpha(1f);
+                v.setBackgroundColor(0xFFE50914);
             }
         });
         scrollToViewCentered(rv);
@@ -632,6 +648,7 @@ public class MainActivity extends AppCompatActivity {
             View v = moviesRv.getChildAt(i);
             if (v != null) {
                 v.setScaleX(1f); v.setScaleY(1f); v.setElevation(2f);
+                v.setBackgroundColor(0x00000000);
                 View overlay = v.findViewById(R.id.focus_overlay);
                 if (overlay != null) overlay.setVisibility(View.GONE);
             }
@@ -643,6 +660,7 @@ public class MainActivity extends AppCompatActivity {
                 ? moviesRv.getLayoutManager().findViewByPosition(colIndex) : null;
             if (card != null) {
                 card.setScaleX(1.08f); card.setScaleY(1.08f); card.setElevation(14f);
+                card.setBackgroundColor(0xFFE50914);
                 View overlay = card.findViewById(R.id.focus_overlay);
                 if (overlay != null) overlay.setVisibility(View.VISIBLE);
             }
