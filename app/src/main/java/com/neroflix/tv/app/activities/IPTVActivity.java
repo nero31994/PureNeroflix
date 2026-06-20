@@ -12,7 +12,6 @@ import android.view.View;
 import android.view.WindowManager;
 import android.widget.EditText;
 import android.widget.LinearLayout;
-import android.widget.HorizontalScrollView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -73,7 +72,9 @@ public class IPTVActivity extends AppCompatActivity {
     // ── Views ────────────────────────────────────────────────────────────────
     private ExoPlayer player;
     private PlayerView playerView;
-    private LinearLayout sidebar, topBar, groupTabsContainer;
+    private LinearLayout sidebar, topBar;
+    private androidx.recyclerview.widget.RecyclerView groupListView;
+    private com.neroflix.tv.app.adapters.IPTVGroupAdapter groupAdapter;
     private ProgressBar loadingBar;
     private TextView currentChannelText, timeText;
     private RecyclerView recyclerView;
@@ -160,7 +161,7 @@ public class IPTVActivity extends AppCompatActivity {
         currentChannelText = findViewById(R.id.iptv_current_channel);
         timeText           = findViewById(R.id.iptv_time);
         recyclerView       = findViewById(R.id.iptv_recycler);
-        groupTabsContainer = findViewById(R.id.iptv_group_tabs);
+        groupListView = findViewById(R.id.iptv_group_list);
 
         sidebar.setVisibility(View.GONE);
         topBar.setVisibility(View.GONE);
@@ -433,54 +434,26 @@ public class IPTVActivity extends AppCompatActivity {
     // ── Group tabs ───────────────────────────────────────────────────────────
 
     private void buildGroupTabs() {
-        groupTabsContainer.removeAllViews();
         LinkedHashSet<String> groups = new LinkedHashSet<>();
         for (M3UParser.Channel ch : channels) groups.add(ch.group);
-        addGroupTab("All", null);
-        for (String g : groups) addGroupTab(g, g);
-    }
 
-    private void addGroupTab(String label, String groupKey) {
-        TextView tab = new TextView(this);
-        tab.setText(label);
-        tab.setTextSize(11f);
-        tab.setSingleLine(true);
-        tab.setPadding(dp(14), dp(6), dp(14), dp(6));
-        tab.setFocusable(true);
-        tab.setFocusableInTouchMode(false);
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT);
-        lp.setMarginEnd(dp(6));
-        tab.setLayoutParams(lp);
-        boolean isActive = (groupKey == null && activeGroup == null)
-                        || (groupKey != null && groupKey.equals(activeGroup));
-        styleTab(tab, isActive);
-        tab.setOnClickListener(v -> {
-            activeGroup = groupKey;
-            if (adapter != null) adapter.filterByGroup(groupKey);
-            for (int i = 0; i < groupTabsContainer.getChildCount(); i++) {
-                View child = groupTabsContainer.getChildAt(i);
-                if (child instanceof TextView) {
-                    String childKey = (String) child.getTag();
-                    styleTab((TextView) child,
-                        (childKey == null && groupKey == null)
-                        || (childKey != null && childKey.equals(groupKey)));
-                }
-            }
-        });
-        tab.setTag(groupKey);
-        groupTabsContainer.addView(tab);
-    }
-
-    private void styleTab(TextView tab, boolean active) {
-        if (active) {
-            tab.setTextColor(0xFF000000);
-            tab.setBackgroundResource(R.drawable.filter_chip_active);
-        } else {
-            tab.setTextColor(0xFFB0B0C8);
-            tab.setBackgroundResource(R.drawable.filter_chip_inactive);
+        List<com.neroflix.tv.app.adapters.IPTVGroupAdapter.Group> groupList = new ArrayList<>();
+        groupList.add(new com.neroflix.tv.app.adapters.IPTVGroupAdapter.Group("All", null));
+        for (String g : groups) {
+            groupList.add(new com.neroflix.tv.app.adapters.IPTVGroupAdapter.Group(g, g));
         }
+
+        if (groupAdapter == null) {
+            groupAdapter = new com.neroflix.tv.app.adapters.IPTVGroupAdapter(this, (position, groupKey) -> {
+                activeGroup = groupKey;
+                if (adapter != null) adapter.filterByGroup(groupKey);
+                groupAdapter.setSelected(position);
+            });
+            groupListView.setLayoutManager(new LinearLayoutManager(this));
+            groupListView.setAdapter(groupAdapter);
+        }
+        groupAdapter.setGroups(groupList);
+        groupAdapter.setSelected(0);
     }
 
     private int dp(int dp) {
@@ -491,9 +464,13 @@ public class IPTVActivity extends AppCompatActivity {
 
     private void setupRecycler() {
         adapter = new IPTVChannelAdapter(this, channels, this::playChannel);
-        recyclerView.setLayoutManager(new LinearLayoutManager(this));
+        androidx.recyclerview.widget.GridLayoutManager glm =
+            new androidx.recyclerview.widget.GridLayoutManager(this, GRID_COLUMNS);
+        recyclerView.setLayoutManager(glm);
         recyclerView.setAdapter(adapter);
     }
+
+    private static final int GRID_COLUMNS = 2;
 
     // ── Playback ─────────────────────────────────────────────────────────────
 
@@ -631,24 +608,18 @@ public class IPTVActivity extends AppCompatActivity {
             case CHANNELS:
                 switch (keyCode) {
                     case KeyEvent.KEYCODE_DPAD_UP:
-                        if (focusedChannelIndex > 0) {
-                            focusedChannelIndex--;
+                        if (focusedChannelIndex - GRID_COLUMNS >= 0) {
+                            focusedChannelIndex -= GRID_COLUMNS;
                             highlightChannel(focusedChannelIndex);
-                        } else {
-                            // Top of list — move to group tabs
-                            focusZone = FocusZone.GROUPS;
-                            adapter.setFocused(-1); // clear channel highlight
-                            highlightGroup(focusedGroupIndex);
                         }
                         return true;
                     case KeyEvent.KEYCODE_DPAD_DOWN:
                         if (adapter != null) {
                             int max = adapter.getItemCount() - 1;
-                            if (focusedChannelIndex < max) {
-                                focusedChannelIndex++;
+                            if (focusedChannelIndex + GRID_COLUMNS <= max) {
+                                focusedChannelIndex += GRID_COLUMNS;
+                                highlightChannel(focusedChannelIndex);
                             }
-                            // clamp at bottom — keep highlight visible
-                            highlightChannel(focusedChannelIndex);
                         }
                         return true;
                     case KeyEvent.KEYCODE_DPAD_CENTER:
@@ -661,20 +632,35 @@ public class IPTVActivity extends AppCompatActivity {
                         focusZone = FocusZone.PLAYER;
                         return true;
                     case KeyEvent.KEYCODE_DPAD_LEFT:
-                        focusZone = FocusZone.GROUPS;
-                        adapter.setFocused(-1);
-                        highlightGroup(focusedGroupIndex);
+                        if (focusedChannelIndex % GRID_COLUMNS == 0) {
+                            // Leftmost column — jump into permanent group list
+                            focusZone = FocusZone.GROUPS;
+                            adapter.setFocused(-1);
+                            highlightGroup(focusedGroupIndex);
+                        } else {
+                            focusedChannelIndex--;
+                            highlightChannel(focusedChannelIndex);
+                        }
                         return true;
                     case KeyEvent.KEYCODE_DPAD_RIGHT:
-                        focusZone = FocusZone.SEARCH;
-                        EditText search = findViewById(R.id.iptv_search);
-                        if (search != null) {
-                            search.requestFocus();
-                            search.post(() -> {
-                                android.view.inputmethod.InputMethodManager imm =
-                                    (android.view.inputmethod.InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
-                                if (imm != null) imm.showSoftInput(search, android.view.inputmethod.InputMethodManager.SHOW_FORCED);
-                            });
+                        if (adapter != null) {
+                            int max = adapter.getItemCount() - 1;
+                            boolean rightEdge = (focusedChannelIndex % GRID_COLUMNS == GRID_COLUMNS - 1);
+                            if (!rightEdge && focusedChannelIndex < max) {
+                                focusedChannelIndex++;
+                                highlightChannel(focusedChannelIndex);
+                            } else {
+                                focusZone = FocusZone.SEARCH;
+                                EditText search = findViewById(R.id.iptv_search);
+                                if (search != null) {
+                                    search.requestFocus();
+                                    search.post(() -> {
+                                        android.view.inputmethod.InputMethodManager imm =
+                                            (android.view.inputmethod.InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
+                                        if (imm != null) imm.showSoftInput(search, android.view.inputmethod.InputMethodManager.SHOW_FORCED);
+                                    });
+                                }
+                            }
                         }
                         return true;
                     case KeyEvent.KEYCODE_BACK:
@@ -687,34 +673,35 @@ public class IPTVActivity extends AppCompatActivity {
             case GROUPS:
                 switch (keyCode) {
                     case KeyEvent.KEYCODE_DPAD_UP:
-                        hideSidebar();
-                        focusZone = FocusZone.PLAYER;
-                        return true;
-                    case KeyEvent.KEYCODE_DPAD_LEFT:
                         if (focusedGroupIndex > 0) {
                             focusedGroupIndex--;
                             highlightGroup(focusedGroupIndex);
+                        } else {
+                            hideSidebar();
+                            focusZone = FocusZone.PLAYER;
                         }
                         return true;
-                    case KeyEvent.KEYCODE_DPAD_RIGHT:
-                        int maxG = groupTabsContainer.getChildCount() - 1;
-                        if (focusedGroupIndex < maxG) {
+                    case KeyEvent.KEYCODE_DPAD_DOWN:
+                        if (groupAdapter != null && focusedGroupIndex < groupAdapter.getCount() - 1) {
                             focusedGroupIndex++;
                             highlightGroup(focusedGroupIndex);
                         }
                         return true;
-                    case KeyEvent.KEYCODE_DPAD_DOWN:
-                        // Move back to channels — restore channel highlight
+                    case KeyEvent.KEYCODE_DPAD_RIGHT:
+                        // Move back into channel grid — restore channel highlight
                         focusZone = FocusZone.CHANNELS;
-                        highlightGroup(-1); // clear group highlight
-                        // Reset to top of filtered list
+                        highlightGroup(-1);
                         focusedChannelIndex = 0;
                         highlightChannel(focusedChannelIndex);
                         return true;
                     case KeyEvent.KEYCODE_DPAD_CENTER:
                     case KeyEvent.KEYCODE_ENTER:
-                        View tab = groupTabsContainer.getChildAt(focusedGroupIndex);
-                        if (tab != null) tab.performClick();
+                        if (groupAdapter != null) {
+                            String key = groupAdapter.getKeyAt(focusedGroupIndex);
+                            activeGroup = key;
+                            if (adapter != null) adapter.filterByGroup(key);
+                            groupAdapter.setSelected(focusedGroupIndex);
+                        }
                         focusZone = FocusZone.CHANNELS;
                         focusedChannelIndex = 0;
                         highlightGroup(-1);
@@ -757,20 +744,10 @@ public class IPTVActivity extends AppCompatActivity {
     }
 
     private void highlightGroup(int index) {
-        for (int i = 0; i < groupTabsContainer.getChildCount(); i++) {
-            View v = groupTabsContainer.getChildAt(i);
-            if (v != null) {
-                boolean active = (i == index);
-                v.setScaleX(active ? 1.1f : 1f);
-                v.setScaleY(active ? 1.1f : 1f);
-                v.setAlpha(active ? 1f : 0.55f);
-            }
-        }
-        if (index >= 0) {
-            HorizontalScrollView hsv = findViewById(R.id.iptv_group_scroll);
-            if (hsv != null) {
-                View tab = groupTabsContainer.getChildAt(index);
-                if (tab != null) hsv.post(() -> hsv.smoothScrollTo(tab.getLeft(), 0));
+        if (groupAdapter != null) {
+            groupAdapter.setFocused(index);
+            if (index >= 0 && groupListView != null) {
+                groupListView.scrollToPosition(index);
             }
         }
     }
