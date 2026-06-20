@@ -367,6 +367,19 @@ public class IPTVActivity extends AppCompatActivity {
         }
     }
 
+
+    private void loadEpgInBackground(String playlistText) {
+        String epgUrl = com.neroflix.tv.app.iptv.M3UParser.extractEpgUrl(playlistText);
+        if (epgUrl.isEmpty()) return;
+        com.neroflix.tv.app.iptv.EpgManager.loadIfNeeded(this, epgUrl, success -> {
+            if (success) {
+                runOnUiThread(() -> {
+                    if (adapter != null) adapter.notifyDataSetChanged();
+                });
+            }
+        });
+    }
+
     private void loadChannels(String url) {
         loadingBar.setVisibility(View.VISIBLE);
 
@@ -378,6 +391,7 @@ public class IPTVActivity extends AppCompatActivity {
             buildGroupTabs();
             setupRecycler();
             if (!channels.isEmpty()) playChannel(0);
+            loadEpgInBackground(cached);
             return;
         }
 
@@ -403,6 +417,7 @@ public class IPTVActivity extends AppCompatActivity {
                     buildGroupTabs();
                     setupRecycler();
                     if (!channels.isEmpty()) playChannel(0);
+                    loadEpgInBackground(playlistText);
                 });
             } catch (Exception e) {
                 new Handler(Looper.getMainLooper()).post(() -> {

@@ -16,13 +16,32 @@ public class M3UParser {
         public String clearKeyId = "";
         public String clearKeyValue = "";
         public String licenseUrl = "";
-        public String referrer = "";   // NEW: per-channel Referer header
+        public String referrer = "";
+        public String tvgId = "";
+        public int channelNumber = 0;
         public boolean isDash = false;
         public boolean isHls = false;
     }
 
+    public static String extractEpgUrl(String m3uContent) {
+        try {
+            BufferedReader reader = new BufferedReader(new StringReader(m3uContent));
+            String line = reader.readLine();
+            if (line != null && line.startsWith("#EXTM3U")) {
+                String url = extractAttr(line, "url-tvg");
+                if (url.isEmpty()) url = extractAttr(line, "x-tvg-url");
+                if (!url.isEmpty()) {
+                    int comma = url.indexOf(',');
+                    return comma > 0 ? url.substring(0, comma).trim() : url.trim();
+                }
+            }
+        } catch (Exception ignored) {}
+        return "";
+    }
+
     public static List<Channel> parse(String m3uContent) {
         List<Channel> channels = new ArrayList<>();
+        int autoNumber = 1;
         try {
             BufferedReader reader = new BufferedReader(new StringReader(m3uContent));
             String line;
@@ -39,8 +58,18 @@ public class M3UParser {
                         current.name = line.substring(commaIdx + 1).trim();
                     }
                     current.logo = extractAttr(line, "tvg-logo");
+                    current.tvgId = extractAttr(line, "tvg-id");
                     String group = extractAttr(line, "group-title");
                     if (!group.isEmpty()) current.group = group;
+
+                    String chno = extractAttr(line, "tvg-chno");
+                    if (chno.isEmpty()) chno = extractAttr(line, "channel-number");
+                    if (!chno.isEmpty()) {
+                        try { current.channelNumber = Integer.parseInt(chno.trim()); }
+                        catch (NumberFormatException ignored) { current.channelNumber = autoNumber; }
+                    } else {
+                        current.channelNumber = autoNumber;
+                    }
 
                 } else if (line.startsWith("#KODIPROP:") && current != null) {
                     String prop = line.substring("#KODIPROP:".length()).trim();
@@ -57,11 +86,7 @@ public class M3UParser {
                     } else if (prop.startsWith("inputstream.adaptive.license_key=")) {
                         String key = prop.substring("inputstream.adaptive.license_key=".length()).trim();
 
-                        // BUG FIX: clearkey license_key arrives AFTER license_type line,
-                        // but the order in the M3U might vary. Parse KID:KEY regardless of drmType
-                        // being set yet — detect clearkey by format (hex:hex, no http)
                         if (key.matches("[0-9a-fA-F]+:[0-9a-fA-F]+")) {
-                            // This is a clearkey KID:KEY pair
                             current.drmType = "clearkey";
                             String[] parts = key.split(":", 2);
                             current.clearKeyId    = parts[0].trim().replaceAll("\\s", "");
@@ -76,23 +101,19 @@ public class M3UParser {
 
                     } else if (prop.startsWith("http.referrer=")
                             || prop.startsWith("inputstream.adaptive.stream_headers=")) {
-                        // Support #KODIPROP:http.referrer=https://... style
                         String val = prop.substring(prop.indexOf('=') + 1).trim();
                         if (val.startsWith("Referer=")) val = val.substring("Referer=".length());
                         current.referrer = val;
                     }
 
                 } else if (line.startsWith("#EXTVLCOPT:") && current != null) {
-                    // Support #EXTVLCOPT:http-referrer=https://... style
                     if (line.contains("http-referrer=")) {
                         current.referrer = line.substring(line.indexOf("http-referrer=") + "http-referrer=".length()).trim();
                     }
 
                 } else if (!line.startsWith("#") && current != null) {
-                    // URL line — also check for ?referrer= query param style
                     String streamUrl = line.trim();
 
-                    // Strip inline referrer query params (some playlists embed it)
                     if (streamUrl.contains("|Referer=")) {
                         String[] parts = streamUrl.split("\\|Referer=", 2);
                         streamUrl = parts[0];
@@ -105,7 +126,6 @@ public class M3UParser {
 
                     current.url = streamUrl;
 
-                    // Auto-detect stream type
                     if (current.url.endsWith(".mpd") || current.url.contains(".mpd?")) {
                         current.isDash = true;
                     } else if (current.url.endsWith(".m3u8") || current.url.contains(".m3u8?")) {
@@ -114,6 +134,7 @@ public class M3UParser {
 
                     if (!current.name.isEmpty() && !current.url.isEmpty()) {
                         channels.add(current);
+                        autoNumber++;
                     }
                     current = null;
                 }
