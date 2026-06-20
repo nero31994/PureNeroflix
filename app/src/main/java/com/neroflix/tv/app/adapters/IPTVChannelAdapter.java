@@ -149,15 +149,22 @@ public class IPTVChannelAdapter extends RecyclerView.Adapter<IPTVChannelAdapter.
         holder.itemView.setScaleX(focused ? 1.03f : 1f);
         holder.itemView.setScaleY(focused ? 1.03f : 1f);
 
-        // Logo
+        // Logo - check activity is alive before Glide loads to avoid crash on fast back-press
         if (!ch.logo.isEmpty()) {
-            Glide.with(context)
-                    .load(ch.logo)
-                    .placeholder(android.R.color.darker_gray)
-                    .error(android.R.color.darker_gray)
-                    .diskCacheStrategy(com.bumptech.glide.load.engine.DiskCacheStrategy.ALL)
-                    .fitCenter()
-                    .into(holder.logo);
+            boolean activityAlive = true;
+            if (context instanceof android.app.Activity) {
+                android.app.Activity act = (android.app.Activity) context;
+                activityAlive = !act.isDestroyed() && !act.isFinishing();
+            }
+            if (activityAlive) {
+                Glide.with(context.getApplicationContext())
+                        .load(ch.logo)
+                        .placeholder(android.R.color.darker_gray)
+                        .error(android.R.color.darker_gray)
+                        .diskCacheStrategy(com.bumptech.glide.load.engine.DiskCacheStrategy.ALL)
+                        .fitCenter()
+                        .into(holder.logo);
+            }
         } else {
             holder.logo.setImageResource(android.R.color.darker_gray);
         }
