@@ -10,8 +10,8 @@ android {
         applicationId "com.neroflix.tv.app"
         minSdk 21
         targetSdk 34
-        versionCode 36
-        versionName "1.3.9"
+        versionCode 37
+        versionName "1.4.1"
 
         buildConfigField "String", "TMDB_API_KEY", "\"${project.findProperty('TMDB_API_KEY') ?: 'YOUR_TMDB_API_KEY_HERE'}\""
         buildConfigField "String", "TMDB_BASE_URL", "\"https://api.themoviedb.org/3\""
