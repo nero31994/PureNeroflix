@@ -299,8 +299,58 @@ public class IPTVActivity extends AppCompatActivity {
 
     // ── Channel loading ──────────────────────────────────────────────────────
 
+    private static final long CACHE_DURATION_MS = 24 * 60 * 60 * 1000L; // 24 hours
+    private static final String CACHE_FILE = "m3u_playlist_cache.txt";
+    private static final String CACHE_PREFS = "iptv_cache_prefs";
+    private static final String CACHE_TIME_KEY = "cache_timestamp";
+
+    private String readCachedPlaylist() {
+        try {
+            long cachedTime = getSharedPreferences(CACHE_PREFS, MODE_PRIVATE)
+                    .getLong(CACHE_TIME_KEY, 0);
+            long age = System.currentTimeMillis() - cachedTime;
+            if (age > CACHE_DURATION_MS) return null; // expired
+            java.io.File f = new java.io.File(getFilesDir(), CACHE_FILE);
+            if (!f.exists()) return null;
+            BufferedReader r = new BufferedReader(new java.io.FileReader(f));
+            StringBuilder sb = new StringBuilder();
+            String line;
+            while ((line = r.readLine()) != null) sb.append(line).append("\n");
+            r.close();
+            return sb.length() > 0 ? sb.toString() : null;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    private void writeCachedPlaylist(String content) {
+        try {
+            java.io.File f = new java.io.File(getFilesDir(), CACHE_FILE);
+            java.io.FileWriter w = new java.io.FileWriter(f);
+            w.write(content);
+            w.close();
+            getSharedPreferences(CACHE_PREFS, MODE_PRIVATE).edit()
+                    .putLong(CACHE_TIME_KEY, System.currentTimeMillis())
+                    .apply();
+        } catch (Exception e) {
+            // Non-fatal - cache write failure shouldn't break playback
+        }
+    }
+
     private void loadChannels(String url) {
         loadingBar.setVisibility(View.VISIBLE);
+
+        // Try cache first - skip network entirely if valid cache exists
+        String cached = readCachedPlaylist();
+        if (cached != null) {
+            channels = M3UParser.parse(cached);
+            loadingBar.setVisibility(View.GONE);
+            buildGroupTabs();
+            setupRecycler();
+            if (!channels.isEmpty()) playChannel(0);
+            return;
+        }
+
         new Thread(() -> {
             try {
                 HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
@@ -315,7 +365,9 @@ public class IPTVActivity extends AppCompatActivity {
                 while ((line = reader.readLine()) != null) sb.append(line).append("\n");
                 reader.close();
                 conn.disconnect();
-                channels = M3UParser.parse(sb.toString());
+                String playlistText = sb.toString();
+                channels = M3UParser.parse(playlistText);
+                writeCachedPlaylist(playlistText);
                 new Handler(Looper.getMainLooper()).post(() -> {
                     loadingBar.setVisibility(View.GONE);
                     buildGroupTabs();
