@@ -191,8 +191,37 @@ public class IPTVActivity extends AppCompatActivity {
      * If approved, the Worker also returns the M3U URL in the response.
      * If not approved, redirect to ActivationActivity.
      */
+    private static final String ACCESS_CACHE_PREFS = "iptv_access_cache";
+    private static final String ACCESS_URL_KEY = "cached_m3u_url";
+    private static final String ACCESS_TIME_KEY = "cached_access_timestamp";
+
+    private String readCachedAccessUrl() {
+        android.content.SharedPreferences prefs = getSharedPreferences(ACCESS_CACHE_PREFS, MODE_PRIVATE);
+        long cachedTime = prefs.getLong(ACCESS_TIME_KEY, 0);
+        long age = System.currentTimeMillis() - cachedTime;
+        if (age > CACHE_DURATION_MS) return null; // expired
+        String url = prefs.getString(ACCESS_URL_KEY, null);
+        return (url != null && !url.isEmpty()) ? url : null;
+    }
+
+    private void writeCachedAccessUrl(String url) {
+        getSharedPreferences(ACCESS_CACHE_PREFS, MODE_PRIVATE).edit()
+                .putString(ACCESS_URL_KEY, url)
+                .putLong(ACCESS_TIME_KEY, System.currentTimeMillis())
+                .apply();
+    }
+
     private void verifyAndLoadChannels() {
         loadingBar.setVisibility(View.VISIBLE);
+
+        // Try cached access approval first — skip Worker call entirely if valid
+        String cachedUrl = readCachedAccessUrl();
+        if (cachedUrl != null) {
+            m3uUrl = cachedUrl;
+            loadChannels(m3uUrl);
+            return;
+        }
+
         currentChannelText.setText("Verifying access...");
 
         LicenseManager.fetchIptvAccess(this, result -> {
@@ -206,6 +235,7 @@ public class IPTVActivity extends AppCompatActivity {
                     return;
                 }
                 m3uUrl = result.m3uUrl;
+                writeCachedAccessUrl(m3uUrl);
                 loadChannels(m3uUrl);
             });
         });
