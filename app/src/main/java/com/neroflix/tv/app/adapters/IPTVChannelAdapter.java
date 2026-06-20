@@ -56,6 +56,31 @@ public class IPTVChannelAdapter extends RecyclerView.Adapter<IPTVChannelAdapter.
         return allChannels.indexOf(channels.get(filteredPos));
     }
 
+    private String activeGroupFilter = null;
+    private String activeSearchQuery = "";
+
+    public void filterByGroup(String groupKey) {
+        activeGroupFilter = groupKey;
+        applyFilters();
+    }
+
+    public void filter(String query) {
+        activeSearchQuery = query != null ? query.toLowerCase().trim() : "";
+        applyFilters();
+    }
+
+    private void applyFilters() {
+        List<M3UParser.Channel> result = new ArrayList<>();
+        for (M3UParser.Channel ch : allChannels) {
+            boolean matchesGroup = (activeGroupFilter == null) || activeGroupFilter.equals(ch.group);
+            boolean matchesSearch = activeSearchQuery.isEmpty()
+                    || (ch.name != null && ch.name.toLowerCase().contains(activeSearchQuery));
+            if (matchesGroup && matchesSearch) result.add(ch);
+        }
+        channels = result;
+        notifyDataSetChanged();
+    }
+
     @NonNull
     @Override
     public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
