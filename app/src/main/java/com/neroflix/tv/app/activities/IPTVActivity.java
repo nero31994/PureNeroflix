@@ -601,13 +601,9 @@ public class IPTVActivity extends AppCompatActivity {
 
     private void setupRecycler() {
         adapter = new IPTVChannelAdapter(this, channels, this::playChannel);
-        androidx.recyclerview.widget.GridLayoutManager glm =
-            new androidx.recyclerview.widget.GridLayoutManager(this, GRID_COLUMNS);
-        recyclerView.setLayoutManager(glm);
+        recyclerView.setLayoutManager(new LinearLayoutManager(this));
         recyclerView.setAdapter(adapter);
     }
-
-    private static final int GRID_COLUMNS = 2;
 
     // ── Playback ─────────────────────────────────────────────────────────────
 
@@ -746,8 +742,8 @@ public class IPTVActivity extends AppCompatActivity {
             case CHANNELS:
                 switch (keyCode) {
                     case KeyEvent.KEYCODE_DPAD_UP:
-                        if (focusedChannelIndex - GRID_COLUMNS >= 0) {
-                            focusedChannelIndex -= GRID_COLUMNS;
+                        if (focusedChannelIndex > 0) {
+                            focusedChannelIndex--;
                             highlightChannel(focusedChannelIndex);
                         } else {
                             focusZone = FocusZone.GROUPS;
@@ -758,27 +754,21 @@ public class IPTVActivity extends AppCompatActivity {
                     case KeyEvent.KEYCODE_DPAD_DOWN:
                         if (adapter != null) {
                             int max = adapter.getItemCount() - 1;
-                            if (focusedChannelIndex + GRID_COLUMNS <= max) {
-                                focusedChannelIndex += GRID_COLUMNS;
+                            if (focusedChannelIndex < max) {
+                                focusedChannelIndex++;
                                 highlightChannel(focusedChannelIndex);
                             }
                         }
                         return true;
                     case KeyEvent.KEYCODE_DPAD_LEFT:
-                        if (focusedChannelIndex % GRID_COLUMNS != 0) {
-                            focusedChannelIndex--;
-                            highlightChannel(focusedChannelIndex);
-                        }
+                        // Jump into the category list from anywhere in the channel rows
+                        focusZone = FocusZone.GROUPS;
+                        adapter.setFocused(-1);
+                        highlightGroup(focusedGroupIndex);
                         return true;
                     case KeyEvent.KEYCODE_DPAD_RIGHT:
-                        if (adapter != null) {
-                            int max = adapter.getItemCount() - 1;
-                            boolean rightEdge = (focusedChannelIndex % GRID_COLUMNS == GRID_COLUMNS - 1);
-                            if (!rightEdge && focusedChannelIndex < max) {
-                                focusedChannelIndex++;
-                                highlightChannel(focusedChannelIndex);
-                            }
-                        }
+                        // Scroll the focused channel's EPG strip to reveal later programs
+                        scrollFocusedEpgStrip();
                         return true;
                     case KeyEvent.KEYCODE_DPAD_CENTER:
                     case KeyEvent.KEYCODE_ENTER:
@@ -827,6 +817,11 @@ public class IPTVActivity extends AppCompatActivity {
                             highlightChannel(focusedChannelIndex);
                         }
                         return true;
+                    case KeyEvent.KEYCODE_DPAD_RIGHT:
+                        focusZone = FocusZone.CHANNELS;
+                        highlightGroup(-1);
+                        highlightChannel(focusedChannelIndex);
+                        return true;
                     case KeyEvent.KEYCODE_DPAD_CENTER:
                     case KeyEvent.KEYCODE_ENTER:
                         if (groupAdapter != null) {
@@ -868,6 +863,19 @@ public class IPTVActivity extends AppCompatActivity {
             return true;
         }
         return super.onKeyDown(keyCode, event);
+    }
+
+
+    private void scrollFocusedEpgStrip() {
+        if (recyclerView == null) return;
+        androidx.recyclerview.widget.RecyclerView.ViewHolder vh =
+            recyclerView.findViewHolderForAdapterPosition(focusedChannelIndex);
+        if (vh != null) {
+            android.widget.HorizontalScrollView scroll = vh.itemView.findViewById(R.id.epg_scroll);
+            if (scroll != null) {
+                scroll.smoothScrollBy(200, 0);
+            }
+        }
     }
 
     private void highlightChannel(int filteredPos) {
