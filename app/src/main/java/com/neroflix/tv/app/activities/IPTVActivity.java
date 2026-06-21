@@ -695,13 +695,10 @@ public class IPTVActivity extends AppCompatActivity {
         switch (focusZone) {
 
             case PLAYER:
-                if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER) {
-                    showSidebar();
-                    focusZone = FocusZone.CHANNELS;
-                    highlightChannel(focusedChannelIndex);
-                    return true;
-                }
-                break;
+                showSidebar();
+                focusZone = FocusZone.CHANNELS;
+                highlightChannel(focusedChannelIndex);
+                return true;
 
             case CHANNELS:
                 switch (keyCode) {
@@ -709,6 +706,10 @@ public class IPTVActivity extends AppCompatActivity {
                         if (focusedChannelIndex - GRID_COLUMNS >= 0) {
                             focusedChannelIndex -= GRID_COLUMNS;
                             highlightChannel(focusedChannelIndex);
+                        } else {
+                            focusZone = FocusZone.GROUPS;
+                            adapter.setFocused(-1);
+                            highlightGroup(focusedGroupIndex);
                         }
                         return true;
                     case KeyEvent.KEYCODE_DPAD_DOWN:
@@ -716,6 +717,22 @@ public class IPTVActivity extends AppCompatActivity {
                             int max = adapter.getItemCount() - 1;
                             if (focusedChannelIndex + GRID_COLUMNS <= max) {
                                 focusedChannelIndex += GRID_COLUMNS;
+                                highlightChannel(focusedChannelIndex);
+                            }
+                        }
+                        return true;
+                    case KeyEvent.KEYCODE_DPAD_LEFT:
+                        if (focusedChannelIndex % GRID_COLUMNS != 0) {
+                            focusedChannelIndex--;
+                            highlightChannel(focusedChannelIndex);
+                        }
+                        return true;
+                    case KeyEvent.KEYCODE_DPAD_RIGHT:
+                        if (adapter != null) {
+                            int max = adapter.getItemCount() - 1;
+                            boolean rightEdge = (focusedChannelIndex % GRID_COLUMNS == GRID_COLUMNS - 1);
+                            if (!rightEdge && focusedChannelIndex < max) {
+                                focusedChannelIndex++;
                                 highlightChannel(focusedChannelIndex);
                             }
                         }
@@ -729,44 +746,12 @@ public class IPTVActivity extends AppCompatActivity {
                         hideSidebar();
                         focusZone = FocusZone.PLAYER;
                         return true;
-                    case KeyEvent.KEYCODE_DPAD_LEFT:
-                        if (focusedChannelIndex % GRID_COLUMNS == 0) {
-                            // Leftmost column — jump into permanent group list
-                            focusZone = FocusZone.GROUPS;
-                            adapter.setFocused(-1);
-                            highlightGroup(focusedGroupIndex);
-                        } else {
-                            focusedChannelIndex--;
-                            highlightChannel(focusedChannelIndex);
-                        }
-                        return true;
-                    case KeyEvent.KEYCODE_DPAD_RIGHT:
-                        if (adapter != null) {
-                            int max = adapter.getItemCount() - 1;
-                            boolean rightEdge = (focusedChannelIndex % GRID_COLUMNS == GRID_COLUMNS - 1);
-                            if (!rightEdge && focusedChannelIndex < max) {
-                                focusedChannelIndex++;
-                                highlightChannel(focusedChannelIndex);
-                            } else {
-                                focusZone = FocusZone.SEARCH;
-                                EditText search = findViewById(R.id.iptv_search);
-                                if (search != null) {
-                                    search.requestFocus();
-                                    search.post(() -> {
-                                        android.view.inputmethod.InputMethodManager imm =
-                                            (android.view.inputmethod.InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
-                                        if (imm != null) imm.showSoftInput(search, android.view.inputmethod.InputMethodManager.SHOW_FORCED);
-                                    });
-                                }
-                            }
-                        }
-                        return true;
                     case KeyEvent.KEYCODE_BACK:
                         hideSidebar();
                         focusZone = FocusZone.PLAYER;
                         return true;
                 }
-                break;
+                return true;
 
             case GROUPS:
                 switch (keyCode) {
@@ -775,22 +760,29 @@ public class IPTVActivity extends AppCompatActivity {
                             focusedGroupIndex--;
                             highlightGroup(focusedGroupIndex);
                         } else {
-                            hideSidebar();
-                            focusZone = FocusZone.PLAYER;
+                            focusZone = FocusZone.SEARCH;
+                            highlightGroup(-1);
+                            EditText search = findViewById(R.id.iptv_search);
+                            if (search != null) {
+                                search.requestFocus();
+                                search.post(() -> {
+                                    android.view.inputmethod.InputMethodManager imm =
+                                        (android.view.inputmethod.InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
+                                    if (imm != null) imm.showSoftInput(search, android.view.inputmethod.InputMethodManager.SHOW_FORCED);
+                                });
+                            }
                         }
                         return true;
                     case KeyEvent.KEYCODE_DPAD_DOWN:
                         if (groupAdapter != null && focusedGroupIndex < groupAdapter.getCount() - 1) {
                             focusedGroupIndex++;
                             highlightGroup(focusedGroupIndex);
+                        } else {
+                            focusZone = FocusZone.CHANNELS;
+                            highlightGroup(-1);
+                            focusedChannelIndex = 0;
+                            highlightChannel(focusedChannelIndex);
                         }
-                        return true;
-                    case KeyEvent.KEYCODE_DPAD_RIGHT:
-                        // Move back into channel grid — restore channel highlight
-                        focusZone = FocusZone.CHANNELS;
-                        highlightGroup(-1);
-                        focusedChannelIndex = 0;
-                        highlightChannel(focusedChannelIndex);
                         return true;
                     case KeyEvent.KEYCODE_DPAD_CENTER:
                     case KeyEvent.KEYCODE_ENTER:
@@ -810,14 +802,19 @@ public class IPTVActivity extends AppCompatActivity {
                         focusZone = FocusZone.PLAYER;
                         return true;
                 }
-                break;
+                return true;
 
             case SEARCH:
-                if (keyCode == KeyEvent.KEYCODE_BACK || keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
-                    focusZone = FocusZone.CHANNELS;
-                    highlightChannel(focusedChannelIndex);
+                if (keyCode == KeyEvent.KEYCODE_DPAD_DOWN) {
+                    focusZone = FocusZone.GROUPS;
                     EditText s = findViewById(R.id.iptv_search);
                     if (s != null) s.clearFocus();
+                    highlightGroup(focusedGroupIndex);
+                    return true;
+                }
+                if (keyCode == KeyEvent.KEYCODE_BACK) {
+                    hideSidebar();
+                    focusZone = FocusZone.PLAYER;
                     return true;
                 }
                 return false; // let EditText handle typing
