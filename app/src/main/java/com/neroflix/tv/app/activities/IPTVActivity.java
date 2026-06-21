@@ -90,6 +90,7 @@ public class IPTVActivity extends AppCompatActivity {
     // D-pad focus zones: PLAYER, CHANNELS, GROUPS, SEARCH
     private enum FocusZone { PLAYER, CHANNELS, GROUPS, SEARCH }
     private FocusZone focusZone = FocusZone.PLAYER;
+    private final android.os.Handler searchDebounceHandler = new android.os.Handler(android.os.Looper.getMainLooper());
     private int focusedChannelIndex = 0;
     private int focusedGroupIndex   = 0;
 
@@ -274,7 +275,11 @@ public class IPTVActivity extends AppCompatActivity {
         search.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int st, int c, int a) {}
             @Override public void onTextChanged(CharSequence s, int st, int b, int c) {
-                if (adapter != null) adapter.filter(s.toString());
+                searchDebounceHandler.removeCallbacksAndMessages(null);
+                String query = s.toString();
+                searchDebounceHandler.postDelayed(() -> {
+                    if (adapter != null) adapter.filter(query);
+                }, 300);
             }
             @Override public void afterTextChanged(Editable s) {}
         });
