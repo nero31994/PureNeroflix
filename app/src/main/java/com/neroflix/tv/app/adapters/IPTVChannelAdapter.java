@@ -1,13 +1,11 @@
 package com.neroflix.tv.app.adapters;
 
-import android.animation.AnimatorSet;
-import android.animation.ObjectAnimator;
 import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
-import android.widget.ProgressBar;
+import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.annotation.NonNull;
@@ -20,12 +18,17 @@ import com.neroflix.tv.app.iptv.EpgManager;
 import com.neroflix.tv.app.iptv.EpgProgram;
 import com.neroflix.tv.app.iptv.M3UParser;
 
+import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 public class IPTVChannelAdapter extends RecyclerView.Adapter<IPTVChannelAdapter.ViewHolder> {
 
     public interface OnClick { void onClick(int originalIndex); }
+
+    // Pixels per hour for the EPG timeline - must match the timeline header scale
+    public static final int PX_PER_HOUR = 240;
 
     private final Context context;
     private List<M3UParser.Channel> allChannels;
@@ -110,29 +113,11 @@ public class IPTVChannelAdapter extends RecyclerView.Adapter<IPTVChannelAdapter.
             holder.logo.setImageResource(android.R.color.darker_gray);
         }
 
-        EpgProgram now  = EpgManager.getNowPlaying(ch.tvgId);
-        EpgProgram next = EpgManager.getNextPlaying(ch.tvgId);
-
-        if (now != null) {
-            holder.epgNow.setVisibility(View.VISIBLE);
-            holder.epgNow.setText("▶ " + now.title + "  " + now.getTimeRange());
-            holder.epgProgress.setVisibility(View.VISIBLE);
-            holder.epgProgress.setProgress((int) (now.getProgress() * 100));
-        } else {
-            holder.epgNow.setVisibility(View.GONE);
-            holder.epgProgress.setVisibility(View.GONE);
-        }
-
-        if (next != null) {
-            holder.epgNext.setVisibility(View.VISIBLE);
-            holder.epgNext.setText("» " + next.title + "  " + next.getTimeRange());
-        } else {
-            holder.epgNext.setVisibility(View.GONE);
-        }
+        buildEpgStrip(holder, ch);
 
         holder.itemView.setSelected(origIdx == selectedIndex);
         boolean isFocused = (position == focusedIndex);
-        float targetScale = isFocused ? 1.04f : 1f;
+        float targetScale = isFocused ? 1.02f : 1f;
         holder.itemView.setScaleX(targetScale);
         holder.itemView.setScaleY(targetScale);
 
@@ -140,7 +125,6 @@ public class IPTVChannelAdapter extends RecyclerView.Adapter<IPTVChannelAdapter.
             android.graphics.drawable.GradientDrawable border = new android.graphics.drawable.GradientDrawable();
             border.setColor(0x33E50914);
             border.setStroke(4, 0xFFE50914);
-            border.setCornerRadius(6f);
             holder.itemView.setBackground(border);
         } else {
             holder.itemView.setBackgroundResource(R.drawable.nav_item_focus_bg);
@@ -153,35 +137,74 @@ public class IPTVChannelAdapter extends RecyclerView.Adapter<IPTVChannelAdapter.
         holder.itemView.setFocusable(true);
     }
 
+    private void buildEpgStrip(ViewHolder holder, M3UParser.Channel ch) {
+        holder.epgStrip.removeAllViews();
+
+        List<EpgProgram> schedule = EpgManager.getTodaySchedule(ch.tvgId);
+        SimpleDateFormat timeFmt = new SimpleDateFormat("h:mm a", Locale.getDefault());
+
+        if (schedule.isEmpty()) {
+            TextView noInfo = new TextView(context);
+            noInfo.setText("No information");
+            noInfo.setTextColor(0xFF777777);
+            noInfo.setTextSize(10f);
+            noInfo.setGravity(android.view.Gravity.CENTER_VERTICAL);
+            noInfo.setPadding(dp(8), 0, dp(8), 0);
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(400), LinearLayout.LayoutParams.MATCH_PARENT);
+            noInfo.setLayoutParams(lp);
+            noInfo.setBackgroundResource(R.drawable.epg_program_block);
+            holder.epgStrip.addView(noInfo);
+            return;
+        }
+
+        for (EpgProgram p : schedule) {
+            long durationMs = p.stopMs - p.startMs;
+            int widthPx = (int) ((durationMs / 3600000.0) * PX_PER_HOUR);
+            if (widthPx < dp(60)) widthPx = dp(60);
+
+            TextView block = new TextView(context);
+            block.setText(p.title);
+            block.setTextColor(0xFFCCCCCC);
+            block.setTextSize(10f);
+            block.setSingleLine(true);
+            block.setEllipsize(android.text.TextUtils.TruncateAt.END);
+            block.setGravity(android.view.Gravity.CENTER_VERTICAL);
+            block.setPadding(dp(8), 0, dp(8), 0);
+            block.setBackgroundResource(R.drawable.epg_program_block);
+
+            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(widthPx, LinearLayout.LayoutParams.MATCH_PARENT);
+            lp.setMarginEnd(dp(2));
+            block.setLayoutParams(lp);
+
+            EpgProgram now = EpgManager.getNowPlaying(ch.tvgId);
+            if (now != null && now.startMs == p.startMs) {
+                block.setBackgroundColor(0x55E50914);
+                block.setTextColor(0xFFFFFFFF);
+            }
+
+            holder.epgStrip.addView(block);
+        }
+    }
+
+    private int dp(int dp) {
+        return Math.round(dp * context.getResources().getDisplayMetrics().density);
+    }
+
     @Override
     public int getItemCount() { return channels.size(); }
 
     static class ViewHolder extends RecyclerView.ViewHolder {
         ImageView logo;
-        TextView number, name, epgNow, epgNext, drmBadge;
-        ProgressBar epgProgress;
+        TextView number, name, drmBadge;
+        LinearLayout epgStrip;
 
         ViewHolder(View v) {
             super(v);
-            logo        = v.findViewById(R.id.channel_logo);
-            number      = v.findViewById(R.id.channel_number);
-            name        = v.findViewById(R.id.channel_name);
-            epgNow      = v.findViewById(R.id.epg_now);
-            epgNext     = v.findViewById(R.id.epg_next);
-            epgProgress = v.findViewById(R.id.epg_progress);
-            drmBadge    = v.findViewById(R.id.channel_drm_badge);
-
-            v.setOnFocusChangeListener((view, hasFocus) -> {
-                float targetScale = hasFocus ? 1.08f : 1.0f;
-                AnimatorSet anim = new AnimatorSet();
-                anim.playTogether(
-                    ObjectAnimator.ofFloat(view, "scaleX", targetScale),
-                    ObjectAnimator.ofFloat(view, "scaleY", targetScale)
-                );
-                anim.setDuration(150);
-                anim.start();
-                view.setSelected(hasFocus);
-            });
+            logo     = v.findViewById(R.id.channel_logo);
+            number   = v.findViewById(R.id.channel_number);
+            name     = v.findViewById(R.id.channel_name);
+            drmBadge = v.findViewById(R.id.channel_drm_badge);
+            epgStrip = v.findViewById(R.id.epg_strip);
         }
     }
 }

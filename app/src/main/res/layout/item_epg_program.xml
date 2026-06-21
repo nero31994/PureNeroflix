@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="wrap_content"
+    android:layout_height="match_parent"
+    android:textColor="#CCCCCC"
+    android:textSize="10sp"
+    android:gravity="center_vertical"
+    android:paddingStart="8dp"
+    android:paddingEnd="8dp"
+    android:singleLine="true"
+    android:ellipsize="end"
+    android:background="@drawable/epg_program_block"
+    android:layout_marginEnd="2dp"/>

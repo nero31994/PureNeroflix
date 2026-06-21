@@ -1,19 +1,20 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="wrap_content"
-    android:orientation="vertical"
-    android:gravity="center_horizontal"
-    android:padding="8dp"
+    android:layout_height="64dp"
+    android:orientation="horizontal"
     android:background="@drawable/nav_item_focus_bg"
     android:focusable="true"
     android:focusableInTouchMode="false">
 
+    <!-- Fixed left: number + logo + name -->
     <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_width="160dp"
+        android:layout_height="match_parent"
         android:orientation="horizontal"
-        android:gravity="center_vertical">
+        android:gravity="center_vertical"
+        android:padding="6dp"
+        android:background="#1A1A1A">
 
         <TextView
             android:id="@+id/channel_number"
@@ -32,64 +33,57 @@
             android:background="#1AFFFFFF"
             android:contentDescription="@string/poster_desc"/>
 
-        <TextView
-            android:id="@+id/channel_name"
+        <LinearLayout
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:layout_marginStart="8dp"
-            android:textColor="#FFFFFF"
-            android:textSize="12sp"
-            android:textStyle="bold"
-            android:singleLine="true"
-            android:ellipsize="end"/>
+            android:orientation="vertical"
+            android:layout_marginStart="6dp">
 
-        <TextView
-            android:id="@+id/channel_drm_badge"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="DRM"
-            android:textColor="#FFFFFF"
-            android:textSize="8sp"
-            android:background="#E50914"
-            android:paddingStart="4dp"
-            android:paddingEnd="4dp"
-            android:paddingTop="1dp"
-            android:paddingBottom="1dp"
-            android:layout_marginStart="4dp"
-            android:visibility="gone"/>
+            <TextView
+                android:id="@+id/channel_name"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:textColor="#FFFFFF"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:singleLine="true"
+                android:ellipsize="end"/>
+
+            <TextView
+                android:id="@+id/channel_drm_badge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="DRM"
+                android:textColor="#FFFFFF"
+                android:textSize="7sp"
+                android:background="#E50914"
+                android:paddingStart="3dp"
+                android:paddingEnd="3dp"
+                android:visibility="gone"/>
+        </LinearLayout>
     </LinearLayout>
 
-    <TextView
-        android:id="@+id/epg_now"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:textColor="#AAAAAA"
-        android:textSize="9sp"
-        android:singleLine="true"
-        android:ellipsize="end"
-        android:layout_marginTop="2dp"
-        android:visibility="gone"/>
+    <View
+        android:layout_width="1dp"
+        android:layout_height="match_parent"
+        android:background="#222222"/>
 
-    <ProgressBar
-        android:id="@+id/epg_progress"
-        style="?android:attr/progressBarStyleHorizontal"
-        android:layout_width="match_parent"
-        android:layout_height="2dp"
-        android:layout_marginTop="1dp"
-        android:progressTint="#E50914"
-        android:max="100"
-        android:visibility="gone"/>
+    <!-- Scrollable EPG timeline strip for this channel -->
+    <HorizontalScrollView
+        android:id="@+id/epg_scroll"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:scrollbars="none"
+        android:overScrollMode="never">
 
-    <TextView
-        android:id="@+id/epg_next"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:textColor="#777777"
-        android:textSize="8sp"
-        android:singleLine="true"
-        android:ellipsize="end"
-        android:layout_marginTop="1dp"
-        android:visibility="gone"/>
+        <LinearLayout
+            android:id="@+id/epg_strip"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:orientation="horizontal"/>
+
+    </HorizontalScrollView>
 
 </LinearLayout>
