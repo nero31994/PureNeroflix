@@ -45,13 +45,16 @@ public class IPTVChannelAdapter extends RecyclerView.Adapter<IPTVChannelAdapter.
     }
 
     public void setSelected(int originalIndex) {
+        int prevOrig = this.selectedIndex;
         this.selectedIndex = originalIndex;
-        notifyDataSetChanged();
+        notifyItemRangeChanged(0, channels.size());
     }
 
     public void setFocused(int filteredPos) {
+        int prev = this.focusedIndex;
         this.focusedIndex = filteredPos;
-        notifyDataSetChanged();
+        if (prev >= 0) notifyItemChanged(prev);
+        if (filteredPos >= 0) notifyItemChanged(filteredPos);
     }
 
     public int getOriginalIndex(int filteredPos) {
@@ -140,7 +143,13 @@ public class IPTVChannelAdapter extends RecyclerView.Adapter<IPTVChannelAdapter.
         holder.itemView.setFocusable(true);
     }
 
+
     private void buildEpgStrip(ViewHolder holder, M3UParser.Channel ch) {
+        // Skip rebuild if this exact channel was already bound to this holder with EPG built
+        String tag = ch.tvgId + "|" + ch.name;
+        if (tag.equals(holder.itemView.getTag())) return;
+        holder.itemView.setTag(tag);
+
         holder.epgStrip.removeAllViews();
 
         List<EpgProgram> schedule = EpgManager.getTodaySchedule(ch.tvgId);
