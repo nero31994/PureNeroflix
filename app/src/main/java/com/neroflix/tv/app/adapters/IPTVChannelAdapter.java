@@ -122,12 +122,15 @@ public class IPTVChannelAdapter extends RecyclerView.Adapter<IPTVChannelAdapter.
         holder.itemView.setScaleY(targetScale);
 
         if (isFocused) {
+            holder.itemView.setBackgroundColor(0xFF2A0A0C);
             android.graphics.drawable.GradientDrawable border = new android.graphics.drawable.GradientDrawable();
-            border.setColor(0x33E50914);
-            border.setStroke(4, 0xFFE50914);
-            holder.itemView.setBackground(border);
+            border.setColor(0x00000000);
+            border.setStroke(6, 0xFFE50914);
+            holder.focusOverlay.setBackground(border);
+            holder.focusOverlay.setVisibility(View.VISIBLE);
         } else {
             holder.itemView.setBackgroundResource(R.drawable.nav_item_focus_bg);
+            holder.focusOverlay.setVisibility(View.GONE);
         }
 
         holder.itemView.setOnClickListener(v -> {
@@ -197,6 +200,7 @@ public class IPTVChannelAdapter extends RecyclerView.Adapter<IPTVChannelAdapter.
         ImageView logo;
         TextView number, name, drmBadge;
         LinearLayout epgStrip;
+        View focusOverlay;
 
         ViewHolder(View v) {
             super(v);
@@ -205,6 +209,7 @@ public class IPTVChannelAdapter extends RecyclerView.Adapter<IPTVChannelAdapter.
             name     = v.findViewById(R.id.channel_name);
             drmBadge = v.findViewById(R.id.channel_drm_badge);
             epgStrip = v.findViewById(R.id.epg_strip);
+            focusOverlay = v.findViewById(R.id.channel_focus_overlay);
         }
     }
 }

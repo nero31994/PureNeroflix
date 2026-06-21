@@ -83,6 +83,18 @@
             android:background="#CC000000">
 
             <TextView
+                android:id="@+id/iptv_guide_back_btn"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="← Back to Movies"
+                android:textColor="#FFFFFF"
+                android:textSize="13sp"
+                android:padding="8dp"
+                android:focusable="true"
+                android:background="@drawable/nav_item_focus_bg"
+                android:layout_marginEnd="16dp"/>
+
+            <TextView
                 android:id="@+id/epg_date_label"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"

@@ -265,6 +265,10 @@ public class IPTVActivity extends AppCompatActivity {
 
         EditText search = findViewById(R.id.iptv_search);
         findViewById(R.id.iptv_back_btn).setOnClickListener(v -> finish());
+        View guideBackBtn = findViewById(R.id.iptv_guide_back_btn);
+        if (guideBackBtn != null) {
+            guideBackBtn.setOnClickListener(v -> finish());
+        }
         playerView.setOnClickListener(v -> toggleSidebar());
 
         search.addTextChangedListener(new TextWatcher() {
@@ -730,6 +734,10 @@ public class IPTVActivity extends AppCompatActivity {
         switch (focusZone) {
 
             case PLAYER:
+                if (keyCode == KeyEvent.KEYCODE_BACK) {
+                    finish();
+                    return true;
+                }
                 showSidebar();
                 focusZone = FocusZone.CHANNELS;
                 highlightChannel(focusedChannelIndex);
