@@ -73,7 +73,7 @@ public class IPTVGroupAdapter extends RecyclerView.Adapter<IPTVGroupAdapter.View
         boolean focused = position == focusedIndex;
 
         holder.label.setTextColor(selected ? 0xFFFFFFFF : 0xFF999999);
-        holder.label.setBackgroundColor(selected ? 0xFFE50914 : (focused ? 0x22FFFFFF : 0x00000000));
+        holder.label.setBackgroundColor(selected ? 0xFFE50914 : (focused ? 0x55E50914 : 0x00000000));
 
         holder.itemView.setOnClickListener(v -> listener.onClick(position, g.key));
     }

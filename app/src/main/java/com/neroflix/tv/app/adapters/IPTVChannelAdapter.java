@@ -136,6 +136,16 @@ public class IPTVChannelAdapter extends RecyclerView.Adapter<IPTVChannelAdapter.
         holder.itemView.setScaleX(targetScale);
         holder.itemView.setScaleY(targetScale);
 
+        if (isFocused) {
+            android.graphics.drawable.GradientDrawable border = new android.graphics.drawable.GradientDrawable();
+            border.setColor(0x33E50914);
+            border.setStroke(4, 0xFFE50914);
+            border.setCornerRadius(6f);
+            holder.itemView.setBackground(border);
+        } else {
+            holder.itemView.setBackgroundResource(R.drawable.nav_item_focus_bg);
+        }
+
         holder.itemView.setOnClickListener(v -> {
             int idx = getOriginalIndex(holder.getBindingAdapterPosition());
             if (idx >= 0) listener.onClick(idx);

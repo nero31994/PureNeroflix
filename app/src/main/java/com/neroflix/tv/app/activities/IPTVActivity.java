@@ -831,11 +831,7 @@ public class IPTVActivity extends AppCompatActivity {
         if (adapter == null || filteredPos < 0) return;
         if (filteredPos >= adapter.getItemCount()) return;
         adapter.setFocused(filteredPos);
-        // Use post() so scroll happens AFTER RecyclerView layout pass
-        recyclerView.post(() -> {
-            ((LinearLayoutManager) recyclerView.getLayoutManager())
-                .scrollToPositionWithOffset(filteredPos, 100);
-        });
+        recyclerView.post(() -> recyclerView.scrollToPosition(filteredPos));
     }
 
     private void highlightGroup(int index) {
