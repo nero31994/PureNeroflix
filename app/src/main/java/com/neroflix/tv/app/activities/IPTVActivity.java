@@ -372,6 +372,7 @@ public class IPTVActivity extends AppCompatActivity {
         super.onDestroy();
         autoHideHandler.removeCallbacksAndMessages(null);
         searchDebounceHandler.removeCallbacksAndMessages(null);
+        nowLineHandler.removeCallbacksAndMessages(null);
         if (iptvDpadView != null) try { getWindowManager().removeView(iptvDpadView); } catch (Exception e) {}
         timeHandler.removeCallbacksAndMessages(null);
         if (player != null) { player.stop(); player.release(); player = null; }
@@ -506,6 +507,7 @@ public class IPTVActivity extends AppCompatActivity {
             buildGroupTabs();
             setupRecycler();
             buildEpgTimelineHeader();
+            startNowLineUpdater();
             if (!channels.isEmpty()) playChannel(0);
             loadEpgInBackground(cached);
             return;
@@ -578,6 +580,44 @@ public class IPTVActivity extends AppCompatActivity {
 
     // ── Recycler setup ───────────────────────────────────────────────────────
 
+
+
+    private android.view.View epgNowLine;
+    private final android.os.Handler nowLineHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+
+    private void startNowLineUpdater() {
+        epgNowLine = findViewById(R.id.epg_now_line);
+        updateNowLine();
+    }
+
+    private void updateNowLine() {
+        if (epgNowLine == null || !sidebarVisible) return;
+        android.view.ViewGroup parent = (android.view.ViewGroup) epgNowLine.getParent();
+        if (parent == null) return;
+
+        // Calculate pixel offset from start of day
+        java.util.Calendar dayStart = java.util.Calendar.getInstance();
+        dayStart.set(java.util.Calendar.HOUR_OF_DAY, 0);
+        dayStart.set(java.util.Calendar.MINUTE, 0);
+        dayStart.set(java.util.Calendar.SECOND, 0);
+        dayStart.set(java.util.Calendar.MILLISECOND, 0);
+
+        long elapsedMs = System.currentTimeMillis() - dayStart.getTimeInMillis();
+        float density = getResources().getDisplayMetrics().density;
+        int pxPerHour = com.neroflix.tv.app.adapters.IPTVChannelAdapter.PX_PER_HOUR;
+        // 160dp is the fixed left channel info panel width
+        int channelPanelPx = Math.round(160 * density);
+        int nowOffsetPx = channelPanelPx + (int)((elapsedMs / 3600000.0) * pxPerHour * density);
+
+        android.widget.FrameLayout.LayoutParams lp =
+            (android.widget.FrameLayout.LayoutParams) epgNowLine.getLayoutParams();
+        lp.leftMargin = nowOffsetPx;
+        epgNowLine.setLayoutParams(lp);
+        epgNowLine.setVisibility(android.view.View.VISIBLE);
+
+        // Update every minute
+        nowLineHandler.postDelayed(this::updateNowLine, 60_000);
+    }
 
     private void buildEpgTimelineHeader() {
         android.widget.LinearLayout header = findViewById(R.id.epg_timeline_header);
@@ -724,6 +764,7 @@ public class IPTVActivity extends AppCompatActivity {
             topBar.setVisibility(View.VISIBLE);
             updatePipCard();
             resetAutoHide();
+            updateNowLine();
 
             // Sync D-pad focus to currently playing channel
             if (adapter != null) {
