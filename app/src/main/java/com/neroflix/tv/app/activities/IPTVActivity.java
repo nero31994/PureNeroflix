@@ -606,6 +606,10 @@ public class IPTVActivity extends AppCompatActivity {
 
     private void setupRecycler() {
         adapter = new IPTVChannelAdapter(this, channels, this::playChannel);
+        adapter.onHideSidebar = () -> {
+            hideSidebar();
+            focusZone = FocusZone.PLAYER;
+        };
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
         recyclerView.setAdapter(adapter);
     }

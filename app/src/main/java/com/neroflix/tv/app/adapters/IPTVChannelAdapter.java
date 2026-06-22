@@ -36,6 +36,7 @@ public class IPTVChannelAdapter extends RecyclerView.Adapter<IPTVChannelAdapter.
     private final OnClick listener;
     private int selectedIndex = -1;
     private int focusedIndex = -1;
+    public Runnable onHideSidebar = null;
 
     public IPTVChannelAdapter(Context context, List<M3UParser.Channel> channels, OnClick listener) {
         this.context = context;
@@ -139,6 +140,7 @@ public class IPTVChannelAdapter extends RecyclerView.Adapter<IPTVChannelAdapter.
         holder.itemView.setOnClickListener(v -> {
             int idx = getOriginalIndex(holder.getBindingAdapterPosition());
             if (idx >= 0) listener.onClick(idx);
+            if (onHideSidebar != null) onHideSidebar.run();
         });
         holder.itemView.setFocusable(true);
     }
