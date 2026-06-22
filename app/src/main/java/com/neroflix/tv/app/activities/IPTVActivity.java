@@ -673,6 +673,8 @@ public class IPTVActivity extends AppCompatActivity {
             player.setMediaItem(mediaItem);
             player.prepare();
             player.play();
+            if (pipPlayerView != null) pipPlayerView.setPlayer(player);
+            if (pipContainer != null && sidebarVisible) pipContainer.setVisibility(View.VISIBLE);
 
         } catch (Exception e) {
             Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
