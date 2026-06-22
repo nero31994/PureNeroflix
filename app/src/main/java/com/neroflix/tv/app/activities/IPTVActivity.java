@@ -673,6 +673,7 @@ public class IPTVActivity extends AppCompatActivity {
             player.setMediaItem(mediaItem);
             player.prepare();
             player.play();
+            if (sidebarVisible) updatePipCard();
 
         } catch (Exception e) {
             Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
@@ -703,6 +704,7 @@ public class IPTVActivity extends AppCompatActivity {
             sidebarVisible = true;
             sidebar.setVisibility(View.VISIBLE);
             topBar.setVisibility(View.VISIBLE);
+            updatePipCard();
 
             // Sync D-pad focus to currently playing channel
             if (adapter != null) {
@@ -892,6 +894,54 @@ public class IPTVActivity extends AppCompatActivity {
         }
     }
 
+
+    private void updatePipCard() {
+        if (pipContainer == null) return;
+        if (currentIndex < 0 || currentIndex >= channels.size()) {
+            pipContainer.setVisibility(android.view.View.GONE);
+            return;
+        }
+        M3UParser.Channel ch = channels.get(currentIndex);
+
+        android.widget.ImageView pipLogo = findViewById(R.id.pip_logo);
+        android.widget.TextView pipName  = findViewById(R.id.pip_channel_name);
+        android.widget.TextView pipNow   = findViewById(R.id.pip_epg_now);
+        android.widget.TextView pipNext  = findViewById(R.id.pip_epg_next);
+        android.widget.ProgressBar pipPb = findViewById(R.id.pip_epg_progress);
+
+        pipName.setText(ch.name);
+
+        if (ch.logo != null && !ch.logo.isEmpty()) {
+            com.bumptech.glide.Glide.with(this)
+                .load(ch.logo)
+                .centerInside()
+                .into(pipLogo);
+        } else {
+            pipLogo.setImageResource(android.R.color.darker_gray);
+        }
+
+        com.neroflix.tv.app.iptv.EpgProgram now  = com.neroflix.tv.app.iptv.EpgManager.getNowPlaying(ch.tvgId);
+        com.neroflix.tv.app.iptv.EpgProgram next = com.neroflix.tv.app.iptv.EpgManager.getNextPlaying(ch.tvgId);
+
+        if (now != null) {
+            pipNow.setText("▶ " + now.title + "  " + now.getTimeRange());
+            pipPb.setProgress((int)(now.getProgress() * 100));
+            pipPb.setVisibility(android.view.View.VISIBLE);
+        } else {
+            pipNow.setText("Live");
+            pipPb.setVisibility(android.view.View.GONE);
+        }
+
+        if (next != null) {
+            pipNext.setText("» " + next.title + "  " + next.getTimeRange());
+            pipNext.setVisibility(android.view.View.VISIBLE);
+        } else {
+            pipNext.setVisibility(android.view.View.GONE);
+        }
+
+        pipContainer.setVisibility(android.view.View.VISIBLE);
+    }
+
     private void highlightChannel(int filteredPos) {
         if (adapter == null || filteredPos < 0) return;
         if (filteredPos >= adapter.getItemCount()) return;
@@ -912,6 +962,7 @@ public class IPTVActivity extends AppCompatActivity {
         sidebarVisible = false;
         sidebar.setVisibility(View.GONE);
         topBar.setVisibility(View.GONE);
+        if (pipContainer != null) pipContainer.setVisibility(View.GONE);
         if (adapter != null) adapter.setFocused(-1); // clear D-pad highlight
     }
 
