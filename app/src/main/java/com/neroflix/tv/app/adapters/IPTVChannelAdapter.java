@@ -202,8 +202,9 @@ public class IPTVChannelAdapter extends RecyclerView.Adapter<IPTVChannelAdapter.
             lp.setMarginEnd(dp(2));
             block.setLayoutParams(lp);
 
-            EpgProgram now = EpgManager.getNowPlaying(ch.tvgId, ch.name);
-            if (now != null && now.startMs == p.startMs) {
+            long nowMs = System.currentTimeMillis();
+            boolean isNow = (nowMs >= p.startMs && nowMs < p.stopMs);
+            if (isNow) {
                 block.setBackgroundColor(0x55E50914);
                 block.setTextColor(0xFFFFFFFF);
             }

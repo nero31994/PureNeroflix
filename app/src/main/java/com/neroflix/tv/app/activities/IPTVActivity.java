@@ -609,11 +609,13 @@ public class IPTVActivity extends AppCompatActivity {
         int pxPerHour = com.neroflix.tv.app.adapters.IPTVChannelAdapter.PX_PER_HOUR;
         // 160dp is the fixed left channel info panel width
         int channelPanelPx = Math.round(160 * density);
-        int nowOffsetPx = channelPanelPx + (int)((elapsedMs / 3600000.0) * pxPerHour * density);
+        int absoluteNowPx = (int)((elapsedMs / 3600000.0) * pxPerHour * density);
+        // Subtract current scroll offset so line stays at visual "now" position
+        int nowOffsetPx = channelPanelPx + absoluteNowPx - sharedEpgScrollX;
 
         android.widget.FrameLayout.LayoutParams lp =
             (android.widget.FrameLayout.LayoutParams) epgNowLine.getLayoutParams();
-        lp.leftMargin = nowOffsetPx;
+        lp.leftMargin = Math.max(channelPanelPx, nowOffsetPx);
         epgNowLine.setLayoutParams(lp);
         epgNowLine.setVisibility(android.view.View.VISIBLE);
 
