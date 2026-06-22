@@ -178,4 +178,32 @@
 
     </LinearLayout>
 
+
+    <!-- Mini PiP player - floats top-right when guide is open -->
+    <FrameLayout
+        android:id="@+id/iptv_pip_container"
+        android:layout_width="160dp"
+        android:layout_height="90dp"
+        android:layout_alignParentTop="true"
+        android:layout_alignParentEnd="true"
+        android:layout_marginTop="56dp"
+        android:layout_marginEnd="12dp"
+        android:background="#000000"
+        android:elevation="10dp"
+        android:visibility="gone">
+
+        <androidx.media3.ui.PlayerView
+            android:id="@+id/iptv_pip_player"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            app:use_controller="false"
+            app:resize_mode="fill"/>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:background="@drawable/epg_program_block"/>
+
+    </FrameLayout>
+
 </RelativeLayout>

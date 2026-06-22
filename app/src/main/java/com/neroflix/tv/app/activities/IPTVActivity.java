@@ -72,6 +72,8 @@ public class IPTVActivity extends AppCompatActivity {
     // ── Views ────────────────────────────────────────────────────────────────
     private ExoPlayer player;
     private PlayerView playerView;
+    private PlayerView pipPlayerView;
+    private android.view.View pipContainer;
     private LinearLayout sidebar, topBar;
     private androidx.recyclerview.widget.RecyclerView groupListView;
     private com.neroflix.tv.app.adapters.IPTVGroupAdapter groupAdapter;
@@ -253,6 +255,8 @@ public class IPTVActivity extends AppCompatActivity {
         showDpadTutorial();
 
         playerView         = findViewById(R.id.iptv_player);
+        pipPlayerView = findViewById(R.id.iptv_pip_player);
+        pipContainer  = findViewById(R.id.iptv_pip_container);
         sidebar            = findViewById(R.id.iptv_sidebar);
         topBar             = findViewById(R.id.iptv_top_bar);
         loadingBar         = findViewById(R.id.iptv_loading);
@@ -699,6 +703,10 @@ public class IPTVActivity extends AppCompatActivity {
             sidebarVisible = true;
             sidebar.setVisibility(View.VISIBLE);
             topBar.setVisibility(View.VISIBLE);
+            if (pipContainer != null && player != null) {
+                pipPlayerView.setPlayer(player);
+                pipContainer.setVisibility(View.VISIBLE);
+            }
             // Sync D-pad focus to currently playing channel
             if (adapter != null) {
                 for (int i = 0; i < adapter.getItemCount(); i++) {
@@ -907,6 +915,8 @@ public class IPTVActivity extends AppCompatActivity {
         sidebarVisible = false;
         sidebar.setVisibility(View.GONE);
         topBar.setVisibility(View.GONE);
+        if (pipContainer != null) pipContainer.setVisibility(View.GONE);
+        if (pipPlayerView != null) pipPlayerView.setPlayer(null);
         if (adapter != null) adapter.setFocused(-1); // clear D-pad highlight
     }
 
