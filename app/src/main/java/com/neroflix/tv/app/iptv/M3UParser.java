@@ -33,7 +33,7 @@ public class M3UParser {
                 if (raw.isEmpty()) raw = extractAttr(line, "x-tvg-url");
                 if (!raw.isEmpty()) {
                     for (String u : raw.split(",")) {
-                        String trimmed = u.trim().replaceAll(""", "");
+                        String trimmed = u.trim().replace("\"", "");
                         if (!trimmed.isEmpty() && trimmed.startsWith("http")) {
                             urls.add(trimmed);
                         }
