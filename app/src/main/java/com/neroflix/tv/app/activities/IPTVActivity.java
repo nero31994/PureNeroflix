@@ -584,6 +584,8 @@ public class IPTVActivity extends AppCompatActivity {
 
     private android.view.View epgNowLine;
     private final android.os.Handler nowLineHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+    private int sharedEpgScrollX = 0;
+    private boolean isSyncingScroll = false;
 
     private void startNowLineUpdater() {
         epgNowLine = findViewById(R.id.epg_now_line);
@@ -617,6 +619,28 @@ public class IPTVActivity extends AppCompatActivity {
 
         // Update every minute
         nowLineHandler.postDelayed(this::updateNowLine, 60_000);
+    }
+
+    public void syncEpgScroll(int scrollX) {
+        if (isSyncingScroll) return;
+        isSyncingScroll = true;
+        sharedEpgScrollX = scrollX;
+        // Scroll all visible channel rows to same position
+        for (int i = 0; i < recyclerView.getChildCount(); i++) {
+            android.view.View row = recyclerView.getChildAt(i);
+            android.widget.HorizontalScrollView hsv = row.findViewById(R.id.epg_scroll);
+            if (hsv != null && hsv.getScrollX() != scrollX) {
+                hsv.scrollTo(scrollX, 0);
+            }
+        }
+        // Also scroll the timeline header
+        android.widget.LinearLayout header = findViewById(R.id.epg_timeline_header);
+        if (header != null && header.getParent() instanceof android.widget.HorizontalScrollView) {
+            ((android.widget.HorizontalScrollView) header.getParent()).scrollTo(scrollX, 0);
+        }
+        // Reposition the now-line
+        updateNowLine();
+        isSyncingScroll = false;
     }
 
     private void buildEpgTimelineHeader() {
@@ -656,6 +680,9 @@ public class IPTVActivity extends AppCompatActivity {
         adapter.onHideSidebar = () -> {
             hideSidebar();
             focusZone = FocusZone.PLAYER;
+        };
+        adapter.onEpgScroll = new com.neroflix.tv.app.adapters.IPTVChannelAdapter.OnEpgScrollListener() {
+            @Override public void onScroll(int scrollX) { syncEpgScroll(scrollX); }
         };
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
         recyclerView.setAdapter(adapter);

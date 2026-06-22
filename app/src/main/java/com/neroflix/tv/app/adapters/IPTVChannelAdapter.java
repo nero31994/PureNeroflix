@@ -37,6 +37,8 @@ public class IPTVChannelAdapter extends RecyclerView.Adapter<IPTVChannelAdapter.
     private int selectedIndex = -1;
     private int focusedIndex = -1;
     public Runnable onHideSidebar = null;
+    public interface OnEpgScrollListener { void onScroll(int scrollX); }
+    public OnEpgScrollListener onEpgScroll = null;
 
     public IPTVChannelAdapter(Context context, List<M3UParser.Channel> channels, OnClick listener) {
         this.context = context;
@@ -119,9 +121,14 @@ public class IPTVChannelAdapter extends RecyclerView.Adapter<IPTVChannelAdapter.
 
         buildEpgStrip(holder, ch);
         // Auto-scroll EPG strip to current time position
+        // Sync to shared scroll position first
         holder.epgScroll.post(() -> {
             int scrollX = calculateNowScrollOffset();
             holder.epgScroll.scrollTo(Math.max(0, scrollX - dp(20)), 0);
+        });
+        // Add scroll listener to sync all rows
+        holder.epgScroll.getViewTreeObserver().addOnScrollChangedListener(() -> {
+            if (onEpgScroll != null) onEpgScroll.onScroll(holder.epgScroll.getScrollX());
         });
 
         holder.itemView.setSelected(origIdx == selectedIndex);
