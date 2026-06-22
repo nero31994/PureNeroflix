@@ -483,9 +483,10 @@ public class IPTVActivity extends AppCompatActivity {
 
 
     private void loadEpgInBackground(String playlistText) {
-        String epgUrl = com.neroflix.tv.app.iptv.M3UParser.extractEpgUrl(playlistText);
-        if (epgUrl.isEmpty()) return;
-        com.neroflix.tv.app.iptv.EpgManager.loadIfNeeded(this, epgUrl, success -> {
+        java.util.List<String> epgUrls = com.neroflix.tv.app.iptv.M3UParser.extractEpgUrls(playlistText);
+        if (epgUrls.isEmpty()) return;
+        android.util.Log.d("IPTVActivity", "Loading " + epgUrls.size() + " EPG sources");
+        com.neroflix.tv.app.iptv.EpgManager.loadMultiple(this, epgUrls, success -> {
             if (success) {
                 runOnUiThread(() -> {
                     if (adapter != null) adapter.notifyDataSetChanged();

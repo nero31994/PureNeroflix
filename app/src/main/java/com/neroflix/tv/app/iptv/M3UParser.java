@@ -23,20 +23,31 @@ public class M3UParser {
         public boolean isHls = false;
     }
 
-    public static String extractEpgUrl(String m3uContent) {
+    public static List<String> extractEpgUrls(String m3uContent) {
+        List<String> urls = new ArrayList<>();
         try {
             BufferedReader reader = new BufferedReader(new StringReader(m3uContent));
             String line = reader.readLine();
             if (line != null && line.startsWith("#EXTM3U")) {
-                String url = extractAttr(line, "url-tvg");
-                if (url.isEmpty()) url = extractAttr(line, "x-tvg-url");
-                if (!url.isEmpty()) {
-                    int comma = url.indexOf(',');
-                    return comma > 0 ? url.substring(0, comma).trim() : url.trim();
+                String raw = extractAttr(line, "url-tvg");
+                if (raw.isEmpty()) raw = extractAttr(line, "x-tvg-url");
+                if (!raw.isEmpty()) {
+                    for (String u : raw.split(",")) {
+                        String trimmed = u.trim().replaceAll(""", "");
+                        if (!trimmed.isEmpty() && trimmed.startsWith("http")) {
+                            urls.add(trimmed);
+                        }
+                    }
                 }
             }
         } catch (Exception ignored) {}
-        return "";
+        return urls;
+    }
+
+    // Keep single-url method for backward compat
+    public static String extractEpgUrl(String m3uContent) {
+        List<String> urls = extractEpgUrls(m3uContent);
+        return urls.isEmpty() ? "" : urls.get(0);
     }
 
     public static List<Channel> parse(String m3uContent) {

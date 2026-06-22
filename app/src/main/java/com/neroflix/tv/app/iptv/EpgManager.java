@@ -34,17 +34,18 @@ public class EpgManager {
     }
 
     public static synchronized void loadIfNeeded(android.content.Context ctx, String epgUrl, LoadCallback cb) {
-        if (epgUrl == null || epgUrl.isEmpty()) {
+        java.util.List<String> urls = new java.util.ArrayList<>();
+        if (epgUrl != null && !epgUrl.isEmpty()) urls.add(epgUrl);
+        loadMultiple(ctx, urls, cb);
+    }
+
+    public static synchronized void loadMultiple(android.content.Context ctx, java.util.List<String> epgUrls, LoadCallback cb) {
+        if (epgUrls == null || epgUrls.isEmpty()) {
             if (cb != null) cb.onDone(false);
             return;
         }
-        // Always re-parse to pick up timezone fixes; disk cache still avoids re-downloading
         loaded = false;
         programsByChannel.clear();
-        if (loading) {
-            if (cb != null) cb.onDone(false);
-            return;
-        }
         if (loading) {
             if (cb != null) cb.onDone(false);
             return;
@@ -52,26 +53,32 @@ public class EpgManager {
         loading = true;
 
         new Thread(() -> {
-            boolean ok = false;
-            try {
-                String cached = readCache(ctx);
-                String xml;
-                if (cached != null) {
-                    xml = cached;
-                } else {
-                    xml = download(epgUrl);
-                    if (xml != null) writeCache(ctx, xml);
+            boolean anyOk = false;
+            for (int i = 0; i < epgUrls.size(); i++) {
+                String url = epgUrls.get(i).trim();
+                if (url.isEmpty()) continue;
+                try {
+                    String cacheKey = "epg_cache_" + i + ".xml";
+                    String cached = readCacheFile(ctx, cacheKey);
+                    String xml;
+                    if (cached != null) {
+                        xml = cached;
+                    } else {
+                        android.util.Log.d("EpgManager", "Downloading EPG " + (i+1) + "/" + epgUrls.size() + ": " + url);
+                        xml = download(url);
+                        if (xml != null) writeCacheFile(ctx, cacheKey, xml);
+                    }
+                    if (xml != null) {
+                        parseXmltv(xml);
+                        anyOk = true;
+                    }
+                } catch (Exception e) {
+                    android.util.Log.e("EpgManager", "Failed EPG " + url, e);
                 }
-                if (xml != null) {
-                    parseXmltv(xml);
-                    loaded = true;
-                    ok = true;
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
             }
+            loaded = anyOk;
             loading = false;
-            if (cb != null) cb.onDone(ok);
+            if (cb != null) cb.onDone(anyOk);
         }).start();
     }
 
@@ -133,11 +140,15 @@ public class EpgManager {
     private static final String CACHE_TIME_KEY = "epg_cache_timestamp";
 
     private static String readCache(android.content.Context ctx) {
+        return readCacheFile(ctx, CACHE_FILE);
+    }
+
+    private static String readCacheFile(android.content.Context ctx, String filename) {
         try {
             long t = ctx.getSharedPreferences(CACHE_PREFS, android.content.Context.MODE_PRIVATE)
-                    .getLong(CACHE_TIME_KEY, 0);
+                    .getLong(filename + "_ts", 0);
             if (System.currentTimeMillis() - t > CACHE_DURATION_MS) return null;
-            java.io.File f = new java.io.File(ctx.getFilesDir(), CACHE_FILE);
+            java.io.File f = new java.io.File(ctx.getFilesDir(), filename);
             if (!f.exists()) return null;
             java.io.BufferedReader r = new java.io.BufferedReader(new java.io.FileReader(f));
             StringBuilder sb = new StringBuilder();
@@ -151,13 +162,17 @@ public class EpgManager {
     }
 
     private static void writeCache(android.content.Context ctx, String xml) {
+        writeCacheFile(ctx, CACHE_FILE, xml);
+    }
+
+    private static void writeCacheFile(android.content.Context ctx, String filename, String xml) {
         try {
-            java.io.File f = new java.io.File(ctx.getFilesDir(), CACHE_FILE);
+            java.io.File f = new java.io.File(ctx.getFilesDir(), filename);
             java.io.FileWriter w = new java.io.FileWriter(f);
             w.write(xml);
             w.close();
             ctx.getSharedPreferences(CACHE_PREFS, android.content.Context.MODE_PRIVATE).edit()
-                    .putLong(CACHE_TIME_KEY, System.currentTimeMillis())
+                    .putLong(filename + "_ts", System.currentTimeMillis())
                     .apply();
         } catch (Exception ignored) {}
     }
