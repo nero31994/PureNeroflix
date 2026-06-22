@@ -618,6 +618,20 @@ public class IPTVActivity extends AppCompatActivity {
         };
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
         recyclerView.setAdapter(adapter);
+        recyclerView.addOnScrollListener(new androidx.recyclerview.widget.RecyclerView.OnScrollListener() {
+            @Override
+            public void onScrolled(androidx.recyclerview.widget.RecyclerView rv, int dx, int dy) {
+                resetAutoHide();
+            }
+        });
+        if (groupListView != null) {
+            groupListView.addOnScrollListener(new androidx.recyclerview.widget.RecyclerView.OnScrollListener() {
+                @Override
+                public void onScrolled(androidx.recyclerview.widget.RecyclerView rv, int dx, int dy) {
+                    resetAutoHide();
+                }
+            });
+        }
     }
 
     // ── Playback ─────────────────────────────────────────────────────────────
