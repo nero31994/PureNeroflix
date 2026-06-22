@@ -2,6 +2,7 @@ package com.neroflix.tv.app.iptv;
 
 public class EpgProgram {
     public String channelId = "";
+    public String channelName = ""; // display-name from XMLTV for fuzzy matching
     public String title = "";
     public long startMs = 0;
     public long stopMs = 0;

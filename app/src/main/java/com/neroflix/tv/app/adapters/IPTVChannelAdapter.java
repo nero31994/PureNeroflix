@@ -154,7 +154,7 @@ public class IPTVChannelAdapter extends RecyclerView.Adapter<IPTVChannelAdapter.
 
         holder.epgStrip.removeAllViews();
 
-        List<EpgProgram> schedule = EpgManager.getTodaySchedule(ch.tvgId);
+        List<EpgProgram> schedule = EpgManager.getTodaySchedule(ch.tvgId, ch.name);
         SimpleDateFormat timeFmt = new SimpleDateFormat("h:mm a", Locale.getDefault());
 
         if (schedule.isEmpty()) {
@@ -190,7 +190,7 @@ public class IPTVChannelAdapter extends RecyclerView.Adapter<IPTVChannelAdapter.
             lp.setMarginEnd(dp(2));
             block.setLayoutParams(lp);
 
-            EpgProgram now = EpgManager.getNowPlaying(ch.tvgId);
+            EpgProgram now = EpgManager.getNowPlaying(ch.tvgId, ch.name);
             if (now != null && now.startMs == p.startMs) {
                 block.setBackgroundColor(0x55E50914);
                 block.setTextColor(0xFFFFFFFF);

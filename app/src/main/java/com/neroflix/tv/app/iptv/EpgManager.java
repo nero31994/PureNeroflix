@@ -17,6 +17,8 @@ import java.util.Map;
 public class EpgManager {
 
     private static final Map<String, List<EpgProgram>> programsByChannel = new HashMap<>();
+    // Secondary index: normalized channel display name -> programs (fallback when tvg-id mismatches)
+    private static final Map<String, List<EpgProgram>> programsByName = new HashMap<>();
     private static boolean loaded = false;
     private static boolean loading = false;
 
@@ -83,21 +85,47 @@ public class EpgManager {
     }
 
     public static EpgProgram getNowPlaying(String tvgId) {
-        if (tvgId == null || tvgId.isEmpty()) return null;
-        List<EpgProgram> list = programsByChannel.get(tvgId);
-        if (list == null) return null;
+        return getNowPlaying(tvgId, null);
+    }
+
+    public static EpgProgram getNowPlaying(String tvgId, String channelName) {
         long now = System.currentTimeMillis();
-        for (EpgProgram p : list) {
-            if (now >= p.startMs && now < p.stopMs) return p;
+        // Try tvg-id match first
+        if (tvgId != null && !tvgId.isEmpty()) {
+            List<EpgProgram> list = programsByChannel.get(tvgId);
+            if (list != null) {
+                for (EpgProgram p : list) {
+                    if (now >= p.startMs && now < p.stopMs) return p;
+                }
+            }
+        }
+        // Fallback: fuzzy name match
+        if (channelName != null && !channelName.isEmpty()) {
+            String key = normalizeName(channelName);
+            List<EpgProgram> list = programsByName.get(key);
+            if (list != null) {
+                for (EpgProgram p : list) {
+                    if (now >= p.startMs && now < p.stopMs) return p;
+                }
+            }
         }
         return null;
     }
 
     public static EpgProgram getNextPlaying(String tvgId) {
-        if (tvgId == null || tvgId.isEmpty()) return null;
-        List<EpgProgram> list = programsByChannel.get(tvgId);
-        if (list == null) return null;
+        return getNextPlaying(tvgId, null);
+    }
+
+    public static EpgProgram getNextPlaying(String tvgId, String channelName) {
         long now = System.currentTimeMillis();
+        List<EpgProgram> list = null;
+        if (tvgId != null && !tvgId.isEmpty()) {
+            list = programsByChannel.get(tvgId);
+        }
+        if (list == null && channelName != null && !channelName.isEmpty()) {
+            list = programsByName.get(normalizeName(channelName));
+        }
+        if (list == null) return null;
         EpgProgram best = null;
         for (EpgProgram p : list) {
             if (p.startMs > now && (best == null || p.startMs < best.startMs)) best = p;
@@ -106,11 +134,25 @@ public class EpgManager {
     }
 
     public static List<EpgProgram> getTodaySchedule(String tvgId) {
+        return getTodaySchedule(tvgId, null);
+    }
+
+    private static String normalizeName(String name) {
+        return name.toLowerCase()
+            .replaceAll("[^a-z0-9]", "")
+            .trim();
+    }
+
+    public static List<EpgProgram> getTodaySchedule(String tvgId, String channelName) {
         List<EpgProgram> result = new ArrayList<>();
-        if (tvgId == null || tvgId.isEmpty()) return result;
-        List<EpgProgram> list = programsByChannel.get(tvgId);
-        if (list == null) return result;
-        result.addAll(list);
+        List<EpgProgram> list = null;
+        if (tvgId != null && !tvgId.isEmpty()) {
+            list = programsByChannel.get(tvgId);
+        }
+        if (list == null && channelName != null && !channelName.isEmpty()) {
+            list = programsByName.get(normalizeName(channelName));
+        }
+        if (list != null) result.addAll(list);
         return result;
     }
 
@@ -204,12 +246,42 @@ public class EpgManager {
     private static synchronized void parseXmltv(String xml) {
         // Do NOT clear here - called multiple times for multiple EPG sources, must merge
         try {
+            // First pass: build channel id -> display-name map
+            java.util.Map<String, String> channelNames = new HashMap<>();
             XmlPullParserFactory factory = XmlPullParserFactory.newInstance();
             factory.setNamespaceAware(false);
             XmlPullParser parser = factory.newPullParser();
             parser.setInput(new StringReader(xml));
-
             int event = parser.getEventType();
+            String curChId = null;
+            boolean inChannel = false;
+            boolean inDisplayName = false;
+            while (event != XmlPullParser.END_DOCUMENT) {
+                String tag = parser.getName();
+                if (event == XmlPullParser.START_TAG && "channel".equals(tag)) {
+                    curChId = parser.getAttributeValue(null, "id");
+                    inChannel = true;
+                } else if (event == XmlPullParser.START_TAG && "display-name".equals(tag) && inChannel) {
+                    inDisplayName = true;
+                } else if (event == XmlPullParser.TEXT && inDisplayName && curChId != null) {
+                    if (!channelNames.containsKey(curChId)) {
+                        channelNames.put(curChId, parser.getText().trim());
+                    }
+                } else if (event == XmlPullParser.END_TAG && "display-name".equals(tag)) {
+                    inDisplayName = false;
+                } else if (event == XmlPullParser.END_TAG && "channel".equals(tag)) {
+                    inChannel = false;
+                    curChId = null;
+                }
+                event = parser.next();
+            }
+
+            // Second pass: parse programmes
+            factory = XmlPullParserFactory.newInstance();
+            factory.setNamespaceAware(false);
+            parser = factory.newPullParser();
+            parser.setInput(new StringReader(xml));
+            event = parser.getEventType();
             String currentChannel = null;
             String currentTitle = null;
             long currentStart = 0;
@@ -235,6 +307,7 @@ public class EpgManager {
                     if (currentChannel != null && currentTitle != null && currentStart > 0 && currentStop > 0) {
                         EpgProgram p = new EpgProgram();
                         p.channelId = currentChannel;
+                        p.channelName = channelNames.getOrDefault(currentChannel, "");
                         p.title = currentTitle.trim();
                         p.startMs = currentStart;
                         p.stopMs = currentStop;
@@ -245,6 +318,17 @@ public class EpgManager {
                             programsByChannel.put(currentChannel, list);
                         }
                         list.add(p);
+
+                        // Also index by normalized display-name for fuzzy fallback
+                        if (!p.channelName.isEmpty()) {
+                            String nameKey = normalizeName(p.channelName);
+                            List<EpgProgram> nameList = programsByName.get(nameKey);
+                            if (nameList == null) {
+                                nameList = new ArrayList<>();
+                                programsByName.put(nameKey, nameList);
+                            }
+                            nameList.add(p);
+                        }
                     }
                     inProgramme = false;
                 }
