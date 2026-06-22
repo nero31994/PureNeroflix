@@ -38,8 +38,11 @@ public class EpgManager {
             if (cb != null) cb.onDone(false);
             return;
         }
-        if (loaded) {
-            if (cb != null) cb.onDone(true);
+        // Always re-parse to pick up timezone fixes; disk cache still avoids re-downloading
+        loaded = false;
+        programsByChannel.clear();
+        if (loading) {
+            if (cb != null) cb.onDone(false);
             return;
         }
         if (loading) {
@@ -165,12 +168,17 @@ public class EpgManager {
         try {
             String datePart = raw.length() >= 14 ? raw.substring(0, 14) : raw;
             SimpleDateFormat fmt = new SimpleDateFormat("yyyyMMddHHmmss", Locale.US);
-            String tz = "UTC";
-            if (raw.length() > 15) {
-                String tzPart = raw.substring(15).trim();
-                if (!tzPart.isEmpty() && !tzPart.equals("Z")) tz = "GMT" + tzPart;
+            // Default to device local timezone when no offset specified
+            // (covers feeds that embed local PH time without explicit +0800)
+            fmt.setTimeZone(java.util.TimeZone.getDefault());
+            if (raw.length() > 14) {
+                String tzPart = raw.substring(14).trim();
+                if (tzPart.startsWith("+") || tzPart.startsWith("-")) {
+                    fmt.setTimeZone(java.util.TimeZone.getTimeZone("GMT" + tzPart));
+                } else if (tzPart.equals("Z")) {
+                    fmt.setTimeZone(java.util.TimeZone.getTimeZone("UTC"));
+                }
             }
-            fmt.setTimeZone(java.util.TimeZone.getTimeZone(tz));
             Date d = fmt.parse(datePart);
             return d != null ? d.getTime() : 0;
         } catch (Exception e) {
