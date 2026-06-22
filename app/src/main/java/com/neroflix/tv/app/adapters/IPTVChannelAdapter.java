@@ -118,6 +118,11 @@ public class IPTVChannelAdapter extends RecyclerView.Adapter<IPTVChannelAdapter.
         }
 
         buildEpgStrip(holder, ch);
+        // Auto-scroll EPG strip to current time position
+        holder.epgScroll.post(() -> {
+            int scrollX = calculateNowScrollOffset();
+            holder.epgScroll.scrollTo(Math.max(0, scrollX - dp(20)), 0);
+        });
 
         holder.itemView.setSelected(origIdx == selectedIndex);
         boolean isFocused = (position == focusedIndex);
@@ -204,6 +209,27 @@ public class IPTVChannelAdapter extends RecyclerView.Adapter<IPTVChannelAdapter.
         return Math.round(dp * context.getResources().getDisplayMetrics().density);
     }
 
+    private int calculateNowScrollOffset() {
+        // Get start of current hour as the left anchor
+        java.util.Calendar cal = java.util.Calendar.getInstance();
+        cal.set(java.util.Calendar.MINUTE, 0);
+        cal.set(java.util.Calendar.SECOND, 0);
+        cal.set(java.util.Calendar.MILLISECOND, 0);
+        // Go back to start of day to calculate total offset
+        java.util.Calendar dayStart = java.util.Calendar.getInstance();
+        dayStart.set(java.util.Calendar.HOUR_OF_DAY, 0);
+        dayStart.set(java.util.Calendar.MINUTE, 0);
+        dayStart.set(java.util.Calendar.SECOND, 0);
+        dayStart.set(java.util.Calendar.MILLISECOND, 0);
+
+        long nowMs = System.currentTimeMillis();
+        long startMs = dayStart.getTimeInMillis();
+        long elapsedMs = nowMs - startMs;
+        // Convert elapsed time to pixels using same PX_PER_HOUR scale
+        float density = context.getResources().getDisplayMetrics().density;
+        return (int) ((elapsedMs / 3600000.0) * PX_PER_HOUR * density);
+    }
+
     @Override
     public int getItemCount() { return channels.size(); }
 
@@ -211,6 +237,7 @@ public class IPTVChannelAdapter extends RecyclerView.Adapter<IPTVChannelAdapter.
         ImageView logo;
         TextView number, name, drmBadge;
         LinearLayout epgStrip;
+        android.widget.HorizontalScrollView epgScroll;
         View focusOverlay;
 
         ViewHolder(View v) {
@@ -220,6 +247,7 @@ public class IPTVChannelAdapter extends RecyclerView.Adapter<IPTVChannelAdapter.
             name     = v.findViewById(R.id.channel_name);
             drmBadge = v.findViewById(R.id.channel_drm_badge);
             epgStrip = v.findViewById(R.id.epg_strip);
+            epgScroll = v.findViewById(R.id.epg_scroll);
             focusOverlay = v.findViewById(R.id.channel_focus_overlay);
         }
     }
