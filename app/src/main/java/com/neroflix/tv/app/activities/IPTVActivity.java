@@ -72,7 +72,6 @@ public class IPTVActivity extends AppCompatActivity {
     // ── Views ────────────────────────────────────────────────────────────────
     private ExoPlayer player;
     private PlayerView playerView;
-    private PlayerView pipPlayerView;
     private android.view.View pipContainer;
     private LinearLayout sidebar, topBar;
     private androidx.recyclerview.widget.RecyclerView groupListView;
@@ -255,7 +254,6 @@ public class IPTVActivity extends AppCompatActivity {
         showDpadTutorial();
 
         playerView         = findViewById(R.id.iptv_player);
-        pipPlayerView = findViewById(R.id.iptv_pip_player);
         pipContainer  = findViewById(R.id.iptv_pip_container);
         sidebar            = findViewById(R.id.iptv_sidebar);
         topBar             = findViewById(R.id.iptv_top_bar);
