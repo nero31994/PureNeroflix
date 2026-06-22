@@ -691,10 +691,11 @@ public class IPTVActivity extends AppCompatActivity {
     // ── Sidebar ───────────────────────────────────────────────────────────────
 
     private void toggleSidebar() {
-        sidebarVisible = !sidebarVisible;
-        int vis = sidebarVisible ? View.VISIBLE : View.GONE;
-        sidebar.setVisibility(vis);
-        topBar.setVisibility(vis);
+        if (sidebarVisible) {
+            hideSidebar();
+        } else {
+            showSidebar();
+        }
     }
 
     private void showSidebar() {

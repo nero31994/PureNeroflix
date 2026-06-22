@@ -26,6 +26,13 @@ public class EpgManager {
         return loaded && !programsByChannel.isEmpty();
     }
 
+    public static void invalidateCache(android.content.Context ctx) {
+        loaded = false;
+        programsByChannel.clear();
+        ctx.getSharedPreferences("epg_cache_prefs", android.content.Context.MODE_PRIVATE)
+            .edit().remove("epg_cache_timestamp").apply();
+    }
+
     public static synchronized void loadIfNeeded(android.content.Context ctx, String epgUrl, LoadCallback cb) {
         if (epgUrl == null || epgUrl.isEmpty()) {
             if (cb != null) cb.onDone(false);
@@ -117,7 +124,7 @@ public class EpgManager {
         return sb.toString();
     }
 
-    private static final long CACHE_DURATION_MS = 24 * 60 * 60 * 1000L;
+    private static final long CACHE_DURATION_MS = 6 * 60 * 60 * 1000L;
     private static final String CACHE_FILE = "epg_cache.xml";
     private static final String CACHE_PREFS = "epg_cache_prefs";
     private static final String CACHE_TIME_KEY = "epg_cache_timestamp";
