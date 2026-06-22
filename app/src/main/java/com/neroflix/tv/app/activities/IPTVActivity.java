@@ -92,6 +92,8 @@ public class IPTVActivity extends AppCompatActivity {
     private enum FocusZone { PLAYER, CHANNELS, GROUPS, SEARCH }
     private FocusZone focusZone = FocusZone.PLAYER;
     private final android.os.Handler searchDebounceHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+    private final android.os.Handler autoHideHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+    private static final long AUTO_HIDE_DELAY_MS = 5000L;
     private int focusedChannelIndex = 0;
     private int focusedGroupIndex   = 0;
 
@@ -368,6 +370,8 @@ public class IPTVActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        autoHideHandler.removeCallbacksAndMessages(null);
+        searchDebounceHandler.removeCallbacksAndMessages(null);
         if (iptvDpadView != null) try { getWindowManager().removeView(iptvDpadView); } catch (Exception e) {}
         timeHandler.removeCallbacksAndMessages(null);
         if (player != null) { player.stop(); player.release(); player = null; }
@@ -704,6 +708,7 @@ public class IPTVActivity extends AppCompatActivity {
             sidebar.setVisibility(View.VISIBLE);
             topBar.setVisibility(View.VISIBLE);
             updatePipCard();
+            resetAutoHide();
 
             // Sync D-pad focus to currently playing channel
             if (adapter != null) {
@@ -734,6 +739,7 @@ public class IPTVActivity extends AppCompatActivity {
 
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
+        resetAutoHide(); // reset inactivity timer on any key
         // Any key press shows the sidebar
         if (!sidebarVisible && keyCode != KeyEvent.KEYCODE_BACK) {
             showSidebar();
@@ -941,6 +947,18 @@ public class IPTVActivity extends AppCompatActivity {
         pipContainer.setVisibility(android.view.View.VISIBLE);
     }
 
+    private void resetAutoHide() {
+        autoHideHandler.removeCallbacksAndMessages(null);
+        if (sidebarVisible) {
+            autoHideHandler.postDelayed(() -> {
+                if (sidebarVisible) {
+                    hideSidebar();
+                    focusZone = FocusZone.PLAYER;
+                }
+            }, AUTO_HIDE_DELAY_MS);
+        }
+    }
+
     private void highlightChannel(int filteredPos) {
         if (adapter == null || filteredPos < 0) return;
         if (filteredPos >= adapter.getItemCount()) return;
@@ -961,6 +979,7 @@ public class IPTVActivity extends AppCompatActivity {
         sidebarVisible = false;
         sidebar.setVisibility(View.GONE);
         topBar.setVisibility(View.GONE);
+        autoHideHandler.removeCallbacksAndMessages(null);
         if (pipContainer != null) pipContainer.setVisibility(View.GONE);
         if (adapter != null) adapter.setFocused(-1); // clear D-pad highlight
     }
@@ -968,6 +987,7 @@ public class IPTVActivity extends AppCompatActivity {
     @Override
     public boolean onTouchEvent(MotionEvent e) {
         showSidebar();
+        resetAutoHide();
         return super.onTouchEvent(e);
     }
 
