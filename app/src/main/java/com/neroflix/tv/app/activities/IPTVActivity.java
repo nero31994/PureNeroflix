@@ -673,8 +673,6 @@ public class IPTVActivity extends AppCompatActivity {
             player.setMediaItem(mediaItem);
             player.prepare();
             player.play();
-            if (pipPlayerView != null) pipPlayerView.setPlayer(player);
-            if (pipContainer != null && sidebarVisible) pipContainer.setVisibility(View.VISIBLE);
 
         } catch (Exception e) {
             Toast.makeText(this, "Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
@@ -705,10 +703,7 @@ public class IPTVActivity extends AppCompatActivity {
             sidebarVisible = true;
             sidebar.setVisibility(View.VISIBLE);
             topBar.setVisibility(View.VISIBLE);
-            if (pipContainer != null && player != null) {
-                pipPlayerView.setPlayer(player);
-                pipContainer.setVisibility(View.VISIBLE);
-            }
+
             // Sync D-pad focus to currently playing channel
             if (adapter != null) {
                 for (int i = 0; i < adapter.getItemCount(); i++) {
@@ -917,8 +912,6 @@ public class IPTVActivity extends AppCompatActivity {
         sidebarVisible = false;
         sidebar.setVisibility(View.GONE);
         topBar.setVisibility(View.GONE);
-        if (pipContainer != null) pipContainer.setVisibility(View.GONE);
-        if (pipPlayerView != null) pipPlayerView.setPlayer(null);
         if (adapter != null) adapter.setFocused(-1); // clear D-pad highlight
     }
 
