@@ -202,7 +202,7 @@ public class EpgManager {
     }
 
     private static synchronized void parseXmltv(String xml) {
-        programsByChannel.clear();
+        // Do NOT clear here - called multiple times for multiple EPG sources, must merge
         try {
             XmlPullParserFactory factory = XmlPullParserFactory.newInstance();
             factory.setNamespaceAware(false);
