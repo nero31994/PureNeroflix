@@ -119,18 +119,24 @@ public class IPTVChannelAdapter extends RecyclerView.Adapter<IPTVChannelAdapter.
 
         buildEpgStrip(holder, ch);
         refreshEpgHighlights(holder);
-        // Auto-scroll to current time on bind
-        holder.epgScroll.post(() -> {
-            java.util.Calendar dayStart = java.util.Calendar.getInstance();
-            dayStart.set(java.util.Calendar.HOUR_OF_DAY, 0);
-            dayStart.set(java.util.Calendar.MINUTE, 0);
-            dayStart.set(java.util.Calendar.SECOND, 0);
-            dayStart.set(java.util.Calendar.MILLISECOND, 0);
-            long elapsedMs = System.currentTimeMillis() - dayStart.getTimeInMillis();
-            float density = context.getResources().getDisplayMetrics().density;
-            int scrollX = (int)((elapsedMs / 3600000.0) * PX_PER_HOUR * density);
-            holder.epgScroll.scrollTo(Math.max(0, scrollX - dp(20)), 0);
-        });
+        // Auto-scroll to current time - use GlobalLayoutListener to ensure strip is measured
+        holder.epgScroll.getViewTreeObserver().addOnGlobalLayoutListener(
+            new android.view.ViewTreeObserver.OnGlobalLayoutListener() {
+                @Override
+                public void onGlobalLayout() {
+                    holder.epgScroll.getViewTreeObserver().removeOnGlobalLayoutListener(this);
+                    java.util.Calendar dayStart = java.util.Calendar.getInstance();
+                    dayStart.set(java.util.Calendar.HOUR_OF_DAY, 0);
+                    dayStart.set(java.util.Calendar.MINUTE, 0);
+                    dayStart.set(java.util.Calendar.SECOND, 0);
+                    dayStart.set(java.util.Calendar.MILLISECOND, 0);
+                    long elapsedMs = System.currentTimeMillis() - dayStart.getTimeInMillis();
+                    // Use dp() to match block widths which are also in dp-converted-to-px
+                    int scrollX = (int)((elapsedMs / 3600000.0) * dp(PX_PER_HOUR));
+                    holder.epgScroll.scrollTo(Math.max(0, scrollX - dp(40)), 0);
+                }
+            }
+        );
 
         holder.itemView.setSelected(origIdx == selectedIndex);
         boolean isFocused = (position == focusedIndex);
@@ -211,7 +217,7 @@ public class IPTVChannelAdapter extends RecyclerView.Adapter<IPTVChannelAdapter.
 
         for (EpgProgram p : schedule) {
             long durationMs = p.stopMs - p.startMs;
-            int widthPx = (int) ((durationMs / 3600000.0) * PX_PER_HOUR);
+            int widthPx = (int) ((durationMs / 3600000.0) * dp(PX_PER_HOUR));
             if (widthPx < dp(60)) widthPx = dp(60);
 
             TextView block = new TextView(context);
