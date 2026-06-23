@@ -589,6 +589,16 @@ public class IPTVActivity extends AppCompatActivity {
 
     private void startNowLineUpdater() {
         epgNowLine = findViewById(R.id.epg_now_line);
+        // Initialize sharedEpgScrollX to current time offset so line shows correctly on first draw
+        java.util.Calendar dayStart = java.util.Calendar.getInstance();
+        dayStart.set(java.util.Calendar.HOUR_OF_DAY, 0);
+        dayStart.set(java.util.Calendar.MINUTE, 0);
+        dayStart.set(java.util.Calendar.SECOND, 0);
+        dayStart.set(java.util.Calendar.MILLISECOND, 0);
+        long elapsedMs = System.currentTimeMillis() - dayStart.getTimeInMillis();
+        float density = getResources().getDisplayMetrics().density;
+        int pxPerHour = com.neroflix.tv.app.adapters.IPTVChannelAdapter.PX_PER_HOUR;
+        sharedEpgScrollX = Math.max(0, (int)((elapsedMs / 3600000.0) * pxPerHour * density) - Math.round(20 * density));
         updateNowLine();
     }
 
@@ -610,14 +620,20 @@ public class IPTVActivity extends AppCompatActivity {
         // 160dp is the fixed left channel info panel width
         int channelPanelPx = Math.round(160 * density);
         int absoluteNowPx = (int)((elapsedMs / 3600000.0) * pxPerHour * density);
-        // Subtract current scroll offset so line stays at visual "now" position
+        // Position = channel panel + absolute now offset - current scroll
+        // This keeps the line at the correct visual "now" position on screen
         int nowOffsetPx = channelPanelPx + absoluteNowPx - sharedEpgScrollX;
 
+        // Only show if the line is within the visible area
         android.widget.FrameLayout.LayoutParams lp =
             (android.widget.FrameLayout.LayoutParams) epgNowLine.getLayoutParams();
-        lp.leftMargin = Math.max(channelPanelPx, nowOffsetPx);
-        epgNowLine.setLayoutParams(lp);
-        epgNowLine.setVisibility(android.view.View.VISIBLE);
+        if (nowOffsetPx >= channelPanelPx) {
+            lp.leftMargin = nowOffsetPx;
+            epgNowLine.setLayoutParams(lp);
+            epgNowLine.setVisibility(android.view.View.VISIBLE);
+        } else {
+            epgNowLine.setVisibility(android.view.View.GONE);
+        }
 
         // Update every minute
         nowLineHandler.postDelayed(this::updateNowLine, 60_000);
