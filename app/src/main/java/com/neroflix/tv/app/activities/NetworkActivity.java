@@ -292,26 +292,29 @@ public class NetworkActivity extends AppCompatActivity {
             case KeyEvent.KEYCODE_DPAD_UP:
                 if (focusedRow > 0) {
                     focusedRow--;
-                } else {
-                    // At top — go back
-                    finish();
-                    return true;
+                    highlightFocused();
                 }
-                highlightFocused();
+                // At top row - do nothing, don't finish
                 return true;
 
             case KeyEvent.KEYCODE_DPAD_CENTER:
-            case KeyEvent.KEYCODE_ENTER:
             case KeyEvent.KEYCODE_BUTTON_A:
                 int pos = focusedRow * gridCols + focusedCol;
                 if (pos < totalItems) openMovie(items.get(pos));
+                return true;
+
+            case KeyEvent.KEYCODE_ENTER:
+                // Some devices send ENTER for OK - treat same as CENTER
+                int pos2 = focusedRow * gridCols + focusedCol;
+                if (pos2 < totalItems) openMovie(items.get(pos2));
                 return true;
 
             case KeyEvent.KEYCODE_BACK:
                 finish();
                 return true;
         }
-        return super.onKeyDown(keyCode, event);
+        // Consume all other keys to prevent default focus system interference
+        return true;
     }
 
     private void highlightFocused() {
