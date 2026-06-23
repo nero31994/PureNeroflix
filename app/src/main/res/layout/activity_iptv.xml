@@ -178,14 +178,6 @@
 
                 </LinearLayout>
 
-                <!-- Red "now" vertical indicator line -->
-                <View
-                    android:id="@+id/epg_now_line"
-                    android:layout_width="2dp"
-                    android:layout_height="match_parent"
-                    android:background="#FFE50914"
-                    android:elevation="4dp"
-                    android:visibility="gone"/>
 
             </FrameLayout>
 

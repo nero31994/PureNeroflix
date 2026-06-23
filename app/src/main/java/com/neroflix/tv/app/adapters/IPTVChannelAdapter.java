@@ -37,8 +37,6 @@ public class IPTVChannelAdapter extends RecyclerView.Adapter<IPTVChannelAdapter.
     private int selectedIndex = -1;
     private int focusedIndex = -1;
     public Runnable onHideSidebar = null;
-    public interface OnEpgScrollListener { void onScroll(int scrollX); }
-    public OnEpgScrollListener onEpgScroll = null;
 
     public IPTVChannelAdapter(Context context, List<M3UParser.Channel> channels, OnClick listener) {
         this.context = context;
@@ -121,14 +119,17 @@ public class IPTVChannelAdapter extends RecyclerView.Adapter<IPTVChannelAdapter.
 
         buildEpgStrip(holder, ch);
         // Auto-scroll EPG strip to current time position
-        // Sync to shared scroll position first
+        // Auto-scroll to current time on bind
         holder.epgScroll.post(() -> {
-            int scrollX = calculateNowScrollOffset();
+            java.util.Calendar dayStart = java.util.Calendar.getInstance();
+            dayStart.set(java.util.Calendar.HOUR_OF_DAY, 0);
+            dayStart.set(java.util.Calendar.MINUTE, 0);
+            dayStart.set(java.util.Calendar.SECOND, 0);
+            dayStart.set(java.util.Calendar.MILLISECOND, 0);
+            long elapsedMs = System.currentTimeMillis() - dayStart.getTimeInMillis();
+            float density = context.getResources().getDisplayMetrics().density;
+            int scrollX = (int)((elapsedMs / 3600000.0) * PX_PER_HOUR * density);
             holder.epgScroll.scrollTo(Math.max(0, scrollX - dp(20)), 0);
-        });
-        // Add scroll listener to sync all rows
-        holder.epgScroll.getViewTreeObserver().addOnScrollChangedListener(() -> {
-            if (onEpgScroll != null) onEpgScroll.onScroll(holder.epgScroll.getScrollX());
         });
 
         holder.itemView.setSelected(origIdx == selectedIndex);
@@ -217,26 +218,6 @@ public class IPTVChannelAdapter extends RecyclerView.Adapter<IPTVChannelAdapter.
         return Math.round(dp * context.getResources().getDisplayMetrics().density);
     }
 
-    private int calculateNowScrollOffset() {
-        // Get start of current hour as the left anchor
-        java.util.Calendar cal = java.util.Calendar.getInstance();
-        cal.set(java.util.Calendar.MINUTE, 0);
-        cal.set(java.util.Calendar.SECOND, 0);
-        cal.set(java.util.Calendar.MILLISECOND, 0);
-        // Go back to start of day to calculate total offset
-        java.util.Calendar dayStart = java.util.Calendar.getInstance();
-        dayStart.set(java.util.Calendar.HOUR_OF_DAY, 0);
-        dayStart.set(java.util.Calendar.MINUTE, 0);
-        dayStart.set(java.util.Calendar.SECOND, 0);
-        dayStart.set(java.util.Calendar.MILLISECOND, 0);
-
-        long nowMs = System.currentTimeMillis();
-        long startMs = dayStart.getTimeInMillis();
-        long elapsedMs = nowMs - startMs;
-        // Convert elapsed time to pixels using same PX_PER_HOUR scale
-        float density = context.getResources().getDisplayMetrics().density;
-        return (int) ((elapsedMs / 3600000.0) * PX_PER_HOUR * density);
-    }
 
     @Override
     public int getItemCount() { return channels.size(); }

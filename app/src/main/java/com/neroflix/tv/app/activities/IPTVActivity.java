@@ -372,7 +372,6 @@ public class IPTVActivity extends AppCompatActivity {
         super.onDestroy();
         autoHideHandler.removeCallbacksAndMessages(null);
         searchDebounceHandler.removeCallbacksAndMessages(null);
-        nowLineHandler.removeCallbacksAndMessages(null);
         if (iptvDpadView != null) try { getWindowManager().removeView(iptvDpadView); } catch (Exception e) {}
         timeHandler.removeCallbacksAndMessages(null);
         if (player != null) { player.stop(); player.release(); player = null; }
@@ -507,7 +506,6 @@ public class IPTVActivity extends AppCompatActivity {
             buildGroupTabs();
             setupRecycler();
             buildEpgTimelineHeader();
-            startNowLineUpdater();
             if (!channels.isEmpty()) playChannel(0);
             loadEpgInBackground(cached);
             return;
@@ -582,80 +580,9 @@ public class IPTVActivity extends AppCompatActivity {
 
 
 
-    private android.view.View epgNowLine;
-    private final android.os.Handler nowLineHandler = new android.os.Handler(android.os.Looper.getMainLooper());
-    private int sharedEpgScrollX = 0;
-    private boolean isSyncingScroll = false;
 
-    private void startNowLineUpdater() {
-        epgNowLine = findViewById(R.id.epg_now_line);
-        // Initialize sharedEpgScrollX to current time offset so line shows correctly on first draw
-        java.util.Calendar dayStart = java.util.Calendar.getInstance();
-        dayStart.set(java.util.Calendar.HOUR_OF_DAY, 0);
-        dayStart.set(java.util.Calendar.MINUTE, 0);
-        dayStart.set(java.util.Calendar.SECOND, 0);
-        dayStart.set(java.util.Calendar.MILLISECOND, 0);
-        long elapsedMs = System.currentTimeMillis() - dayStart.getTimeInMillis();
-        float density = getResources().getDisplayMetrics().density;
-        int pxPerHour = com.neroflix.tv.app.adapters.IPTVChannelAdapter.PX_PER_HOUR;
-        sharedEpgScrollX = Math.max(0, (int)((elapsedMs / 3600000.0) * pxPerHour * density) - Math.round(20 * density));
-        updateNowLine();
-    }
 
-    private void updateNowLine() {
-        if (epgNowLine == null || !sidebarVisible) return;
 
-        // Time since start of day in ms
-        java.util.Calendar dayStart = java.util.Calendar.getInstance();
-        dayStart.set(java.util.Calendar.HOUR_OF_DAY, 0);
-        dayStart.set(java.util.Calendar.MINUTE, 0);
-        dayStart.set(java.util.Calendar.SECOND, 0);
-        dayStart.set(java.util.Calendar.MILLISECOND, 0);
-        long elapsedMs = System.currentTimeMillis() - dayStart.getTimeInMillis();
-
-        float density = getResources().getDisplayMetrics().density;
-        int pxPerHour = com.neroflix.tv.app.adapters.IPTVChannelAdapter.PX_PER_HOUR;
-        int channelPanelPx = Math.round(160 * density);
-
-        // Absolute pixel position of "now" in the full timeline
-        int absoluteNowPx = (int)((elapsedMs / 3600000.0) * pxPerHour * density);
-
-        // Screen position = channel panel width + (absolute now - current scroll offset)
-        int screenX = channelPanelPx + (absoluteNowPx - sharedEpgScrollX);
-
-        epgNowLine.post(() -> {
-            android.widget.FrameLayout.LayoutParams lp =
-                (android.widget.FrameLayout.LayoutParams) epgNowLine.getLayoutParams();
-            lp.leftMargin = screenX;
-            lp.width = Math.round(2 * density);
-            epgNowLine.setLayoutParams(lp);
-            epgNowLine.setVisibility(screenX >= channelPanelPx ?
-                android.view.View.VISIBLE : android.view.View.GONE);
-        });
-
-        nowLineHandler.removeCallbacksAndMessages(null);
-        nowLineHandler.postDelayed(this::updateNowLine, 60_000);
-    }
-
-    private final android.os.Handler syncScrollHandler = new android.os.Handler(android.os.Looper.getMainLooper());
-
-    public void syncEpgScroll(int scrollX) {
-        sharedEpgScrollX = scrollX;
-        syncScrollHandler.removeCallbacksAndMessages(null);
-        syncScrollHandler.post(() -> {
-            if (isSyncingScroll) return;
-            isSyncingScroll = true;
-            for (int i = 0; i < recyclerView.getChildCount(); i++) {
-                android.view.View row = recyclerView.getChildAt(i);
-                android.widget.HorizontalScrollView hsv = row.findViewById(R.id.epg_scroll);
-                if (hsv != null && hsv.getScrollX() != scrollX) {
-                    hsv.scrollTo(scrollX, 0);
-                }
-            }
-            isSyncingScroll = false;
-            updateNowLine();
-        });
-    }
 
     private void buildEpgTimelineHeader() {
         android.widget.LinearLayout header = findViewById(R.id.epg_timeline_header);
@@ -694,11 +621,7 @@ public class IPTVActivity extends AppCompatActivity {
         adapter.onHideSidebar = () -> {
             hideSidebar();
             focusZone = FocusZone.PLAYER;
-        };
-        adapter.onEpgScroll = new com.neroflix.tv.app.adapters.IPTVChannelAdapter.OnEpgScrollListener() {
-            @Override public void onScroll(int scrollX) { syncEpgScroll(scrollX); }
-        };
-        recyclerView.setLayoutManager(new LinearLayoutManager(this));
+        };        recyclerView.setLayoutManager(new LinearLayoutManager(this));
         recyclerView.setAdapter(adapter);
         recyclerView.addOnScrollListener(new androidx.recyclerview.widget.RecyclerView.OnScrollListener() {
             @Override
@@ -805,7 +728,6 @@ public class IPTVActivity extends AppCompatActivity {
             topBar.setVisibility(View.VISIBLE);
             updatePipCard();
             resetAutoHide();
-            updateNowLine();
 
             // Sync D-pad focus to currently playing channel
             if (adapter != null) {
