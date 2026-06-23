@@ -642,7 +642,6 @@ public class MainActivity extends AppCompatActivity {
     // ── D-pad focus zones ─────────────────────────────────────────────────────
     private enum MainFocusZone { NAV, FILTER, NETWORK_ROW, STUDIO_ROW, CONTENT }
     private MainFocusZone mainFocusZone = MainFocusZone.FILTER;
-                        updateMainDebug();
     private int focusedNavIndex     = 7; // default: TV icon
     private int focusedCategoryRow  = 0;
     private int focusedCategoryCol  = 0;
