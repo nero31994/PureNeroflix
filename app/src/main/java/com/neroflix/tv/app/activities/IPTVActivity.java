@@ -604,61 +604,57 @@ public class IPTVActivity extends AppCompatActivity {
 
     private void updateNowLine() {
         if (epgNowLine == null || !sidebarVisible) return;
-        android.view.ViewGroup parent = (android.view.ViewGroup) epgNowLine.getParent();
-        if (parent == null) return;
 
-        // Calculate pixel offset from start of day
+        // Time since start of day in ms
         java.util.Calendar dayStart = java.util.Calendar.getInstance();
         dayStart.set(java.util.Calendar.HOUR_OF_DAY, 0);
         dayStart.set(java.util.Calendar.MINUTE, 0);
         dayStart.set(java.util.Calendar.SECOND, 0);
         dayStart.set(java.util.Calendar.MILLISECOND, 0);
-
         long elapsedMs = System.currentTimeMillis() - dayStart.getTimeInMillis();
+
         float density = getResources().getDisplayMetrics().density;
         int pxPerHour = com.neroflix.tv.app.adapters.IPTVChannelAdapter.PX_PER_HOUR;
-        // 160dp is the fixed left channel info panel width
         int channelPanelPx = Math.round(160 * density);
+
+        // Absolute pixel position of "now" in the full timeline
         int absoluteNowPx = (int)((elapsedMs / 3600000.0) * pxPerHour * density);
-        // Position = channel panel + absolute now offset - current scroll
-        // This keeps the line at the correct visual "now" position on screen
-        int nowOffsetPx = channelPanelPx + absoluteNowPx - sharedEpgScrollX;
 
-        // Only show if the line is within the visible area
-        android.widget.FrameLayout.LayoutParams lp =
-            (android.widget.FrameLayout.LayoutParams) epgNowLine.getLayoutParams();
-        if (nowOffsetPx >= channelPanelPx) {
-            lp.leftMargin = nowOffsetPx;
+        // Screen position = channel panel width + (absolute now - current scroll offset)
+        int screenX = channelPanelPx + (absoluteNowPx - sharedEpgScrollX);
+
+        epgNowLine.post(() -> {
+            android.widget.FrameLayout.LayoutParams lp =
+                (android.widget.FrameLayout.LayoutParams) epgNowLine.getLayoutParams();
+            lp.leftMargin = screenX;
+            lp.width = Math.round(2 * density);
             epgNowLine.setLayoutParams(lp);
-            epgNowLine.setVisibility(android.view.View.VISIBLE);
-        } else {
-            epgNowLine.setVisibility(android.view.View.GONE);
-        }
+            epgNowLine.setVisibility(screenX >= channelPanelPx ?
+                android.view.View.VISIBLE : android.view.View.GONE);
+        });
 
-        // Update every minute
+        nowLineHandler.removeCallbacksAndMessages(null);
         nowLineHandler.postDelayed(this::updateNowLine, 60_000);
     }
 
+    private final android.os.Handler syncScrollHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+
     public void syncEpgScroll(int scrollX) {
-        if (isSyncingScroll) return;
-        isSyncingScroll = true;
         sharedEpgScrollX = scrollX;
-        // Scroll all visible channel rows to same position
-        for (int i = 0; i < recyclerView.getChildCount(); i++) {
-            android.view.View row = recyclerView.getChildAt(i);
-            android.widget.HorizontalScrollView hsv = row.findViewById(R.id.epg_scroll);
-            if (hsv != null && hsv.getScrollX() != scrollX) {
-                hsv.scrollTo(scrollX, 0);
+        syncScrollHandler.removeCallbacksAndMessages(null);
+        syncScrollHandler.post(() -> {
+            if (isSyncingScroll) return;
+            isSyncingScroll = true;
+            for (int i = 0; i < recyclerView.getChildCount(); i++) {
+                android.view.View row = recyclerView.getChildAt(i);
+                android.widget.HorizontalScrollView hsv = row.findViewById(R.id.epg_scroll);
+                if (hsv != null && hsv.getScrollX() != scrollX) {
+                    hsv.scrollTo(scrollX, 0);
+                }
             }
-        }
-        // Also scroll the timeline header
-        android.widget.LinearLayout header = findViewById(R.id.epg_timeline_header);
-        if (header != null && header.getParent() instanceof android.widget.HorizontalScrollView) {
-            ((android.widget.HorizontalScrollView) header.getParent()).scrollTo(scrollX, 0);
-        }
-        // Reposition the now-line
-        updateNowLine();
-        isSyncingScroll = false;
+            isSyncingScroll = false;
+            updateNowLine();
+        });
     }
 
     private void buildEpgTimelineHeader() {
