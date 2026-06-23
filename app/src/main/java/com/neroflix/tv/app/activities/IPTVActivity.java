@@ -153,100 +153,10 @@ public class IPTVActivity extends AppCompatActivity {
     }
 
 
-    private void initVirtualDpad() {
-        android.widget.FrameLayout pad = new android.widget.FrameLayout(this);
-        int bs = 90;
-        int gap = 8;
 
-        android.widget.Button btnUp    = makeDpadBtn("▲");
-        android.widget.Button btnDown  = makeDpadBtn("▼");
-        android.widget.Button btnLeft  = makeDpadBtn("◀");
-        android.widget.Button btnRight = makeDpadBtn("▶");
-        android.widget.Button btnOk    = makeDpadBtn("OK");
-        android.widget.Button btnBack  = makeDpadBtn("⬅");
 
-        btnUp.setOnClickListener(v    -> simulateIptvKey(android.view.KeyEvent.KEYCODE_DPAD_UP));
-        btnDown.setOnClickListener(v  -> simulateIptvKey(android.view.KeyEvent.KEYCODE_DPAD_DOWN));
-        btnLeft.setOnClickListener(v  -> simulateIptvKey(android.view.KeyEvent.KEYCODE_DPAD_LEFT));
-        btnRight.setOnClickListener(v -> simulateIptvKey(android.view.KeyEvent.KEYCODE_DPAD_RIGHT));
-        btnOk.setOnClickListener(v    -> simulateIptvKey(android.view.KeyEvent.KEYCODE_DPAD_CENTER));
-        btnBack.setOnClickListener(v  -> simulateIptvKey(android.view.KeyEvent.KEYCODE_BACK));
 
-        android.widget.FrameLayout.LayoutParams pUp    = new android.widget.FrameLayout.LayoutParams(bs, bs); pUp.leftMargin = bs+gap; pUp.topMargin = 0;
-        android.widget.FrameLayout.LayoutParams pDown  = new android.widget.FrameLayout.LayoutParams(bs, bs); pDown.leftMargin = bs+gap; pDown.topMargin = (bs+gap)*2;
-        android.widget.FrameLayout.LayoutParams pLeft  = new android.widget.FrameLayout.LayoutParams(bs, bs); pLeft.leftMargin = 0; pLeft.topMargin = bs+gap;
-        android.widget.FrameLayout.LayoutParams pRight = new android.widget.FrameLayout.LayoutParams(bs, bs); pRight.leftMargin = (bs+gap)*2; pRight.topMargin = bs+gap;
-        android.widget.FrameLayout.LayoutParams pOk    = new android.widget.FrameLayout.LayoutParams(bs, bs); pOk.leftMargin = bs+gap; pOk.topMargin = bs+gap;
-        android.widget.FrameLayout.LayoutParams pBack  = new android.widget.FrameLayout.LayoutParams(bs, bs); pBack.leftMargin = (bs+gap)*3; pBack.topMargin = 0;
 
-        pad.addView(btnUp, pUp);
-        pad.addView(btnDown, pDown);
-        pad.addView(btnLeft, pLeft);
-        pad.addView(btnRight, pRight);
-        pad.addView(btnOk, pOk);
-        pad.addView(btnBack, pBack);
-
-        android.widget.TextView zoneLabel = new android.widget.TextView(this);
-        zoneLabel.setBackgroundColor(0xEE000000);
-        zoneLabel.setTextColor(0xFF00FF00);
-        zoneLabel.setTextSize(12f);
-        zoneLabel.setPadding(12, 6, 12, 6);
-        zoneLabel.setText("Zone: INIT");
-        android.widget.FrameLayout.LayoutParams pLabel = new android.widget.FrameLayout.LayoutParams(
-            android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
-            android.view.ViewGroup.LayoutParams.WRAP_CONTENT);
-        pLabel.topMargin = (bs+gap)*3 + 8;
-        pLabel.leftMargin = 0;
-        pad.addView(zoneLabel, pLabel);
-        iptvDebugLabel = zoneLabel;
-
-        int padW = (bs+gap)*4;
-        int padH = (bs+gap)*3 + 60;
-        android.view.WindowManager.LayoutParams params = new android.view.WindowManager.LayoutParams(
-            padW, padH,
-            android.view.WindowManager.LayoutParams.TYPE_APPLICATION,
-            android.view.WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
-            android.graphics.PixelFormat.TRANSLUCENT
-        );
-        params.gravity = android.view.Gravity.BOTTOM | android.view.Gravity.START;
-        params.x = 16; params.y = 16;
-        getWindowManager().addView(pad, params);
-        iptvDpadView = pad;
-    }
-
-    private android.widget.Button makeDpadBtn(String label) {
-        android.widget.Button b = new android.widget.Button(this);
-        b.setText(label);
-        b.setTextSize(16f);
-        b.setTextColor(0xFFFFFFFF);
-        b.setBackgroundColor(0xCC111111);
-        b.setAlpha(0.85f);
-        return b;
-    }
-
-    private void simulateIptvKey(int keyCode) {
-        android.view.KeyEvent down = new android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, keyCode);
-        onKeyDown(keyCode, down);
-        updateIptvDebug();
-    }
-
-    private void updateIptvDebug() {
-        if (iptvDebugLabel == null) return;
-        String zone = focusZone != null ? focusZone.name() : "?";
-        String info = "";
-        if (focusZone != null) {
-            switch (focusZone) {
-                case CHANNELS: info = "Ch[" + focusedChannelIndex + "]"; break;
-                case GROUPS:   info = "Grp[" + focusedGroupIndex + "]"; break;
-                case SEARCH:   info = "Search"; break;
-                case PLAYER:   info = "Player"; break;
-            }
-        }
-        iptvDebugLabel.setText("Zone: " + zone + " | " + info);
-    }
-
-    private android.view.View iptvDpadView;
-    private android.widget.TextView iptvDebugLabel;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -254,7 +164,6 @@ public class IPTVActivity extends AppCompatActivity {
         getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
         hideSystemUI();
         setContentView(R.layout.activity_iptv);
-        initVirtualDpad();
         showDpadTutorial();
 
         playerView         = findViewById(R.id.iptv_player);
@@ -375,7 +284,6 @@ public class IPTVActivity extends AppCompatActivity {
         autoHideHandler.removeCallbacksAndMessages(null);
         searchDebounceHandler.removeCallbacksAndMessages(null);
         pipHideHandler.removeCallbacksAndMessages(null);
-        if (iptvDpadView != null) try { getWindowManager().removeView(iptvDpadView); } catch (Exception e) {}
         timeHandler.removeCallbacksAndMessages(null);
         if (player != null) { player.stop(); player.release(); player = null; }
     }
