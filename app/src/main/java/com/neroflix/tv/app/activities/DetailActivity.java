@@ -105,6 +105,15 @@ public class DetailActivity extends AppCompatActivity {
         onKeyDown(keyCode, down);
     }
 
+
+    private void showDialogWithDpadHidden(android.app.Dialog dialog) {
+        if (detailDpadView != null) detailDpadView.setVisibility(android.view.View.GONE);
+        dialog.setOnDismissListener(d -> {
+            if (detailDpadView != null) detailDpadView.setVisibility(android.view.View.VISIBLE);
+        });
+        dialog.show();
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -323,11 +332,11 @@ public class DetailActivity extends AppCompatActivity {
 
     private void showSeasonDialog(int numSeasons, java.util.List<String> seasonNames) {
         String[] seasons = seasonNames.toArray(new String[0]);
-        new AlertDialog.Builder(this)
+        showDialogWithDpadHidden(new AlertDialog.Builder(this)
             .setTitle("Select Season")
             .setItems(seasons, (d, which) -> fetchEpisodesForSeason(which + 1))
             .setNegativeButton("Cancel", null)
-            .show();
+            .create());
     }
 
     private void fetchEpisodesForSeason(int season) {
@@ -344,11 +353,11 @@ public class DetailActivity extends AppCompatActivity {
                 public void onSuccess(java.util.List<String> episodeNames) {
                     loadingDialog.dismiss();
                     String[] episodes = episodeNames.toArray(new String[0]);
-                    new AlertDialog.Builder(DetailActivity.this)
+                    showDialogWithDpadHidden(new AlertDialog.Builder(DetailActivity.this)
                         .setTitle("Season " + season + " — Select Episode")
                         .setItems(episodes, (d, which) -> launchPlayer(season, which + 1))
                         .setNegativeButton("Cancel", null)
-                        .show();
+                        .create());
                 }
                 @Override
                 public void onError(String error) {
@@ -371,12 +380,12 @@ public class DetailActivity extends AppCompatActivity {
         episodePicker.setMaxValue(30);
         layout.addView(seasonPicker);
         layout.addView(episodePicker);
-        new AlertDialog.Builder(this)
+        showDialogWithDpadHidden(new AlertDialog.Builder(this)
             .setTitle("Select Episode")
             .setView(layout)
             .setPositiveButton("Watch", (d, w) -> launchPlayer(seasonPicker.getValue(), episodePicker.getValue()))
             .setNegativeButton("Cancel", null)
-            .show();
+            .create());
     }
 
     private void launchPlayer(int season, int episode) {
@@ -406,13 +415,13 @@ public class DetailActivity extends AppCompatActivity {
                 for (int i = 0; i < servers.length; i++) labels[i] = servers[i][0];
 
                 final String[][] finalServers = servers;
-                new AlertDialog.Builder(this)
+                showDialogWithDpadHidden(new AlertDialog.Builder(this)
                     .setTitle("Select Server")
                     .setItems(labels, (d, which) ->
                         launchPlayerIntent(movieId, mediaType, season, episode,
                             which, finalServers[which][1], finalServers[which][2],
                             finalServers[which].length > 3 ? finalServers[which][3] : "standard"))
-                    .show();
+                    .create());
             });
         });
     }
