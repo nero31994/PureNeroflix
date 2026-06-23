@@ -457,17 +457,16 @@ public class DetailActivity extends AppCompatActivity {
             android.view.View btn = findViewById(DETAIL_BTN_IDS[i]);
             if (btn == null) continue;
             if (i == detailFocusIndex) {
-                android.graphics.drawable.GradientDrawable border = new android.graphics.drawable.GradientDrawable();
-                border.setColor(0x33E50914);
-                border.setStroke(4, 0xFFE50914);
-                border.setCornerRadius(8f);
-                btn.setBackground(border);
-                btn.setScaleX(1.05f);
-                btn.setScaleY(1.05f);
+                // Scale up + elevation only - don't replace background
+                btn.setScaleX(1.06f);
+                btn.setScaleY(1.06f);
+                btn.setElevation(12f);
+                btn.setAlpha(1f);
             } else {
-                btn.setBackgroundResource(R.drawable.nav_item_focus_bg);
                 btn.setScaleX(1f);
                 btn.setScaleY(1f);
+                btn.setElevation(2f);
+                btn.setAlpha(0.75f);
             }
         }
     }
@@ -479,16 +478,13 @@ public class DetailActivity extends AppCompatActivity {
                 finish();
                 overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right);
                 return true;
+            case KeyEvent.KEYCODE_DPAD_DOWN:
             case KeyEvent.KEYCODE_DPAD_RIGHT:
                 highlightDetailBtn(detailFocusIndex + 1);
                 return true;
+            case KeyEvent.KEYCODE_DPAD_UP:
             case KeyEvent.KEYCODE_DPAD_LEFT:
                 highlightDetailBtn(detailFocusIndex - 1);
-                return true;
-            case KeyEvent.KEYCODE_DPAD_UP:
-                // Scroll overview up if focused on content
-                return true;
-            case KeyEvent.KEYCODE_DPAD_DOWN:
                 return true;
             case KeyEvent.KEYCODE_DPAD_CENTER:
             case KeyEvent.KEYCODE_ENTER:
