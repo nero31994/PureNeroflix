@@ -126,7 +126,9 @@ public class MainActivity extends AppCompatActivity {
         android.view.WindowManager.LayoutParams params = new android.view.WindowManager.LayoutParams(
             padW, padH,
             android.view.WindowManager.LayoutParams.TYPE_APPLICATION,
-            android.view.WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
+            android.view.WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+                | android.view.WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
+                | android.view.WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH,
             android.graphics.PixelFormat.TRANSLUCENT);
         params.gravity = android.view.Gravity.BOTTOM | android.view.Gravity.START;
         params.x = 16; params.y = 16;
