@@ -892,9 +892,33 @@ public class IPTVActivity extends AppCompatActivity {
                     highlightGroup(focusedGroupIndex);
                     return true;
                 }
+                if (keyCode == KeyEvent.KEYCODE_DPAD_UP) {
+                    // Already at top - stay in search
+                    return true;
+                }
+                if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT || keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                    // Let cursor move inside EditText
+                    return false;
+                }
+                if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER) {
+                    // OK while searching - jump to channels with current results
+                    focusZone = FocusZone.CHANNELS;
+                    EditText s2 = findViewById(R.id.iptv_search);
+                    if (s2 != null) s2.clearFocus();
+                    focusedChannelIndex = 0;
+                    highlightChannel(0);
+                    return true;
+                }
                 if (keyCode == KeyEvent.KEYCODE_BACK) {
-                    hideSidebar();
-                    focusZone = FocusZone.PLAYER;
+                    // Clear search and go back to groups
+                    EditText s3 = findViewById(R.id.iptv_search);
+                    if (s3 != null) {
+                        s3.setText("");
+                        s3.clearFocus();
+                    }
+                    if (adapter != null) adapter.filter("");
+                    focusZone = FocusZone.GROUPS;
+                    highlightGroup(focusedGroupIndex);
                     return true;
                 }
                 return false; // let EditText handle typing
