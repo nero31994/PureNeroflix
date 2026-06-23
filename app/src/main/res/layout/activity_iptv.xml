@@ -186,7 +186,7 @@
     </LinearLayout>
 
 
-    <!-- Now-playing info card - floats top-right when guide is open -->
+    <!-- Now-playing info card - floats top-right on player, auto-hides after 10s -->
     <LinearLayout
         android:id="@+id/iptv_pip_container"
         android:layout_width="220dp"
