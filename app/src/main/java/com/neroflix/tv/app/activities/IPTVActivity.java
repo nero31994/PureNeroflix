@@ -128,7 +128,7 @@ public class IPTVActivity extends AppCompatActivity {
         layout.addView(title);
 
         android.widget.TextView body = new android.widget.TextView(this);
-        body.setText("\n▲ ▼  Browse channels\n◀  Open group filter\n▶  Open search\nOK  Play selected channel\nBACK  Return to player / exit\n\nPress any key to dismiss this guide.");
+        body.setText("\n📺  CHANNELS\n▲ ▼  Move between channels\n◀  Jump to Categories\n▶  Scroll EPG timeline\nOK  Play channel & close guide\n\n📂  CATEGORIES\n▲ ▼  Browse categories\n▶  Jump to Channels\nOK  Filter channels by category\n▲ (at top)  Go to Search\n\n🔍  SEARCH\n Type to filter channels\nOK  Jump to results\n▼  Go to Categories\nBACK  Clear search\n\n⏪ BACK  Close guide / exit\n\nGuide auto-closes after 5 seconds of inactivity.\nPress any key to dismiss.");
         body.setTextSize(14f);
         body.setTextColor(0xFFCCCCCC);
         body.setLineSpacing(8f, 1f);
