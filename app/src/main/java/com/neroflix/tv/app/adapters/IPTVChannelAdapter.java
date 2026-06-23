@@ -118,7 +118,7 @@ public class IPTVChannelAdapter extends RecyclerView.Adapter<IPTVChannelAdapter.
         }
 
         buildEpgStrip(holder, ch);
-        // Auto-scroll EPG strip to current time position
+        refreshEpgHighlights(holder);
         // Auto-scroll to current time on bind
         holder.epgScroll.post(() -> {
             java.util.Calendar dayStart = java.util.Calendar.getInstance();
@@ -159,6 +159,31 @@ public class IPTVChannelAdapter extends RecyclerView.Adapter<IPTVChannelAdapter.
     }
 
 
+    private void refreshEpgHighlights(ViewHolder holder) {
+        long nowMs = System.currentTimeMillis();
+        for (int i = 0; i < holder.epgStrip.getChildCount(); i++) {
+            android.view.View child = holder.epgStrip.getChildAt(i);
+            if (child == null) continue;
+            Object startTag = child.getTag(R.id.epg_start_ms);
+            Object stopTag = child.getTag(R.id.epg_stop_ms);
+            if (startTag == null || stopTag == null) continue;
+            long startMs = (long) startTag;
+            long stopMs = (long) stopTag;
+            boolean isNow = (nowMs >= startMs && nowMs < stopMs);
+            if (isNow) {
+                child.setBackgroundColor(0x55E50914);
+                if (child instanceof android.widget.TextView) {
+                    ((android.widget.TextView) child).setTextColor(0xFFFFFFFF);
+                }
+            } else {
+                child.setBackgroundResource(R.drawable.epg_program_block);
+                if (child instanceof android.widget.TextView) {
+                    ((android.widget.TextView) child).setTextColor(0xFFCCCCCC);
+                }
+            }
+        }
+    }
+
     private void buildEpgStrip(ViewHolder holder, M3UParser.Channel ch) {
         // Skip rebuild if this exact channel was already bound to this holder with EPG built
         String tag = ch.tvgId + "|" + ch.name;
@@ -198,6 +223,9 @@ public class IPTVChannelAdapter extends RecyclerView.Adapter<IPTVChannelAdapter.
             block.setGravity(android.view.Gravity.CENTER_VERTICAL);
             block.setPadding(dp(8), 0, dp(8), 0);
             block.setBackgroundResource(R.drawable.epg_program_block);
+            // Store timestamps as tags for highlight refresh
+            block.setTag(R.id.epg_start_ms, p.startMs);
+            block.setTag(R.id.epg_stop_ms, p.stopMs);
 
             LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(widthPx, LinearLayout.LayoutParams.MATCH_PARENT);
             lp.setMarginEnd(dp(2));

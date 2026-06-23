@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <item name="epg_start_ms" type="id"/>
+    <item name="epg_stop_ms" type="id"/>
+</resources>
