@@ -110,6 +110,7 @@ public class DetailActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_detail);
         initDetailVirtualDpad();
+        highlightDetailBtn(1);
 
         movieId = getIntent().getIntExtra("movie_id", 0);
         mediaType = getIntent().getStringExtra("media_type");
@@ -441,12 +442,59 @@ public class DetailActivity extends AppCompatActivity {
         if (detailDpadView != null) try { getWindowManager().removeView(detailDpadView); } catch (Exception e) {}
     }
 
+    // Detail screen focus: 0=Back, 1=Play, 2=Download, 3=Watchlist
+    private int detailFocusIndex = 1;
+    private final int[] DETAIL_BTN_IDS = {
+        R.id.detail_back_btn,
+        R.id.detail_play_btn,
+        R.id.detail_download_btn,
+        R.id.detail_watchlist_btn
+    };
+
+    private void highlightDetailBtn(int index) {
+        detailFocusIndex = Math.max(0, Math.min(index, DETAIL_BTN_IDS.length - 1));
+        for (int i = 0; i < DETAIL_BTN_IDS.length; i++) {
+            android.view.View btn = findViewById(DETAIL_BTN_IDS[i]);
+            if (btn == null) continue;
+            if (i == detailFocusIndex) {
+                android.graphics.drawable.GradientDrawable border = new android.graphics.drawable.GradientDrawable();
+                border.setColor(0x33E50914);
+                border.setStroke(4, 0xFFE50914);
+                border.setCornerRadius(8f);
+                btn.setBackground(border);
+                btn.setScaleX(1.05f);
+                btn.setScaleY(1.05f);
+            } else {
+                btn.setBackgroundResource(R.drawable.nav_item_focus_bg);
+                btn.setScaleX(1f);
+                btn.setScaleY(1f);
+            }
+        }
+    }
+
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
-        if (keyCode == KeyEvent.KEYCODE_BACK) {
-            finish();
-            overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right);
-            return true;
+        switch (keyCode) {
+            case KeyEvent.KEYCODE_BACK:
+                finish();
+                overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right);
+                return true;
+            case KeyEvent.KEYCODE_DPAD_RIGHT:
+                highlightDetailBtn(detailFocusIndex + 1);
+                return true;
+            case KeyEvent.KEYCODE_DPAD_LEFT:
+                highlightDetailBtn(detailFocusIndex - 1);
+                return true;
+            case KeyEvent.KEYCODE_DPAD_UP:
+                // Scroll overview up if focused on content
+                return true;
+            case KeyEvent.KEYCODE_DPAD_DOWN:
+                return true;
+            case KeyEvent.KEYCODE_DPAD_CENTER:
+            case KeyEvent.KEYCODE_ENTER:
+                android.view.View btn = findViewById(DETAIL_BTN_IDS[detailFocusIndex]);
+                if (btn != null) btn.performClick();
+                return true;
         }
         return super.onKeyDown(keyCode, event);
     }
