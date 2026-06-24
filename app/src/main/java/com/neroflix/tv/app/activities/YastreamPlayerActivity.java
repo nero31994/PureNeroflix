@@ -5,7 +5,6 @@ import android.os.Bundle;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.WindowManager;
-import android.widget.ImageButton;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -16,9 +15,9 @@ import androidx.media3.common.MediaItem;
 import androidx.media3.common.PlaybackException;
 import androidx.media3.common.Player;
 import androidx.media3.common.util.UnstableApi;
+import androidx.media3.datasource.DefaultHttpDataSource;
 import androidx.media3.exoplayer.ExoPlayer;
 import androidx.media3.exoplayer.hls.HlsMediaSource;
-import androidx.media3.datasource.DefaultHttpDataSource;
 import androidx.media3.ui.PlayerView;
 
 import com.neroflix.tv.app.LicenseManager;
@@ -34,35 +33,36 @@ import java.util.List;
  * YastreamPlayerActivity
  *
  * Plays direct m3u8 streams from yastream via ExoPlayer.
- * Called from DetailActivity when server url_format == "yastream".
+ * Supports both TMDB-based and kisskh direct ID lookups.
  *
  * Intent extras:
- *   movie_id    (int)    — TMDB ID
- *   media_type  (String) — "movie" or "tv"
+ *   movie_id    (int)    — TMDB ID (or kisskh drama ID)
+ *   media_type  (String) — "movie", "tv", or "kisskh"
  *   movie_title (String)
  *   season      (int)    — 0 for movies
  *   episode     (int)    — 0 for movies
+ *   kisskh_id   (String) — e.g. "kisskh:123" (only when media_type="kisskh")
  */
 @OptIn(markerClass = UnstableApi.class)
 public class YastreamPlayerActivity extends AppCompatActivity {
 
-    private PlayerView playerView;
-    private ExoPlayer  exoPlayer;
+    private PlayerView  playerView;
+    private ExoPlayer   exoPlayer;
     private ProgressBar loadingBar;
-    private TextView   titleText;
-    private TextView   statusText;
-    private View       errorLayout;
-    private TextView   errorMsg;
+    private TextView    titleText;
+    private TextView    statusText;
+    private View        errorLayout;
+    private TextView    errorMsg;
 
     private int    tmdbId;
     private String mediaType;
     private String movieTitle;
     private int    season;
     private int    episode;
+    private String kisskhId; // direct kisskh:xxx ID if coming from KisskhActivity
 
-    // Fetched stream list from worker
-    private JSONArray  streamList;
-    private int        currentStreamIndex = 0;
+    private JSONArray streamList;
+    private int       currentStreamIndex = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -76,12 +76,45 @@ public class YastreamPlayerActivity extends AppCompatActivity {
         movieTitle = getIntent().getStringExtra("movie_title");
         season     = getIntent().getIntExtra("season", 0);
         episode    = getIntent().getIntExtra("episode", 0);
+        kisskhId   = getIntent().getStringExtra("kisskh_id"); // may be null
 
         if (movieTitle == null) movieTitle = "Now Playing";
         if (mediaType  == null) mediaType  = "movie";
 
         setupViews();
         fetchAndPlay();
+    }
+
+    // Auto-hide header
+    private View       topBar;
+    private boolean    topBarVisible = true;
+    private final android.os.Handler hideHandler = new android.os.Handler(
+        android.os.Looper.getMainLooper());
+    private final Runnable hideTopBar = () -> {
+        if (topBar != null) {
+            topBar.animate().alpha(0f).setDuration(300)
+                .withEndAction(() -> topBar.setVisibility(View.GONE)).start();
+            topBarVisible = false;
+        }
+    };
+
+    private void scheduleHideTopBar() {
+        hideHandler.removeCallbacks(hideTopBar);
+        hideHandler.postDelayed(hideTopBar, 3000);
+    }
+
+    private void toggleTopBar() {
+        if (topBarVisible) {
+            hideHandler.removeCallbacks(hideTopBar);
+            topBar.animate().alpha(0f).setDuration(300)
+                .withEndAction(() -> topBar.setVisibility(View.GONE)).start();
+            topBarVisible = false;
+        } else {
+            topBar.setVisibility(View.VISIBLE);
+            topBar.animate().alpha(1f).setDuration(300).start();
+            topBarVisible = true;
+            scheduleHideTopBar();
+        }
     }
 
     private void setupViews() {
@@ -91,29 +124,49 @@ public class YastreamPlayerActivity extends AppCompatActivity {
         statusText  = findViewById(R.id.yastream_status);
         errorLayout = findViewById(R.id.yastream_error_layout);
         errorMsg    = findViewById(R.id.yastream_error_msg);
+        topBar      = findViewById(R.id.yastream_top_bar);
 
         titleText.setText(movieTitle);
 
-        // "Change Source" button — shown on error or tap
         View changeSourceBtn = findViewById(R.id.yastream_change_source);
-        if (changeSourceBtn != null) {
+        if (changeSourceBtn != null)
             changeSourceBtn.setOnClickListener(v -> showStreamPicker());
-        }
 
-        // Back button
         View backBtn = findViewById(R.id.yastream_back_btn);
-        if (backBtn != null) {
+        if (backBtn != null)
             backBtn.setOnClickListener(v -> finish());
-        }
+
+        View retryBtn = findViewById(R.id.yastream_retry_btn);
+        if (retryBtn != null)
+            retryBtn.setOnClickListener(v -> {
+                hideError();
+                if (streamList != null && streamList.length() > 0)
+                    showStreamPicker();
+                else
+                    fetchAndPlay();
+            });
+
+        // Tap anywhere on player to toggle top bar
+        playerView.setOnClickListener(v -> toggleTopBar());
+
+        // Auto-hide after 3 seconds on start
+        scheduleHideTopBar();
     }
 
-    // ── Fetch streams from Worker ─────────────────────────────────────────────
+    // ── Fetch streams ─────────────────────────────────────────────────────────
 
     private void fetchAndPlay() {
         setStatus("Fetching streams...");
         showLoading(true);
         hideError();
 
+        // If coming from KisskhActivity, use kisskh:id directly
+        if ("kisskh".equals(mediaType) && kisskhId != null) {
+            fetchKisskhDirect(kisskhId);
+            return;
+        }
+
+        // Normal TMDB-based fetch via nero-license worker
         LicenseManager.fetchYastreamStreams(
             this,
             String.valueOf(tmdbId),
@@ -123,54 +176,92 @@ public class YastreamPlayerActivity extends AppCompatActivity {
             streams -> runOnUiThread(() -> {
                 showLoading(false);
                 if (streams == null || streams.length() == 0) {
-                    showError("No streams available for this title.");
+                    showError("No streams available for this title.\nTry a different server.");
                     return;
                 }
                 streamList = streams;
-
-                if (streams.length() == 1) {
-                    // Only one stream — play directly
-                    playStream(0);
-                } else {
-                    // Multiple streams — show picker first
-                    showStreamPicker();
-                }
+                if (streams.length() == 1) playStream(0);
+                else showStreamPicker();
             })
         );
+    }
+
+    // ── Direct kisskh fetch via nerotivi worker ───────────────────────────────
+
+    private void fetchKisskhDirect(String kisskhId) {
+        // Use nerotivi worker directly for kisskh IDs
+        new Thread(() -> {
+            try {
+                String url = "https://nerotivi.kkt01.workers.dev/streams"
+                    + "?type=series&id=" + kisskhId
+                    + "&season=1&episode=" + episode;
+
+                java.net.HttpURLConnection conn =
+                    (java.net.HttpURLConnection) new java.net.URL(url).openConnection();
+                conn.setRequestProperty("User-Agent", "NeroFlix/1.0");
+                conn.setConnectTimeout(10000);
+                conn.setReadTimeout(10000);
+
+                java.io.BufferedReader reader = new java.io.BufferedReader(
+                    new java.io.InputStreamReader(conn.getInputStream()));
+                StringBuilder sb = new StringBuilder();
+                String line;
+                while ((line = reader.readLine()) != null) sb.append(line);
+                reader.close();
+                conn.disconnect();
+
+                org.json.JSONObject json    = new org.json.JSONObject(sb.toString());
+                org.json.JSONArray  streams = json.optJSONArray("streams");
+
+                runOnUiThread(() -> {
+                    showLoading(false);
+                    if (streams == null || streams.length() == 0) {
+                        showError("No streams available.\nThis episode may not be on kisskh yet.");
+                        return;
+                    }
+                    streamList = streams;
+                    if (streams.length() == 1) playStream(0);
+                    else showStreamPicker();
+                });
+
+            } catch (Exception e) {
+                runOnUiThread(() -> {
+                    showLoading(false);
+                    showError("Failed to fetch stream: " + e.getMessage());
+                });
+            }
+        }).start();
     }
 
     // ── Stream picker dialog ──────────────────────────────────────────────────
 
     private void showStreamPicker() {
         if (streamList == null || streamList.length() == 0) {
-            fetchAndPlay(); // re-fetch if list is empty
+            fetchAndPlay();
             return;
         }
 
         List<String> labels = new ArrayList<>();
         for (int i = 0; i < streamList.length(); i++) {
             try {
-                JSONObject s = streamList.getJSONObject(i);
+                JSONObject s  = streamList.getJSONObject(i);
                 String provider = s.optString("provider", "Unknown");
                 String quality  = s.optString("quality",  "");
-                String label    = quality.isEmpty() || "unknown".equals(quality)
-                    ? provider
-                    : provider + "  •  " + quality;
-                labels.add(label);
+                labels.add(("unknown".equals(quality) || quality.isEmpty())
+                    ? provider : provider + "  •  " + quality);
             } catch (Exception e) {
                 labels.add("Stream " + (i + 1));
             }
         }
 
-        String[] labelArr = labels.toArray(new String[0]);
         new AlertDialog.Builder(this)
             .setTitle("Select Source")
-            .setItems(labelArr, (d, which) -> playStream(which))
+            .setItems(labels.toArray(new String[0]), (d, which) -> playStream(which))
             .setNegativeButton("Cancel", null)
             .show();
     }
 
-    // ── ExoPlayer playback ────────────────────────────────────────────────────
+    // ── ExoPlayer ─────────────────────────────────────────────────────────────
 
     private void playStream(int index) {
         if (streamList == null || index >= streamList.length()) return;
@@ -182,37 +273,29 @@ public class YastreamPlayerActivity extends AppCompatActivity {
             String provider  = stream.optString("provider", "");
             String quality   = stream.optString("quality", "");
 
-            if (m3u8Url.isEmpty()) {
-                showError("Invalid stream URL.");
-                return;
-            }
+            if (m3u8Url.isEmpty()) { showError("Invalid stream URL."); return; }
 
-            String label = (quality.isEmpty() || "unknown".equals(quality))
+            String label = ("unknown".equals(quality) || quality.isEmpty())
                 ? provider : provider + " • " + quality;
             setStatus("Playing: " + label);
 
             initExoPlayer(m3u8Url);
-
         } catch (Exception e) {
             showError("Failed to load stream: " + e.getMessage());
         }
     }
 
     private void initExoPlayer(String m3u8Url) {
-        // Release any existing player
         releasePlayer();
-
         showLoading(true);
         hideError();
 
-        // Build HTTP data source with browser-like headers
         DefaultHttpDataSource.Factory dataSourceFactory = new DefaultHttpDataSource.Factory()
             .setUserAgent("Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/122.0.0.0 Safari/537.36")
             .setConnectTimeoutMs(15000)
             .setReadTimeoutMs(15000)
             .setAllowCrossProtocolRedirects(true);
 
-        // HLS source for m3u8
         HlsMediaSource mediaSource = new HlsMediaSource.Factory(dataSourceFactory)
             .createMediaSource(MediaItem.fromUri(m3u8Url));
 
@@ -226,9 +309,7 @@ public class YastreamPlayerActivity extends AppCompatActivity {
             @Override
             public void onPlaybackStateChanged(int state) {
                 switch (state) {
-                    case Player.STATE_BUFFERING:
-                        showLoading(true);
-                        break;
+                    case Player.STATE_BUFFERING: showLoading(true);  break;
                     case Player.STATE_READY:
                         showLoading(false);
                         setStatus("");
@@ -246,7 +327,7 @@ public class YastreamPlayerActivity extends AppCompatActivity {
             @Override
             public void onPlayerError(PlaybackException error) {
                 showLoading(false);
-                // Auto-try next stream if available
+                // Auto-try next stream
                 if (streamList != null && currentStreamIndex < streamList.length() - 1) {
                     Toast.makeText(YastreamPlayerActivity.this,
                         "Stream failed, trying next source...", Toast.LENGTH_SHORT).show();
@@ -263,10 +344,19 @@ public class YastreamPlayerActivity extends AppCompatActivity {
         exoPlayer.setPlayWhenReady(true);
     }
 
-    // ── D-pad / remote control ────────────────────────────────────────────────
+    // ── D-pad ─────────────────────────────────────────────────────────────────
 
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
+        // Show top bar on any key press, then auto-hide
+        if (keyCode != KeyEvent.KEYCODE_BACK && topBar != null) {
+            if (!topBarVisible) {
+                topBar.setVisibility(View.VISIBLE);
+                topBar.animate().alpha(1f).setDuration(200).start();
+                topBarVisible = true;
+            }
+            scheduleHideTopBar();
+        }
         switch (keyCode) {
             case KeyEvent.KEYCODE_DPAD_CENTER:
             case KeyEvent.KEYCODE_ENTER:
@@ -277,15 +367,12 @@ public class YastreamPlayerActivity extends AppCompatActivity {
                     else exoPlayer.play();
                 }
                 return true;
-
             case KeyEvent.KEYCODE_MEDIA_PLAY:
                 if (exoPlayer != null) exoPlayer.play();
                 return true;
-
             case KeyEvent.KEYCODE_MEDIA_PAUSE:
                 if (exoPlayer != null) exoPlayer.pause();
                 return true;
-
             case KeyEvent.KEYCODE_DPAD_RIGHT:
             case KeyEvent.KEYCODE_MEDIA_FAST_FORWARD:
                 if (exoPlayer != null) {
@@ -293,7 +380,6 @@ public class YastreamPlayerActivity extends AppCompatActivity {
                     exoPlayer.seekTo(Math.min(pos + 10000, exoPlayer.getDuration()));
                 }
                 return true;
-
             case KeyEvent.KEYCODE_DPAD_LEFT:
             case KeyEvent.KEYCODE_MEDIA_REWIND:
                 if (exoPlayer != null) {
@@ -301,12 +387,10 @@ public class YastreamPlayerActivity extends AppCompatActivity {
                     exoPlayer.seekTo(Math.max(pos - 10000, 0));
                 }
                 return true;
-
             case KeyEvent.KEYCODE_MENU:
             case KeyEvent.KEYCODE_DPAD_UP:
                 showStreamPicker();
                 return true;
-
             case KeyEvent.KEYCODE_BACK:
             case KeyEvent.KEYCODE_ESCAPE:
                 finish();
@@ -342,31 +426,12 @@ public class YastreamPlayerActivity extends AppCompatActivity {
 
     // ── Lifecycle ─────────────────────────────────────────────────────────────
 
-    @Override
-    protected void onResume() {
-        super.onResume();
-        hideSystemUI();
-        if (exoPlayer != null) exoPlayer.play();
-    }
-
-    @Override
-    protected void onPause() {
-        super.onPause();
-        if (exoPlayer != null) exoPlayer.pause();
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        releasePlayer();
-    }
+    @Override protected void onResume()  { super.onResume();  hideSystemUI(); if (exoPlayer != null) exoPlayer.play(); }
+    @Override protected void onPause()   { super.onPause();   if (exoPlayer != null) exoPlayer.pause(); }
+    @Override protected void onDestroy() { super.onDestroy(); releasePlayer(); hideHandler.removeCallbacks(hideTopBar); }
 
     private void releasePlayer() {
-        if (exoPlayer != null) {
-            exoPlayer.stop();
-            exoPlayer.release();
-            exoPlayer = null;
-        }
+        if (exoPlayer != null) { exoPlayer.stop(); exoPlayer.release(); exoPlayer = null; }
     }
 
     private void hideSystemUI() {

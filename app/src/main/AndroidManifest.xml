@@ -149,6 +149,14 @@
             android:screenOrientation="landscape"
             android:configChanges="orientation|screenSize"/>
 
+        <!-- K-Drama Browse Activity -->
+        <activity
+            android:name=".activities.KisskhActivity"
+            android:exported="false"
+            android:configChanges="keyboard|keyboardHidden|orientation|screenSize"
+            android:screenOrientation="landscape"
+            android:theme="@style/Theme.NeroFlix" />
+
     </application>
 
 </manifest>
