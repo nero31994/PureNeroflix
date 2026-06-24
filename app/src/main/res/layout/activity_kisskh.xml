@@ -73,7 +73,7 @@
             android:layout_height="match_parent"
             android:layout_weight="1"
             android:hint="Search dramas..."
-            android:hintTextColor="#666666"
+            android:textColorHint="#666666"
             android:textColor="#FFFFFF"
             android:textSize="14sp"
             android:background="@android:color/transparent"
