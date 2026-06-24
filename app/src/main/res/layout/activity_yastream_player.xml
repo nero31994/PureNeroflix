@@ -4,7 +4,7 @@
     android:layout_height="match_parent"
     android:background="#000000">
 
-    <!-- ExoPlayer surface -->
+    <!-- ExoPlayer surface — full screen, no padding -->
     <androidx.media3.ui.PlayerView
         android:id="@+id/yastream_player_view"
         android:layout_width="match_parent"
@@ -21,15 +21,17 @@
         android:visibility="gone"
         android:indeterminateTint="#E50914" />
 
-    <!-- Top bar: title + back button -->
+    <!-- TOP BAR — overlays video, auto-hides after 3s -->
     <LinearLayout
+        android:id="@+id/yastream_top_bar"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="52dp"
         android:layout_gravity="top"
-        android:background="#88000000"
+        android:background="#BB000000"
         android:orientation="horizontal"
-        android:padding="12dp"
-        android:gravity="center_vertical">
+        android:padding="8dp"
+        android:gravity="center_vertical"
+        android:alpha="1">
 
         <TextView
             android:id="@+id/yastream_back_btn"
@@ -67,13 +69,13 @@
 
     </LinearLayout>
 
-    <!-- Status text (buffering, playing info) -->
+    <!-- Status text (buffering info) -->
     <TextView
         android:id="@+id/yastream_status"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom|center_horizontal"
-        android:layout_marginBottom="48dp"
+        android:layout_marginBottom="56dp"
         android:textColor="#CCFFFFFF"
         android:textSize="13sp"
         android:background="#66000000"
