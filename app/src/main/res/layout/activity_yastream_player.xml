@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#000000">
+
+    <!-- ExoPlayer surface -->
+    <androidx.media3.ui.PlayerView
+        android:id="@+id/yastream_player_view"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:focusable="true"
+        android:focusableInTouchMode="true" />
+
+    <!-- Loading spinner -->
+    <ProgressBar
+        android:id="@+id/yastream_loading"
+        android:layout_width="64dp"
+        android:layout_height="64dp"
+        android:layout_gravity="center"
+        android:visibility="gone"
+        android:indeterminateTint="#E50914" />
+
+    <!-- Top bar: title + back button -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top"
+        android:background="#88000000"
+        android:orientation="horizontal"
+        android:padding="12dp"
+        android:gravity="center_vertical">
+
+        <TextView
+            android:id="@+id/yastream_back_btn"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="← Back"
+            android:textColor="#FFFFFF"
+            android:textSize="14sp"
+            android:padding="8dp"
+            android:focusable="true"
+            android:clickable="true" />
+
+        <TextView
+            android:id="@+id/yastream_title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textColor="#FFFFFF"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:ellipsize="end"
+            android:singleLine="true"
+            android:paddingStart="12dp" />
+
+        <TextView
+            android:id="@+id/yastream_change_source"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Change Source"
+            android:textColor="#E50914"
+            android:textSize="13sp"
+            android:padding="8dp"
+            android:focusable="true"
+            android:clickable="true" />
+
+    </LinearLayout>
+
+    <!-- Status text (buffering, playing info) -->
+    <TextView
+        android:id="@+id/yastream_status"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|center_horizontal"
+        android:layout_marginBottom="48dp"
+        android:textColor="#CCFFFFFF"
+        android:textSize="13sp"
+        android:background="#66000000"
+        android:paddingHorizontal="12dp"
+        android:paddingVertical="6dp"
+        android:visibility="gone" />
+
+    <!-- Error overlay -->
+    <LinearLayout
+        android:id="@+id/yastream_error_layout"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:background="#CC000000"
+        android:visibility="gone"
+        android:padding="32dp">
+
+        <TextView
+            android:text="⚠"
+            android:textSize="48sp"
+            android:textColor="#E50914"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal" />
+
+        <TextView
+            android:id="@+id/yastream_error_msg"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="#FFFFFF"
+            android:textSize="16sp"
+            android:gravity="center"
+            android:layout_marginTop="12dp"
+            android:layout_marginBottom="24dp" />
+
+        <TextView
+            android:id="@+id/yastream_retry_btn"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Try Another Source"
+            android:textColor="#FFFFFF"
+            android:background="#E50914"
+            android:paddingHorizontal="24dp"
+            android:paddingVertical="10dp"
+            android:textSize="14sp"
+            android:focusable="true"
+            android:clickable="true" />
+
+    </LinearLayout>
+
+</FrameLayout>

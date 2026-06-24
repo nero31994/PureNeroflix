@@ -2,11 +2,7 @@ package com.neroflix.tv.app;
 
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
-import android.content.pm.Signature;
-import android.content.pm.SigningInfo;
-import android.os.Build;
 import android.provider.Settings;
 import android.util.Log;
 
@@ -57,7 +53,6 @@ public class LicenseManager {
     }
 
     // XOR-encoded expected SHA-256 signature (key = 0x3A)
-    // Decodes to: 849D0A8D138655960999FD084B23A771B105928D6B27DDB59F1AF1C148411AFF
     private static final byte   SIG_KEY = 0x3A;
     private static final byte[] SIG_ENC = {
         (byte)0x0A,(byte)0x0C,(byte)0x0C,(byte)0x09,(byte)0x0B,(byte)0x0D,
@@ -80,14 +75,16 @@ public class LicenseManager {
     }
 
     public interface LicenseCallback  { void onResult(Status status); }
-    // servers[][0] = name, servers[][1] = url. null = not approved.
     public interface ServersCallback  { void onResult(String[][] servers); }
+
+    // NEW: callback for yastream stream list
+    public interface StreamsCallback  { void onResult(JSONArray streams); }
 
     private static String lastMessage = "";
     public static String getLastMessage() { return lastMessage; }
 
     // -----------------------------------------------------------------------
-    // Tamper detection — scattered, not a single patchable chokepoint
+    // Tamper detection
     // -----------------------------------------------------------------------
     private static boolean checkSignature(Context ctx) {
         return true; // Disabled — security handled server-side by Worker
@@ -103,10 +100,8 @@ public class LicenseManager {
 
     // -----------------------------------------------------------------------
     // fetchServers — called by launchPlayer() in DetailActivity.
-    // Returns server list from the Worker so URLs are never in the APK.
     // -----------------------------------------------------------------------
     public static void fetchServers(Context context, ServersCallback callback) {
-        // Scattered tamper checks — patching isApkTampered() alone is not enough
         if (!checkSignature(context) || !checkPackageName(context)) {
             callback.onResult(null);
             return;
@@ -118,7 +113,6 @@ public class LicenseManager {
         long   tokenAge = System.currentTimeMillis() - prefs.getLong(PREF_TOKEN_TS, 0);
 
         if (!token.isEmpty() && tokenAge < TOKEN_MAX_AGE) {
-            // Fast path: verify cached token
             new Thread(() -> {
                 try {
                     JSONObject body = new JSONObject();
@@ -140,7 +134,6 @@ public class LicenseManager {
                 } catch (Exception e) {
                     Log.e("LicenseManager", "token verify failed", e);
                 }
-                // Token stale or verify failed — do full check
                 doFullServerCheck(context, deviceId, prefs, callback);
             }).start();
         } else {
@@ -182,7 +175,6 @@ public class LicenseManager {
             }
         } catch (Exception e) {
             Log.e("LicenseManager", "doFullServerCheck failed", e);
-            // Offline grace: use cached server list if approved within 24h
             String cachedServers = prefs.getString(PREF_SERVERS, null);
             long   cacheAge      = System.currentTimeMillis() - prefs.getLong(PREF_CACHE_TS, 0);
             if (cachedServers != null && cacheAge < CACHE_MAX_AGE) {
@@ -196,12 +188,58 @@ public class LicenseManager {
     }
 
     // -----------------------------------------------------------------------
-    // check / checkWithCode — used by ActivationActivity (unchanged flow)
+    // NEW: fetchYastreamStreams — called when user picks a yastream server.
+    // Posts action=get_streams to the Worker and returns the stream list.
     // -----------------------------------------------------------------------
-    /**
-     * Force a fresh check using device ID only — no free_code, no cache.
-     * Used by the "Check Activation" button so the Worker always hits devices.json.
-     */
+    public static void fetchYastreamStreams(Context context,
+                                            String tmdbId,
+                                            String mediaType,
+                                            int season,
+                                            int episode,
+                                            StreamsCallback callback) {
+        if (!checkSignature(context) || !checkPackageName(context)) {
+            callback.onResult(null);
+            return;
+        }
+
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        String token    = prefs.getString(PREF_TOKEN, "");
+        String deviceId = getDeviceId(context);
+
+        if (token.isEmpty()) {
+            callback.onResult(null);
+            return;
+        }
+
+        new Thread(() -> {
+            try {
+                JSONObject body = new JSONObject();
+                body.put("device_id",   deviceId);
+                body.put("action",      "get_streams");
+                body.put("token",       token);
+                body.put("tmdb_id",     tmdbId);
+                body.put("media_type",  mediaType);
+                if (season > 0)  body.put("season",  String.valueOf(season));
+                if (episode > 0) body.put("episode", String.valueOf(episode));
+
+                String response = postToWorker(body.toString());
+                if (response != null) {
+                    JSONObject json = new JSONObject(response);
+                    if ("ok".equals(json.optString("status"))) {
+                        callback.onResult(json.optJSONArray("streams"));
+                        return;
+                    }
+                }
+            } catch (Exception e) {
+                Log.e("LicenseManager", "fetchYastreamStreams failed", e);
+            }
+            callback.onResult(null);
+        }).start();
+    }
+
+    // -----------------------------------------------------------------------
+    // check / checkWithCode / checkDeviceOnly — used by ActivationActivity
+    // -----------------------------------------------------------------------
     public static void checkDeviceOnly(Context context, LicenseCallback callback) {
         if (!checkSignature(context) || !checkPackageName(context)) {
             callback.onResult(Status.TAMPERED);
@@ -416,9 +454,7 @@ public class LicenseManager {
     }
 
     // -----------------------------------------------------------------------
-    // fetchIptvAccess — called by IPTVActivity.
-    // Returns IptvAccess with the M3U URL from the Worker, or null if not approved.
-    // The M3U URL is never stored in the APK.
+    // fetchIptvAccess — called by IPTVActivity
     // -----------------------------------------------------------------------
     public static class IptvAccess {
         public final String m3uUrl;
@@ -442,7 +478,6 @@ public class LicenseManager {
         long   tokenAge = System.currentTimeMillis() - prefs.getLong(PREF_TOKEN_TS, 0);
 
         if (!token.isEmpty() && tokenAge < TOKEN_MAX_AGE) {
-            // Fast path: verify token and get IPTV URL in one call
             new Thread(() -> {
                 try {
                     JSONObject body = new JSONObject();
@@ -507,7 +542,6 @@ public class LicenseManager {
             }
         } catch (Exception e) {
             Log.e("LicenseManager", "doFullIptvCheck failed", e);
-            // Offline grace: use cached M3U URL if available within 24h
             String cached   = prefs.getString(PREF_IPTV_URL, null);
             long   cacheAge = System.currentTimeMillis() - prefs.getLong(PREF_IPTV_CACHE_TS, 0);
             if (cached != null && !cached.isEmpty() && cacheAge < CACHE_MAX_AGE) {
