@@ -266,7 +266,6 @@ public class DetailActivity extends AppCompatActivity {
             .setTitle("Select Season")
             .setItems(seasons, (d, which) -> fetchEpisodesForSeason(which + 1))
             .setNegativeButton("Cancel", null)
-            .create();
             .show();
     }
 
@@ -288,7 +287,6 @@ public class DetailActivity extends AppCompatActivity {
                         .setTitle("Season " + season + " — Select Episode")
                         .setItems(episodes, (d, which) -> launchPlayer(season, which + 1))
                         .setNegativeButton("Cancel", null)
-                        .create();
                         .show();
                 }
                 @Override
@@ -317,7 +315,6 @@ public class DetailActivity extends AppCompatActivity {
             .setView(layout)
             .setPositiveButton("Watch", (d, w) -> launchPlayer(seasonPicker.getValue(), episodePicker.getValue()))
             .setNegativeButton("Cancel", null)
-            .create();
             .show();
     }
 
@@ -354,7 +351,6 @@ public class DetailActivity extends AppCompatActivity {
                         launchPlayerIntent(movieId, mediaType, season, episode,
                             which, finalServers[which][1], finalServers[which][2],
                             finalServers[which].length > 3 ? finalServers[which][3] : "standard"))
-                    .create();
                     .show();
             });
         });
