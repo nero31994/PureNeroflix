@@ -267,6 +267,7 @@ public class DetailActivity extends AppCompatActivity {
             .setItems(seasons, (d, which) -> fetchEpisodesForSeason(which + 1))
             .setNegativeButton("Cancel", null)
             .create();
+            .show();
     }
 
     private void fetchEpisodesForSeason(int season) {
@@ -288,6 +289,7 @@ public class DetailActivity extends AppCompatActivity {
                         .setItems(episodes, (d, which) -> launchPlayer(season, which + 1))
                         .setNegativeButton("Cancel", null)
                         .create();
+                        .show();
                 }
                 @Override
                 public void onError(String error) {
@@ -316,6 +318,7 @@ public class DetailActivity extends AppCompatActivity {
             .setPositiveButton("Watch", (d, w) -> launchPlayer(seasonPicker.getValue(), episodePicker.getValue()))
             .setNegativeButton("Cancel", null)
             .create();
+            .show();
     }
 
     private void launchPlayer(int season, int episode) {
@@ -352,6 +355,7 @@ public class DetailActivity extends AppCompatActivity {
                             which, finalServers[which][1], finalServers[which][2],
                             finalServers[which].length > 3 ? finalServers[which][3] : "standard"))
                     .create();
+                    .show();
             });
         });
     }
