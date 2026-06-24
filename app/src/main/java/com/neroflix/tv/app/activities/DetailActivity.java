@@ -39,7 +39,6 @@ public class DetailActivity extends AppCompatActivity {
     private ProgressBar progressBar;
 
 
-    private android.view.View detailDpadView;
 
     private void initDetailVirtualDpad() {
         android.widget.FrameLayout pad = new android.widget.FrameLayout(this);
@@ -118,7 +117,6 @@ public class DetailActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_detail);
-        initDetailVirtualDpad();
         highlightDetailBtn(1);
 
         movieId = getIntent().getIntExtra("movie_id", 0);
