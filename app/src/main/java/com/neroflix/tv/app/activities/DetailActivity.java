@@ -89,7 +89,6 @@ public class DetailActivity extends AppCompatActivity {
         params.gravity = android.view.Gravity.BOTTOM | android.view.Gravity.START;
         params.x = 16; params.y = 16;
         getWindowManager().addView(pad, params);
-        detailDpadView = pad;
     }
 
     private android.widget.Button makeDetailBtn(String label) {
@@ -106,9 +105,7 @@ public class DetailActivity extends AppCompatActivity {
 
 
     private void showDialogWithDpadHidden(android.app.Dialog dialog) {
-        if (detailDpadView != null) detailDpadView.setVisibility(android.view.View.GONE);
         dialog.setOnDismissListener(d -> {
-            if (detailDpadView != null) detailDpadView.setVisibility(android.view.View.VISIBLE);
         });
         dialog.show();
     }
@@ -463,7 +460,6 @@ public class DetailActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        if (detailDpadView != null) try { getWindowManager().removeView(detailDpadView); } catch (Exception e) {}
     }
 
     // Detail screen focus: 0=Back, 1=Play, 2=Download, 3=Watchlist
