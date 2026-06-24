@@ -779,7 +779,7 @@ public class MainActivity extends AppCompatActivity {
                     case KeyEvent.KEYCODE_DPAD_LEFT:
                         if (focusedFilterIndex > 0) { focusedFilterIndex--; highlightFilter(focusedFilterIndex); }
                         else { mainFocusZone = MainFocusZone.NAV;
-                        updateMainDebug(); highlightFilter(-1); highlightNav(focusedNavIndex); }
+                        highlightFilter(-1); highlightNav(focusedNavIndex); }
                         return true;
                     case KeyEvent.KEYCODE_DPAD_RIGHT:
                         if (focusedFilterIndex < 3) { focusedFilterIndex++; highlightFilter(focusedFilterIndex); }
