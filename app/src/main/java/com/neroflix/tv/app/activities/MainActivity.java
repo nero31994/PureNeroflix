@@ -78,83 +78,10 @@ public class MainActivity extends AppCompatActivity {
     };
 
 
-    private android.view.View mainDpadView;
-    private android.widget.TextView mainDebugLabel;
 
-    private void initMainVirtualDpad() {
-        android.widget.FrameLayout pad = new android.widget.FrameLayout(this);
-        int bs = 90; int gap = 8;
 
-        android.widget.Button btnUp    = makeDpadBtn2("▲");
-        android.widget.Button btnDown  = makeDpadBtn2("▼");
-        android.widget.Button btnLeft  = makeDpadBtn2("◀");
-        android.widget.Button btnRight = makeDpadBtn2("▶");
-        android.widget.Button btnOk    = makeDpadBtn2("OK");
-        android.widget.Button btnBack  = makeDpadBtn2("⬅");
 
-        btnUp.setOnClickListener(v    -> simulateMainKey(android.view.KeyEvent.KEYCODE_DPAD_UP));
-        btnDown.setOnClickListener(v  -> simulateMainKey(android.view.KeyEvent.KEYCODE_DPAD_DOWN));
-        btnLeft.setOnClickListener(v  -> simulateMainKey(android.view.KeyEvent.KEYCODE_DPAD_LEFT));
-        btnRight.setOnClickListener(v -> simulateMainKey(android.view.KeyEvent.KEYCODE_DPAD_RIGHT));
-        btnOk.setOnClickListener(v    -> simulateMainKey(android.view.KeyEvent.KEYCODE_DPAD_CENTER));
-        btnBack.setOnClickListener(v  -> simulateMainKey(android.view.KeyEvent.KEYCODE_BACK));
 
-        android.widget.FrameLayout.LayoutParams pUp    = new android.widget.FrameLayout.LayoutParams(bs,bs); pUp.leftMargin=bs+gap; pUp.topMargin=0;
-        android.widget.FrameLayout.LayoutParams pDown  = new android.widget.FrameLayout.LayoutParams(bs,bs); pDown.leftMargin=bs+gap; pDown.topMargin=(bs+gap)*2;
-        android.widget.FrameLayout.LayoutParams pLeft  = new android.widget.FrameLayout.LayoutParams(bs,bs); pLeft.leftMargin=0; pLeft.topMargin=bs+gap;
-        android.widget.FrameLayout.LayoutParams pRight = new android.widget.FrameLayout.LayoutParams(bs,bs); pRight.leftMargin=(bs+gap)*2; pRight.topMargin=bs+gap;
-        android.widget.FrameLayout.LayoutParams pOk    = new android.widget.FrameLayout.LayoutParams(bs,bs); pOk.leftMargin=bs+gap; pOk.topMargin=bs+gap;
-        android.widget.FrameLayout.LayoutParams pBack  = new android.widget.FrameLayout.LayoutParams(bs,bs); pBack.leftMargin=(bs+gap)*3; pBack.topMargin=0;
-
-        pad.addView(btnUp,pUp); pad.addView(btnDown,pDown); pad.addView(btnLeft,pLeft);
-        pad.addView(btnRight,pRight); pad.addView(btnOk,pOk); pad.addView(btnBack,pBack);
-
-        android.widget.TextView label = new android.widget.TextView(this);
-        label.setBackgroundColor(0xEE000000);
-        label.setTextColor(0xFF00FF00);
-        label.setTextSize(12f);
-        label.setPadding(12,6,12,6);
-        label.setText("Zone: INIT");
-        android.widget.FrameLayout.LayoutParams pLabel = new android.widget.FrameLayout.LayoutParams(
-            android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
-            android.view.ViewGroup.LayoutParams.WRAP_CONTENT);
-        pLabel.topMargin = (bs+gap)*3 + 8;
-        pad.addView(label, pLabel);
-        mainDebugLabel = label;
-
-        int padW = (bs+gap)*4; int padH = (bs+gap)*3 + 60;
-        android.view.WindowManager.LayoutParams params = new android.view.WindowManager.LayoutParams(
-            padW, padH,
-            android.view.WindowManager.LayoutParams.TYPE_APPLICATION,
-            android.view.WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
-                | android.view.WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL
-                | android.view.WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH,
-            android.graphics.PixelFormat.TRANSLUCENT);
-        params.gravity = android.view.Gravity.BOTTOM | android.view.Gravity.START;
-        params.x = 16; params.y = 16;
-        getWindowManager().addView(pad, params);
-        mainDpadView = pad;
-        updateMainDebug();
-    }
-
-    private android.widget.Button makeDpadBtn2(String label) {
-        android.widget.Button b = new android.widget.Button(this);
-        b.setText(label); b.setTextSize(16f);
-        b.setTextColor(0xFFFFFFFF); b.setBackgroundColor(0xCC111111); b.setAlpha(0.85f);
-        return b;
-    }
-
-    private void simulateMainKey(int keyCode) {
-        android.view.KeyEvent down = new android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, keyCode);
-        onKeyDown(keyCode, down);
-        updateMainDebug();
-    }
-
-    private void updateMainDebug() {
-        if (mainDebugLabel == null) return;
-        String zone = mainFocusZone != null ? mainFocusZone.name() : "?";
-        mainDebugLabel.setText("Zone: " + zone);
-    }
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -174,7 +101,6 @@ public class MainActivity extends AppCompatActivity {
         }
 
         setContentView(R.layout.activity_main);
-        initMainVirtualDpad();
         findViewById(android.R.id.content).setFocusableInTouchMode(true);
         findViewById(android.R.id.content).requestFocus();
         setupViews();
@@ -488,7 +414,6 @@ public class MainActivity extends AppCompatActivity {
         mainRecyclerView.scrollToPosition(0);
         // Switch zone to CONTENT and show focus on first card after load
         mainFocusZone = MainFocusZone.CONTENT;
-                        updateMainDebug();
         mainRecyclerView.post(() ->
             mainRecyclerView.post(() ->
                 adapter.setFocus(0, 0)));
@@ -802,7 +727,6 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        if (mainDpadView != null) try { getWindowManager().removeView(mainDpadView); } catch (Exception e) {}
     }
 
     @Override
@@ -828,7 +752,6 @@ public class MainActivity extends AppCompatActivity {
                         return true;
                     case KeyEvent.KEYCODE_DPAD_RIGHT:
                         mainFocusZone = MainFocusZone.FILTER;
-                        updateMainDebug();
                         highlightNav(-1);
                         highlightFilter(focusedFilterIndex);
                         return true;
@@ -848,15 +771,13 @@ public class MainActivity extends AppCompatActivity {
                 switch (keyCode) {
                     case KeyEvent.KEYCODE_DPAD_LEFT:
                         if (focusedFilterIndex > 0) { focusedFilterIndex--; highlightFilter(focusedFilterIndex); }
-                        else { mainFocusZone = MainFocusZone.NAV;
-                        updateMainDebug(); highlightFilter(-1); highlightNav(focusedNavIndex); }
+                        else { mainFocusZone = MainFocusZone.NAV; highlightFilter(-1); highlightNav(focusedNavIndex); }
                         return true;
                     case KeyEvent.KEYCODE_DPAD_RIGHT:
                         if (focusedFilterIndex < 3) { focusedFilterIndex++; highlightFilter(focusedFilterIndex); }
                         return true;
                     case KeyEvent.KEYCODE_DPAD_UP:
                         mainFocusZone = MainFocusZone.NAV;
-                        updateMainDebug();
                         highlightFilter(-1);
                         highlightNav(focusedNavIndex);
                         return true;
@@ -864,17 +785,14 @@ public class MainActivity extends AppCompatActivity {
                         highlightFilter(-1);
                         if (isNetworkVisible()) {
                             mainFocusZone = MainFocusZone.NETWORK_ROW;
-                        updateMainDebug();
                             focusedNetworkIndex = 0;
                             highlightBrowseRow(networkRecycler, focusedNetworkIndex);
                         } else if (isStudioVisible()) {
                             mainFocusZone = MainFocusZone.STUDIO_ROW;
-                        updateMainDebug();
                             focusedStudioIndex = 0;
                             highlightBrowseRow(studioRecycler, focusedStudioIndex);
                         } else {
                             mainFocusZone = MainFocusZone.CONTENT;
-                        updateMainDebug();
                             focusedCategoryRow = 0; focusedCategoryCol = 0;
                             scrollContentFocus();
                         }
@@ -903,7 +821,6 @@ public class MainActivity extends AppCompatActivity {
                         return true;
                     case KeyEvent.KEYCODE_DPAD_UP:
                         mainFocusZone = MainFocusZone.FILTER;
-                        updateMainDebug();
                         clearBrowseHighlight(networkRecycler);
                         highlightFilter(focusedFilterIndex);
                         return true;
@@ -911,12 +828,10 @@ public class MainActivity extends AppCompatActivity {
                         clearBrowseHighlight(networkRecycler);
                         if (isStudioVisible()) {
                             mainFocusZone = MainFocusZone.STUDIO_ROW;
-                        updateMainDebug();
                             focusedStudioIndex = 0;
                             highlightBrowseRow(studioRecycler, focusedStudioIndex);
                         } else {
                             mainFocusZone = MainFocusZone.CONTENT;
-                        updateMainDebug();
                             focusedCategoryRow = 0; focusedCategoryCol = 0;
                             scrollContentFocus();
                         }
@@ -944,17 +859,14 @@ public class MainActivity extends AppCompatActivity {
                         clearBrowseHighlight(studioRecycler);
                         if (isNetworkVisible()) {
                             mainFocusZone = MainFocusZone.NETWORK_ROW;
-                        updateMainDebug();
                             highlightBrowseRow(networkRecycler, focusedNetworkIndex);
                         } else {
                             mainFocusZone = MainFocusZone.FILTER;
-                        updateMainDebug();
                             highlightFilter(focusedFilterIndex);
                         }
                         return true;
                     case KeyEvent.KEYCODE_DPAD_DOWN:
                         mainFocusZone = MainFocusZone.CONTENT;
-                        updateMainDebug();
                         clearBrowseHighlight(studioRecycler);
                         focusedCategoryRow = 0; focusedCategoryCol = 0;
                         scrollContentFocus();
@@ -974,7 +886,6 @@ public class MainActivity extends AppCompatActivity {
                             scrollContentFocus();
                         } else {
                             mainFocusZone = MainFocusZone.NAV;
-                        updateMainDebug();
                             clearContentHighlight();
                             highlightNav(focusedNavIndex);
                         }
@@ -996,15 +907,12 @@ public class MainActivity extends AppCompatActivity {
                             clearContentHighlight();
                             if (isStudioVisible()) {
                                 mainFocusZone = MainFocusZone.STUDIO_ROW;
-                        updateMainDebug();
                                 highlightBrowseRow(studioRecycler, focusedStudioIndex);
                             } else if (isNetworkVisible()) {
                                 mainFocusZone = MainFocusZone.NETWORK_ROW;
-                        updateMainDebug();
                                 highlightBrowseRow(networkRecycler, focusedNetworkIndex);
                             } else {
                                 mainFocusZone = MainFocusZone.FILTER;
-                        updateMainDebug();
                                 highlightFilter(focusedFilterIndex);
                             }
                         }
