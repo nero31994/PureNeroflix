@@ -335,11 +335,9 @@ public class YastreamPlayerActivity extends AppCompatActivity {
         try {
             JSONObject stream  = streamList.getJSONObject(index);
             String m3u8Url     = stream.optString("url", "");
-            JSONArray subtitles = stream.optJSONArray("subtitles");
-
             if (m3u8Url.isEmpty()) { showError("Invalid stream URL."); return; }
 
-            initExoPlayer(m3u8Url, subtitles);
+            initExoPlayer(m3u8Url);
         } catch (Exception e) {
             showError("Failed to load stream: " + e.getMessage());
         }
