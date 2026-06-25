@@ -91,7 +91,13 @@ public class KisskhActivity extends AppCompatActivity {
             android.content.res.Configuration.ORIENTATION_LANDSCAPE;
         gridCols = landscape ? 5 : 3;
 
-        recycler.setLayoutManager(new GridLayoutManager(this, gridCols));
+        GridLayoutManager glm = new GridLayoutManager(this, gridCols);
+        glm.setInitialPrefetchItemCount(gridCols * 4);
+        recycler.setLayoutManager(glm);
+        recycler.setHasFixedSize(true);
+        recycler.setItemViewCacheSize(20);
+        recycler.setDrawingCacheEnabled(true);
+        recycler.setDrawingCacheQuality(View.DRAWING_CACHE_QUALITY_HIGH);
         adapter = new DramaGridAdapter();
         recycler.setAdapter(adapter);
 
@@ -392,6 +398,9 @@ public class KisskhActivity extends AppCompatActivity {
             Glide.with(KisskhActivity.this)
                 .load(d.getPoster())
                 .placeholder(android.R.color.darker_gray)
+                .thumbnail(0.3f)
+                .override(200, 300)
+                .diskCacheStrategy(com.bumptech.glide.load.engine.DiskCacheStrategy.ALL)
                 .centerCrop()
                 .into(holder.poster);
 
