@@ -411,9 +411,8 @@ public class KisskhActivity extends AppCompatActivity {
                 .load(d.getPoster())
                 .placeholder(android.R.color.darker_gray)
                 .thumbnail(0.25f)
-                .override(250, 370)
                 .diskCacheStrategy(com.bumptech.glide.load.engine.DiskCacheStrategy.ALL)
-                .centerCrop()
+                .fitCenter()
                 .transition(com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions.withCrossFade(200))
                 .into(holder.poster);
 
