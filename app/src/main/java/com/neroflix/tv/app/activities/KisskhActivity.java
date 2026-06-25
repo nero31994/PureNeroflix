@@ -53,7 +53,7 @@ public class KisskhActivity extends AppCompatActivity {
     // D-pad
     private int focusedRow = 0;
     private int focusedCol = 0;
-    private int gridCols   = 3; // 3 columns — mobile friendly
+    private int gridCols   = 6; // 6 columns
 
     public static void open(Context ctx) {
         ctx.startActivity(new Intent(ctx, KisskhActivity.class));
@@ -87,9 +87,7 @@ public class KisskhActivity extends AppCompatActivity {
         if (sortBtn != null) sortBtn.setOnClickListener(v -> showSortPicker());
 
         // Grid — 3 columns for mobile, 5 for landscape TV
-        boolean landscape = getResources().getConfiguration().orientation ==
-            android.content.res.Configuration.ORIENTATION_LANDSCAPE;
-        gridCols = landscape ? 5 : 3;
+        gridCols = 6; // always 6 columns
 
         GridLayoutManager glm = new GridLayoutManager(this, gridCols);
         glm.setInitialPrefetchItemCount(gridCols * 4);
@@ -97,8 +95,9 @@ public class KisskhActivity extends AppCompatActivity {
         recycler.setHasFixedSize(true);
         recycler.setPadding(12, 8, 12, 8);
         recycler.setClipToPadding(false);
-        recycler.setItemViewCacheSize(30);
-        recycler.setRecycledViewPool(new RecyclerView.RecycledViewPool());
+        recycler.setItemViewCacheSize(20);
+        recycler.setDrawingCacheEnabled(true);
+        recycler.setDrawingCacheQuality(View.DRAWING_CACHE_QUALITY_HIGH);
         adapter = new DramaGridAdapter();
         recycler.setAdapter(adapter);
 
@@ -374,8 +373,8 @@ public class KisskhActivity extends AppCompatActivity {
                 .inflate(R.layout.item_kisskh_card, parent, false);
 
             // 3 columns portrait, 5 landscape — with generous spacing like reference
-            int gap         = 10;
-            int padding     = 12;
+            int gap         = 14;
+            int padding     = 14;
             int screenWidth = parent.getContext().getResources()
                 .getDisplayMetrics().widthPixels;
             int totalGap    = padding * 2 + gap * (gridCols - 1);
@@ -412,11 +411,16 @@ public class KisskhActivity extends AppCompatActivity {
                 .thumbnail(0.25f)
                 .diskCacheStrategy(com.bumptech.glide.load.engine.DiskCacheStrategy.ALL)
                 .fitCenter()
+                .transition(com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions.withCrossFade(200))
                 .into(holder.poster);
 
+            // Focus highlight — scale up with shadow, no border color change
             boolean focused = (position == focusedPosition);
-            holder.itemView.setScaleX(focused ? 1.07f : 1f);
-            holder.itemView.setScaleY(focused ? 1.07f : 1f);
+            holder.itemView.animate()
+                .scaleX(focused ? 1.07f : 1f)
+                .scaleY(focused ? 1.07f : 1f)
+                .setDuration(120)
+                .start();
             holder.itemView.setElevation(focused ? 16f : 4f);
             holder.itemView.setBackgroundResource(focused
                 ? R.drawable.card_focus_border : R.drawable.card_squircle);

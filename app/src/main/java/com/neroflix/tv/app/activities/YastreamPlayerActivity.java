@@ -180,8 +180,8 @@ public class YastreamPlayerActivity extends AppCompatActivity {
                     return;
                 }
                 streamList = streams;
-                if (streams.length() == 1) playStream(0);
-                else showStreamPicker();
+                // Auto-play first kisskh stream, show picker only on manual request
+                playStream(0);
             })
         );
     }
@@ -220,8 +220,16 @@ public class YastreamPlayerActivity extends AppCompatActivity {
                         return;
                     }
                     streamList = streams;
-                    if (streams.length() == 1) playStream(0);
-                    else showStreamPicker();
+                    // Auto-play kisskh stream directly — no picker
+                    // Find kisskh stream first, fall back to index 0
+                    int kisskhIndex = 0;
+                    for (int i = 0; i < streams.length(); i++) {
+                        try {
+                            String provider = streams.getJSONObject(i).optString("provider","");
+                            if ("kisskh".equals(provider)) { kisskhIndex = i; break; }
+                        } catch (Exception ignored) {}
+                    }
+                    playStream(kisskhIndex);
                 });
 
             } catch (Exception e) {
@@ -327,14 +335,13 @@ public class YastreamPlayerActivity extends AppCompatActivity {
             @Override
             public void onPlayerError(PlaybackException error) {
                 showLoading(false);
-                // Auto-try next stream
                 if (streamList != null && currentStreamIndex < streamList.length() - 1) {
-                    Toast.makeText(YastreamPlayerActivity.this,
-                        "Stream failed, trying next source...", Toast.LENGTH_SHORT).show();
+                    // Silently try next stream
+                    setStatus("Trying next source...");
                     playStream(currentStreamIndex + 1);
                 } else {
-                    showError("Playback failed: " + error.getMessage()
-                        + "\n\nTry a different source.");
+                    // All streams failed — now show picker
+                    showError("Playback failed.\nTap \"Change Source\" to try another server.");
                 }
             }
         });
