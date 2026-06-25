@@ -97,9 +97,8 @@ public class KisskhActivity extends AppCompatActivity {
         recycler.setHasFixedSize(true);
         recycler.setPadding(12, 8, 12, 8);
         recycler.setClipToPadding(false);
-        recycler.setItemViewCacheSize(20);
-        recycler.setDrawingCacheEnabled(true);
-        recycler.setDrawingCacheQuality(View.DRAWING_CACHE_QUALITY_HIGH);
+        recycler.setItemViewCacheSize(30);
+        recycler.setRecycledViewPool(new RecyclerView.RecycledViewPool());
         adapter = new DramaGridAdapter();
         recycler.setAdapter(adapter);
 
@@ -413,16 +412,11 @@ public class KisskhActivity extends AppCompatActivity {
                 .thumbnail(0.25f)
                 .diskCacheStrategy(com.bumptech.glide.load.engine.DiskCacheStrategy.ALL)
                 .fitCenter()
-                .transition(com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions.withCrossFade(200))
                 .into(holder.poster);
 
-            // Focus highlight — scale up with shadow, no border color change
             boolean focused = (position == focusedPosition);
-            holder.itemView.animate()
-                .scaleX(focused ? 1.07f : 1f)
-                .scaleY(focused ? 1.07f : 1f)
-                .setDuration(120)
-                .start();
+            holder.itemView.setScaleX(focused ? 1.07f : 1f);
+            holder.itemView.setScaleY(focused ? 1.07f : 1f);
             holder.itemView.setElevation(focused ? 16f : 4f);
             holder.itemView.setBackgroundResource(focused
                 ? R.drawable.card_focus_border : R.drawable.card_squircle);
