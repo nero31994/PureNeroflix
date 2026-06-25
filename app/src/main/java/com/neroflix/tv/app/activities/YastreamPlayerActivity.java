@@ -173,63 +173,124 @@ public class YastreamPlayerActivity extends AppCompatActivity {
             mediaType,
             season,
             episode,
-            streams -> runOnUiThread(() -> {
-                showLoading(false);
+            streams -> {
                 if (streams == null || streams.length() == 0) {
-                    showError("No streams available for this title.\nTry a different server.");
+                    runOnUiThread(() -> {
+                        showLoading(false);
+                        showError("No streams available for this title.\nTry a different server.");
+                    });
                     return;
                 }
                 streamList = streams;
-                // Auto-play first kisskh stream, show picker only on manual request
-                playStream(0);
-            })
+
+                // Fetch subtitles from nerotivi worker
+                new Thread(() -> {
+                    try {
+                        String stremioId = "tmdb:" + tmdbId;
+                        if ("series".equals(mediaType) || "tv".equals(mediaType)) {
+                            stremioId += ":" + season + ":" + episode;
+                        }
+                        String subsUrl = NEROTIVI + "/subtitles?type="
+                            + ("tv".equals(mediaType) ? "series" : mediaType)
+                            + "&id=" + stremioId;
+                        if (season > 0 && episode > 0) {
+                            subsUrl += "&season=" + season + "&episode=" + episode;
+                        }
+                        org.json.JSONObject subsJson =
+                            new org.json.JSONObject(fetchWorker(subsUrl));
+                        org.json.JSONArray subtitles = subsJson.optJSONArray("subtitles");
+                        if (subtitles != null && subtitles.length() > 0) {
+                            for (int i = 0; i < streams.length(); i++) {
+                                streams.getJSONObject(i).put("subtitles", subtitles);
+                            }
+                        }
+                    } catch (Exception ignored) {}
+
+                    runOnUiThread(() -> {
+                        showLoading(false);
+                        playStream(0);
+                    });
+                }).start();
+            }
         );
     }
 
     // ── Direct kisskh fetch via nerotivi worker ───────────────────────────────
 
+    private static final String NEROTIVI = "https://nerotivi.kkt01.workers.dev";
+
+    private String fetchWorker(String url) throws Exception {
+        java.net.HttpURLConnection conn =
+            (java.net.HttpURLConnection) new java.net.URL(url).openConnection();
+        conn.setRequestProperty("User-Agent", "NeroFlix/1.0");
+        conn.setConnectTimeout(10000);
+        conn.setReadTimeout(10000);
+        java.io.BufferedReader reader = new java.io.BufferedReader(
+            new java.io.InputStreamReader(conn.getInputStream()));
+        StringBuilder sb = new StringBuilder();
+        String line;
+        while ((line = reader.readLine()) != null) sb.append(line);
+        reader.close();
+        conn.disconnect();
+        return sb.toString();
+    }
+
     private void fetchKisskhDirect(String kisskhId) {
-        // Use nerotivi worker directly for kisskh IDs
         new Thread(() -> {
             try {
-                String url = "https://nerotivi.kkt01.workers.dev/streams"
-                    + "?type=series&id=" + kisskhId
-                    + "&season=1&episode=" + episode;
+                // 1. Fetch streams
+                String streamsUrl = NEROTIVI + "/streams?type=series&id="
+                    + kisskhId + "&season=1&episode=" + episode;
+                org.json.JSONObject streamsJson =
+                    new org.json.JSONObject(fetchWorker(streamsUrl));
+                org.json.JSONArray streams = streamsJson.optJSONArray("streams");
 
-                java.net.HttpURLConnection conn =
-                    (java.net.HttpURLConnection) new java.net.URL(url).openConnection();
-                conn.setRequestProperty("User-Agent", "NeroFlix/1.0");
-                conn.setConnectTimeout(10000);
-                conn.setReadTimeout(10000);
+                if (streams == null || streams.length() == 0) {
+                    runOnUiThread(() -> {
+                        showLoading(false);
+                        showError("No streams available.\nThis episode may not be on kisskh yet.");
+                    });
+                    return;
+                }
 
-                java.io.BufferedReader reader = new java.io.BufferedReader(
-                    new java.io.InputStreamReader(conn.getInputStream()));
-                StringBuilder sb = new StringBuilder();
-                String line;
-                while ((line = reader.readLine()) != null) sb.append(line);
-                reader.close();
-                conn.disconnect();
+                // 2. Fetch subtitles in parallel
+                org.json.JSONArray subtitles = null;
+                try {
+                    String subsUrl = NEROTIVI + "/subtitles?type=series&id="
+                        + kisskhId + "&season=1&episode=" + episode;
+                    org.json.JSONObject subsJson =
+                        new org.json.JSONObject(fetchWorker(subsUrl));
+                    subtitles = subsJson.optJSONArray("subtitles");
+                    if (subtitles != null && subtitles.length() > 0) {
+                        android.util.Log.d("Yastream", "Got " + subtitles.length() + " subtitles");
+                    }
+                } catch (Exception subErr) {
+                    android.util.Log.w("Yastream", "Subtitle fetch failed: " + subErr.getMessage());
+                }
 
-                org.json.JSONObject json    = new org.json.JSONObject(sb.toString());
-                org.json.JSONArray  streams = json.optJSONArray("streams");
+                // 3. Inject subtitles into each stream object
+                if (subtitles != null && subtitles.length() > 0) {
+                    for (int i = 0; i < streams.length(); i++) {
+                        streams.getJSONObject(i).put("subtitles", subtitles);
+                    }
+                }
 
+                streamList = streams;
+
+                // 4. Find kisskh stream index
+                int kisskhIndex = 0;
+                for (int i = 0; i < streams.length(); i++) {
+                    try {
+                        if ("kisskh".equals(streams.getJSONObject(i).optString("provider",""))) {
+                            kisskhIndex = i; break;
+                        }
+                    } catch (Exception ignored) {}
+                }
+
+                final int finalIndex = kisskhIndex;
                 runOnUiThread(() -> {
                     showLoading(false);
-                    if (streams == null || streams.length() == 0) {
-                        showError("No streams available.\nThis episode may not be on kisskh yet.");
-                        return;
-                    }
-                    streamList = streams;
-                    // Auto-play kisskh stream directly — no picker
-                    // Find kisskh stream first, fall back to index 0
-                    int kisskhIndex = 0;
-                    for (int i = 0; i < streams.length(); i++) {
-                        try {
-                            String provider = streams.getJSONObject(i).optString("provider","");
-                            if ("kisskh".equals(provider)) { kisskhIndex = i; break; }
-                        } catch (Exception ignored) {}
-                    }
-                    playStream(kisskhIndex);
+                    playStream(finalIndex);
                 });
 
             } catch (Exception e) {
