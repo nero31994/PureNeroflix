@@ -332,7 +332,7 @@ public class DetailActivity extends AppCompatActivity {
 
     private void showSeasonDialog(int numSeasons, java.util.List<String> seasonNames) {
         String[] seasons = seasonNames.toArray(new String[0]);
-        showDialogWithDpadHidden(new AlertDialog.Builder(this)
+        new AlertDialog.Builder(this)
             .setTitle("Select Season")
             .setItems(seasons, (d, which) -> fetchEpisodesForSeason(which + 1))
             .setNegativeButton("Cancel", null)
@@ -353,7 +353,7 @@ public class DetailActivity extends AppCompatActivity {
                 public void onSuccess(java.util.List<String> episodeNames) {
                     loadingDialog.dismiss();
                     String[] episodes = episodeNames.toArray(new String[0]);
-                    showDialogWithDpadHidden(new AlertDialog.Builder(DetailActivity.this)
+                    new AlertDialog.Builder(DetailActivity.this)
                         .setTitle("Season " + season + " — Select Episode")
                         .setItems(episodes, (d, which) -> launchPlayer(season, which + 1))
                         .setNegativeButton("Cancel", null)
@@ -380,7 +380,7 @@ public class DetailActivity extends AppCompatActivity {
         episodePicker.setMaxValue(30);
         layout.addView(seasonPicker);
         layout.addView(episodePicker);
-        showDialogWithDpadHidden(new AlertDialog.Builder(this)
+        new AlertDialog.Builder(this)
             .setTitle("Select Episode")
             .setView(layout)
             .setPositiveButton("Watch", (d, w) -> launchPlayer(seasonPicker.getValue(), episodePicker.getValue()))
@@ -415,7 +415,7 @@ public class DetailActivity extends AppCompatActivity {
                 for (int i = 0; i < servers.length; i++) labels[i] = servers[i][0];
 
                 final String[][] finalServers = servers;
-                showDialogWithDpadHidden(new AlertDialog.Builder(this)
+                new AlertDialog.Builder(this)
                     .setTitle("Select Server")
                     .setItems(labels, (d, which) ->
                         launchPlayerIntent(movieId, mediaType, season, episode,
