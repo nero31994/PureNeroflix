@@ -45,9 +45,7 @@ public class DetailActivity extends AppCompatActivity {
 
 
     private void showDialogWithDpadHidden(android.app.Dialog dialog) {
-        if (detailDpadView != null) detailDpadView.setVisibility(android.view.View.GONE);
         dialog.setOnDismissListener(d -> {
-            if (detailDpadView != null) detailDpadView.setVisibility(android.view.View.VISIBLE);
         });
         dialog.show();
     }
