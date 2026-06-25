@@ -285,7 +285,6 @@ public class YastreamPlayerActivity extends AppCompatActivity {
 
             String label = ("unknown".equals(quality) || quality.isEmpty())
                 ? provider : provider + " • " + quality;
-            setStatus("Playing: " + label);
 
             initExoPlayer(m3u8Url);
         } catch (Exception e) {
