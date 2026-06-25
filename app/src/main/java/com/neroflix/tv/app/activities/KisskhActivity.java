@@ -95,6 +95,8 @@ public class KisskhActivity extends AppCompatActivity {
         glm.setInitialPrefetchItemCount(gridCols * 4);
         recycler.setLayoutManager(glm);
         recycler.setHasFixedSize(true);
+        recycler.setPadding(12, 8, 12, 8);
+        recycler.setClipToPadding(false);
         recycler.setItemViewCacheSize(20);
         recycler.setDrawingCacheEnabled(true);
         recycler.setDrawingCacheQuality(View.DRAWING_CACHE_QUALITY_HIGH);
@@ -253,8 +255,11 @@ public class KisskhActivity extends AppCompatActivity {
                         String[] labels = new String[episodes.size()];
                         for (int i = 0; i < episodes.size(); i++) {
                             KisskhClient.KisskhEpisode ep = episodes.get(i);
-                            labels[i] = "Episode " + (int) ep.number
-                                + ("1".equals(ep.sub) ? "  [SUB]" : "");
+                            labels[i] = "Ep " + (int) ep.number
+                                + (ep.title != null && !ep.title.isEmpty()
+                                    && !ep.title.equals("Episode " + (int) ep.number)
+                                    ? "  " + ep.title : "")
+                                + ("1".equals(ep.sub) ? " [SUB]" : "");
                         }
                         new AlertDialog.Builder(KisskhActivity.this)
                             .setTitle(drama.getTitle())
@@ -369,42 +374,57 @@ public class KisskhActivity extends AppCompatActivity {
             View v = LayoutInflater.from(parent.getContext())
                 .inflate(R.layout.item_kisskh_card, parent, false);
 
-            // Card size: 3 columns on portrait, 5 on landscape
-            int gap         = 4;
+            // 3 columns portrait, 5 landscape — with generous spacing like reference
+            int gap         = 10;
+            int padding     = 12;
             int screenWidth = parent.getContext().getResources()
                 .getDisplayMetrics().widthPixels;
-            int cardWidth   = (screenWidth - gap * (gridCols + 1)) / gridCols;
-            int cardHeight  = (int)(cardWidth * 1.5f);
+            int totalGap    = padding * 2 + gap * (gridCols - 1);
+            int cardWidth   = (screenWidth - totalGap) / gridCols;
+            int cardHeight  = (int)(cardWidth * 1.48f); // ~2:3 poster ratio
 
             RecyclerView.LayoutParams lp =
                 new RecyclerView.LayoutParams(cardWidth, cardHeight);
             lp.setMargins(gap / 2, gap / 2, gap / 2, gap / 2);
             v.setLayoutParams(lp);
+
+            // Large rounded corners like reference image
             v.setBackgroundResource(R.drawable.card_squircle);
             v.setClipToOutline(true);
+            v.setElevation(4f);
             return new VH(v);
         }
 
         @Override
         public void onBindViewHolder(VH holder, int position) {
             KisskhDrama d = items.get(position);
-            holder.title.setText(d.getTitle());
-            holder.episodes.setText(
-                d.getEpisodeCount() > 0 ? "Ep " + d.getEpisodeCount() : "");
+
+            // Episode badge — only show if more than 1 episode
+            if (d.getEpisodeCount() > 1) {
+                holder.episodes.setText("Ep " + d.getEpisodeCount());
+                holder.episodes.setVisibility(View.VISIBLE);
+            } else {
+                holder.episodes.setVisibility(View.GONE);
+            }
 
             Glide.with(KisskhActivity.this)
                 .load(d.getPoster())
                 .placeholder(android.R.color.darker_gray)
-                .thumbnail(0.3f)
-                .override(200, 300)
+                .thumbnail(0.25f)
+                .override(250, 370)
                 .diskCacheStrategy(com.bumptech.glide.load.engine.DiskCacheStrategy.ALL)
                 .centerCrop()
+                .transition(com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions.withCrossFade(200))
                 .into(holder.poster);
 
+            // Focus highlight — scale up with shadow, no border color change
             boolean focused = (position == focusedPosition);
-            holder.itemView.setScaleX(focused ? 1.06f : 1f);
-            holder.itemView.setScaleY(focused ? 1.06f : 1f);
-            holder.itemView.setElevation(focused ? 12f : 2f);
+            holder.itemView.animate()
+                .scaleX(focused ? 1.07f : 1f)
+                .scaleY(focused ? 1.07f : 1f)
+                .setDuration(120)
+                .start();
+            holder.itemView.setElevation(focused ? 16f : 4f);
             holder.itemView.setBackgroundResource(focused
                 ? R.drawable.card_focus_border : R.drawable.card_squircle);
 

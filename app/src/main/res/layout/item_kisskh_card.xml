@@ -2,52 +2,39 @@
 <FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@drawable/card_squircle"
     android:clipToOutline="true"
     android:focusable="true"
     android:clickable="true">
 
-    <!-- Poster -->
+    <!-- Full poster — no text overlay, clean like the reference -->
     <ImageView
         android:id="@+id/kisskh_poster"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:scaleType="centerCrop"/>
 
-    <!-- Bottom gradient -->
-    <View
-        android:layout_width="match_parent"
-        android:layout_height="60dp"
-        android:layout_gravity="bottom"
-        android:background="@drawable/gradient_bottom"/>
-
-    <!-- Episode count badge -->
+    <!-- Episode count badge top-right only -->
     <TextView
         android:id="@+id/kisskh_episodes"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_gravity="top|end"
-        android:layout_margin="3dp"
+        android:layout_margin="5dp"
         android:background="#CC000000"
         android:textColor="#E50914"
         android:textSize="9sp"
         android:textStyle="bold"
-        android:paddingStart="4dp"
-        android:paddingEnd="4dp"
+        android:paddingStart="5dp"
+        android:paddingEnd="5dp"
         android:paddingTop="2dp"
         android:paddingBottom="2dp"/>
 
-    <!-- Title at bottom -->
+    <!-- Hidden title for accessibility only — not visible -->
     <TextView
         android:id="@+id/kisskh_title"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_gravity="bottom"
-        android:padding="5dp"
-        android:textColor="#FFFFFF"
-        android:textSize="10sp"
-        android:textStyle="bold"
-        android:maxLines="2"
-        android:ellipsize="end"/>
+        android:visibility="gone"/>
 
 </FrameLayout>
