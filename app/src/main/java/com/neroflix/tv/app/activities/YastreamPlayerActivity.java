@@ -487,9 +487,6 @@ public class YastreamPlayerActivity extends AppCompatActivity {
             case KeyEvent.KEYCODE_DPAD_UP:
                 showStreamPicker();
                 return true;
-            case KeyEvent.KEYCODE_DPAD_DOWN:
-                showSubtitlePicker();
-                return true;
             case KeyEvent.KEYCODE_BACK:
             case KeyEvent.KEYCODE_ESCAPE:
                 finish();
