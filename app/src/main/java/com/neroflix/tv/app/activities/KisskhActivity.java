@@ -50,7 +50,9 @@ public class KisskhActivity extends AppCompatActivity {
     private boolean isSearchMode = false;
     private String  lastQuery    = "";
 
-    // D-pad
+    // D-pad focus zones
+    private enum Zone { HEADER, GRID }
+    private Zone focusedZone = Zone.GRID;
     private int focusedRow = 0;
     private int focusedCol = 0;
     private int gridCols   = 6; // 6 columns
@@ -293,8 +295,55 @@ public class KisskhActivity extends AppCompatActivity {
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         int total     = adapter.getItemCount();
+        int totalRows = total > 0 ? (int) Math.ceil((double) total / gridCols) : 0;
+
+        // MENU key → sort picker from anywhere
+        if (keyCode == KeyEvent.KEYCODE_MENU) {
+            showSortPicker();
+            return true;
+        }
+
+        // BACK
+        if (keyCode == KeyEvent.KEYCODE_BACK) {
+            if (focusedZone == Zone.HEADER) {
+                focusedZone = Zone.GRID;
+                highlightHeader(false);
+                highlightFocused();
+            } else {
+                finish();
+            }
+            return true;
+        }
+
+        // ── HEADER zone ───────────────────────────────────────────────────────
+        if (focusedZone == Zone.HEADER) {
+            switch (keyCode) {
+                case KeyEvent.KEYCODE_DPAD_DOWN:
+                    focusedZone = Zone.GRID;
+                    highlightHeader(false);
+                    highlightFocused();
+                    return true;
+                case KeyEvent.KEYCODE_DPAD_RIGHT:
+                    // Move focus from search to sort button
+                    View sortBtn = findViewById(R.id.kisskh_sort);
+                    if (sortBtn != null) sortBtn.requestFocus();
+                    return true;
+                case KeyEvent.KEYCODE_DPAD_CENTER:
+                case KeyEvent.KEYCODE_ENTER:
+                    // OK on search → open keyboard
+                    searchBox.requestFocus();
+                    android.view.inputmethod.InputMethodManager imm2 =
+                        (android.view.inputmethod.InputMethodManager)
+                        getSystemService(Context.INPUT_METHOD_SERVICE);
+                    if (imm2 != null)
+                        imm2.showSoftInput(searchBox, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT);
+                    return true;
+            }
+            return true;
+        }
+
+        // ── GRID zone ─────────────────────────────────────────────────────────
         if (total == 0) return super.onKeyDown(keyCode, event);
-        int totalRows = (int) Math.ceil((double) total / gridCols);
 
         switch (keyCode) {
             case KeyEvent.KEYCODE_DPAD_RIGHT:
@@ -320,8 +369,16 @@ public class KisskhActivity extends AppCompatActivity {
                 highlightFocused(); return true;
 
             case KeyEvent.KEYCODE_DPAD_UP:
-                if (focusedRow > 0) focusedRow--;
-                highlightFocused(); return true;
+                if (focusedRow > 0) {
+                    focusedRow--;
+                    highlightFocused();
+                } else {
+                    // At top row → go to header (search/sort)
+                    focusedZone = Zone.HEADER;
+                    highlightHeader(true);
+                    adapter.setFocusedPosition(-1);
+                }
+                return true;
 
             case KeyEvent.KEYCODE_DPAD_CENTER:
             case KeyEvent.KEYCODE_ENTER:
@@ -329,11 +386,22 @@ public class KisskhActivity extends AppCompatActivity {
                 int pos = focusedRow * gridCols + focusedCol;
                 if (pos < total) openDrama(items.get(pos));
                 return true;
-
-            case KeyEvent.KEYCODE_BACK:
-                finish(); return true;
         }
         return super.onKeyDown(keyCode, event);
+    }
+
+    private void highlightHeader(boolean focused) {
+        View searchLayout = findViewById(R.id.kisskh_search).getParent() instanceof View
+            ? (View) findViewById(R.id.kisskh_search).getParent() : null;
+        View sortBtn = findViewById(R.id.kisskh_sort);
+        if (searchLayout != null) {
+            searchLayout.setBackgroundColor(focused ? 0xFF333333 : 0xFF222222);
+        }
+        if (sortBtn != null) {
+            sortBtn.setScaleX(focused ? 1.1f : 1f);
+            sortBtn.setScaleY(focused ? 1.1f : 1f);
+        }
+        if (focused && searchBox != null) searchBox.requestFocus();
     }
 
     private void highlightFocused() {
