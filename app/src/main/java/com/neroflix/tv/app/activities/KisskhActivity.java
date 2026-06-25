@@ -21,31 +21,17 @@ import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.GridLayoutManager;
-import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
-import com.neroflix.tv.app.LicenseManager;
 import com.neroflix.tv.app.R;
 import com.neroflix.tv.app.models.KisskhDrama;
 import com.neroflix.tv.app.network.KisskhClient;
 
-import org.json.JSONArray;
-
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * KisskhActivity — Browse and search Korean dramas from kisskh.
- * Selecting a drama launches YastreamPlayerActivity directly with kisskh ID.
- *
- * Nav entry from MainActivity sidebar (nav item 10: "K-Drama").
- */
 public class KisskhActivity extends AppCompatActivity {
-
-    // Filter tabs
-    private static final int[] TAB_TYPES  = {0, 2, 3, 4, 5, 6};
-    private static final String[] TAB_LABELS = {"All", "K-Drama", "Thai", "Chinese", "Japanese", "Movies"};
 
     private RecyclerView   recycler;
     private ProgressBar    loading;
@@ -56,22 +42,18 @@ public class KisskhActivity extends AppCompatActivity {
     private DramaGridAdapter adapter;
     private final List<KisskhDrama> items = new ArrayList<>();
 
-    private int  currentType  = 2; // default: K-Drama
-    private int  currentPage  = 1;
-    private int  currentOrder = KisskhClient.ORDER_POPULAR;
-    private boolean isLoading = false;
-    private boolean hasMore   = true;
+    // Load all content (type=0), order by popular
+    private int     currentPage  = 1;
+    private int     currentOrder = KisskhClient.ORDER_POPULAR;
+    private boolean isLoading    = false;
+    private boolean hasMore      = true;
     private boolean isSearchMode = false;
-    private String  lastQuery = "";
+    private String  lastQuery    = "";
 
     // D-pad
     private int focusedRow = 0;
     private int focusedCol = 0;
-    private int gridCols   = 5;
-
-    // Tab bar focus
-    private int  focusedTab   = 1; // K-Drama default
-    private int[] tabViewIds;
+    private int gridCols   = 3; // 3 columns — mobile friendly
 
     public static void open(Context ctx) {
         ctx.startActivity(new Intent(ctx, KisskhActivity.class));
@@ -100,10 +82,15 @@ public class KisskhActivity extends AppCompatActivity {
         // Back button
         findViewById(R.id.kisskh_back).setOnClickListener(v -> finish());
 
-        // Grid
+        // Sort button
+        View sortBtn = findViewById(R.id.kisskh_sort);
+        if (sortBtn != null) sortBtn.setOnClickListener(v -> showSortPicker());
+
+        // Grid — 3 columns for mobile, 5 for landscape TV
         boolean landscape = getResources().getConfiguration().orientation ==
             android.content.res.Configuration.ORIENTATION_LANDSCAPE;
         gridCols = landscape ? 5 : 3;
+
         recycler.setLayoutManager(new GridLayoutManager(this, gridCols));
         adapter = new DramaGridAdapter();
         recycler.setAdapter(adapter);
@@ -111,25 +98,23 @@ public class KisskhActivity extends AppCompatActivity {
         // Infinite scroll
         recycler.addOnScrollListener(new RecyclerView.OnScrollListener() {
             @Override public void onScrolled(RecyclerView rv, int dx, int dy) {
+                if (dy <= 0 || isLoading || !hasMore || isSearchMode) return;
                 GridLayoutManager lm = (GridLayoutManager) rv.getLayoutManager();
-                if (!isLoading && hasMore && lm != null &&
-                    lm.findLastVisibleItemPosition() >= adapter.getItemCount() - 8)
-                    if (!isSearchMode) loadMore();
+                if (lm != null &&
+                    lm.findLastVisibleItemPosition() >= adapter.getItemCount() - 15)
+                    loadMore();
             }
         });
-
-        // Tab buttons
-        setupTabs();
 
         // Search
         searchBox.addTextChangedListener(new TextWatcher() {
             @Override public void beforeTextChanged(CharSequence s, int st, int c, int a) {}
             @Override public void onTextChanged(CharSequence s, int st, int b, int c) {
-                if (s.length() == 0) {
-                    searchClear.setVisibility(View.GONE);
-                    if (isSearchMode) { isSearchMode = false; lastQuery = ""; loadDramas(); }
-                } else {
-                    searchClear.setVisibility(View.VISIBLE);
+                searchClear.setVisibility(s.length() > 0 ? View.VISIBLE : View.GONE);
+                if (s.length() == 0 && isSearchMode) {
+                    isSearchMode = false;
+                    lastQuery    = "";
+                    loadDramas();
                 }
             }
             @Override public void afterTextChanged(Editable s) {}
@@ -150,55 +135,13 @@ public class KisskhActivity extends AppCompatActivity {
             searchClear.setOnClickListener(v -> {
                 searchBox.setText("");
                 isSearchMode = false;
-                lastQuery = "";
+                lastQuery    = "";
                 loadDramas();
             });
         }
-
-        // Order picker
-        View sortBtn = findViewById(R.id.kisskh_sort);
-        if (sortBtn != null) {
-            sortBtn.setOnClickListener(v -> showSortPicker());
-        }
     }
 
-    private void setupTabs() {
-        int[] ids = {
-            R.id.tab_all, R.id.tab_kdrama, R.id.tab_thai,
-            R.id.tab_chinese, R.id.tab_japanese, R.id.tab_movies
-        };
-        tabViewIds = ids;
-        for (int i = 0; i < ids.length; i++) {
-            final int idx = i;
-            View tab = findViewById(ids[i]);
-            if (tab == null) continue;
-            tab.setOnClickListener(v -> selectTab(idx));
-        }
-        highlightTab(focusedTab);
-    }
-
-    private void selectTab(int idx) {
-        focusedTab  = idx;
-        currentType = TAB_TYPES[idx];
-        highlightTab(idx);
-        loadDramas();
-    }
-
-    private void highlightTab(int idx) {
-        if (tabViewIds == null) return;
-        for (int i = 0; i < tabViewIds.length; i++) {
-            View tab = findViewById(tabViewIds[i]);
-            if (tab == null) continue;
-            tab.setAlpha(i == idx ? 1f : 0.5f);
-            tab.setScaleX(i == idx ? 1.05f : 1f);
-            tab.setScaleY(i == idx ? 1.05f : 1f);
-            if (tab instanceof TextView) {
-                ((TextView) tab).setTextColor(i == idx ? 0xFFE50914 : 0xFFAAAAAA);
-            }
-        }
-    }
-
-    // ── Data loading ──────────────────────────────────────────────────────────
+    // ── Data ──────────────────────────────────────────────────────────────────
 
     private void loadDramas() {
         isSearchMode = false;
@@ -215,24 +158,30 @@ public class KisskhActivity extends AppCompatActivity {
         isLoading = true;
         showLoading(true);
 
-        KisskhClient.getInstance().fetchDramas(currentType, currentPage, currentOrder,
+        // type=0 = ALL (dramas + movies from kisskh)
+        KisskhClient.getInstance().fetchDramas(
+            KisskhClient.TYPE_ALL, currentPage, currentOrder,
             new KisskhClient.DramaListCallback() {
                 @Override public void onSuccess(List<KisskhDrama> dramas) {
                     runOnUiThread(() -> {
                         showLoading(false);
                         isLoading = false;
                         if (dramas.isEmpty()) { hasMore = false; return; }
+                        int start = items.size();
                         items.addAll(dramas);
-                        adapter.notifyDataSetChanged();
+                        adapter.notifyItemRangeInserted(start, dramas.size());
                         countBadge.setText(items.size() + "+ titles");
                         currentPage++;
-                        if (dramas.size() < 20) hasMore = false;
-                        if (items.size() <= dramas.size()) highlightFocused();
+                        if (dramas.size() < 10) hasMore = false;
+                        if (start == 0) highlightFocused();
                     });
                 }
                 @Override public void onError(String error) {
-                    runOnUiThread(() -> { showLoading(false); isLoading = false;
-                        Toast.makeText(KisskhActivity.this, "Load failed: " + error, Toast.LENGTH_SHORT).show();
+                    runOnUiThread(() -> {
+                        showLoading(false);
+                        isLoading = false;
+                        Toast.makeText(KisskhActivity.this,
+                            "Failed to load: " + error, Toast.LENGTH_SHORT).show();
                     });
                 }
             });
@@ -246,7 +195,7 @@ public class KisskhActivity extends AppCompatActivity {
         adapter.notifyDataSetChanged();
         showLoading(true);
 
-        KisskhClient.getInstance().search(query, currentType,
+        KisskhClient.getInstance().search(query, KisskhClient.TYPE_ALL,
             new KisskhClient.DramaListCallback() {
                 @Override public void onSuccess(List<KisskhDrama> dramas) {
                     runOnUiThread(() -> {
@@ -258,8 +207,10 @@ public class KisskhActivity extends AppCompatActivity {
                     });
                 }
                 @Override public void onError(String error) {
-                    runOnUiThread(() -> { showLoading(false);
-                        Toast.makeText(KisskhActivity.this, "Search failed", Toast.LENGTH_SHORT).show();
+                    runOnUiThread(() -> {
+                        showLoading(false);
+                        Toast.makeText(KisskhActivity.this,
+                            "Search failed", Toast.LENGTH_SHORT).show();
                     });
                 }
             });
@@ -267,7 +218,11 @@ public class KisskhActivity extends AppCompatActivity {
 
     private void showSortPicker() {
         String[] options = {"Popular", "Latest", "Top Rated"};
-        int[] orders = {KisskhClient.ORDER_POPULAR, KisskhClient.ORDER_LATEST, KisskhClient.ORDER_TOP_RATED};
+        int[] orders = {
+            KisskhClient.ORDER_POPULAR,
+            KisskhClient.ORDER_LATEST,
+            KisskhClient.ORDER_TOP_RATED
+        };
         new AlertDialog.Builder(this)
             .setTitle("Sort By")
             .setItems(options, (d, which) -> {
@@ -279,34 +234,29 @@ public class KisskhActivity extends AppCompatActivity {
     // ── Open drama ────────────────────────────────────────────────────────────
 
     private void openDrama(KisskhDrama drama) {
-        // Show episode picker, then launch YastreamPlayerActivity with kisskh:{id}
         showLoading(true);
         KisskhClient.getInstance().fetchEpisodes(drama.getId(),
             new KisskhClient.EpisodeListCallback() {
                 @Override public void onSuccess(List<KisskhClient.KisskhEpisode> episodes) {
                     runOnUiThread(() -> {
                         showLoading(false);
-                        if (episodes.isEmpty()) {
-                            // Likely a movie — play directly
-                            launchKisskhPlayer(drama, 1);
+                        if (episodes.size() <= 1) {
+                            launchPlayer(drama, 1);
                             return;
                         }
-                        if (episodes.size() == 1) {
-                            launchKisskhPlayer(drama, 1);
-                            return;
-                        }
-                        // Show episode picker
                         String[] labels = new String[episodes.size()];
                         for (int i = 0; i < episodes.size(); i++) {
                             KisskhClient.KisskhEpisode ep = episodes.get(i);
-                            labels[i] = "Episode " + (int) ep.number
-                                + (ep.title != null && !ep.title.isEmpty() ? "  " + ep.title : "")
-                                + ("1".equals(ep.sub) ? "  [SUB]" : "");
+                            labels[i] = "Ep " + (int) ep.number
+                                + (ep.title != null && !ep.title.isEmpty()
+                                    && !ep.title.equals("Episode " + (int) ep.number)
+                                    ? "  " + ep.title : "")
+                                + ("1".equals(ep.sub) ? " [SUB]" : "");
                         }
                         new AlertDialog.Builder(KisskhActivity.this)
                             .setTitle(drama.getTitle())
                             .setItems(labels, (d, which) ->
-                                launchKisskhPlayer(drama, (int) episodes.get(which).number))
+                                launchPlayer(drama, (int) episodes.get(which).number))
                             .setNegativeButton("Cancel", null)
                             .show();
                     });
@@ -314,37 +264,37 @@ public class KisskhActivity extends AppCompatActivity {
                 @Override public void onError(String error) {
                     runOnUiThread(() -> {
                         showLoading(false);
-                        launchKisskhPlayer(drama, 1);
+                        launchPlayer(drama, 1);
                     });
                 }
             });
     }
 
-    private void launchKisskhPlayer(KisskhDrama drama, int episode) {
-        // Use kisskh:{id} as the stream ID — worker resolves via yastream
+    private void launchPlayer(KisskhDrama drama, int episode) {
         Intent intent = new Intent(this, YastreamPlayerActivity.class);
         intent.putExtra("movie_id",    drama.getId());
-        intent.putExtra("media_type",  "kisskh");   // special flag
+        intent.putExtra("media_type",  "kisskh");
         intent.putExtra("movie_title", drama.getTitle());
         intent.putExtra("season",      1);
         intent.putExtra("episode",     episode);
-        intent.putExtra("kisskh_id",   "kisskh:" + drama.getId()); // direct ID
+        intent.putExtra("kisskh_id",   "kisskh:" + drama.getId());
         startActivity(intent);
         overridePendingTransition(R.anim.fade_in, R.anim.fade_out);
     }
 
-    // ── D-pad navigation ──────────────────────────────────────────────────────
+    // ── D-pad ─────────────────────────────────────────────────────────────────
 
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         int total     = adapter.getItemCount();
+        if (total == 0) return super.onKeyDown(keyCode, event);
         int totalRows = (int) Math.ceil((double) total / gridCols);
 
         switch (keyCode) {
             case KeyEvent.KEYCODE_DPAD_RIGHT:
-                if (focusedCol < gridCols - 1 && focusedRow * gridCols + focusedCol + 1 < total)
-                    focusedCol++;
-                else if (focusedRow * gridCols + focusedCol + 1 < total) {
+                if (focusedCol < gridCols - 1 &&
+                    focusedRow * gridCols + focusedCol + 1 < total) focusedCol++;
+                else if (focusedRow * gridCols + gridCols < total) {
                     focusedRow++; focusedCol = 0;
                 }
                 highlightFocused(); return true;
@@ -359,8 +309,8 @@ public class KisskhActivity extends AppCompatActivity {
                     focusedRow++;
                     int newPos = focusedRow * gridCols + focusedCol;
                     if (newPos >= total) focusedCol = (total - 1) % gridCols;
-                    if (focusedRow >= totalRows - 2) loadMore();
                 }
+                if (focusedRow >= totalRows - 3 && !isSearchMode) loadMore();
                 highlightFocused(); return true;
 
             case KeyEvent.KEYCODE_DPAD_UP:
@@ -386,18 +336,20 @@ public class KisskhActivity extends AppCompatActivity {
         recycler.scrollToPosition(pos);
     }
 
-    // ── UI helpers ────────────────────────────────────────────────────────────
+    // ── UI ────────────────────────────────────────────────────────────────────
 
     private void showLoading(boolean show) {
         if (loading != null) loading.setVisibility(show ? View.VISIBLE : View.GONE);
     }
 
     private void hideKeyboard() {
-        InputMethodManager imm = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
-        if (imm != null && searchBox != null) imm.hideSoftInputFromWindow(searchBox.getWindowToken(), 0);
+        InputMethodManager imm = (InputMethodManager)
+            getSystemService(Context.INPUT_METHOD_SERVICE);
+        if (imm != null && searchBox != null)
+            imm.hideSoftInputFromWindow(searchBox.getWindowToken(), 0);
     }
 
-    // ── Grid Adapter ──────────────────────────────────────────────────────────
+    // ── Adapter ───────────────────────────────────────────────────────────────
 
     private class DramaGridAdapter extends RecyclerView.Adapter<DramaGridAdapter.VH> {
         private int focusedPosition = 0;
@@ -414,14 +366,19 @@ public class KisskhActivity extends AppCompatActivity {
             View v = LayoutInflater.from(parent.getContext())
                 .inflate(R.layout.item_kisskh_card, parent, false);
 
-            int gap = 8;
-            android.util.DisplayMetrics dm = parent.getContext().getResources().getDisplayMetrics();
-            int screenWidth = dm.widthPixels;
-            int cardWidth   = Math.max(1, (screenWidth - gap * (gridCols + 1)) / gridCols);
-            int cardHeight  = (int)(cardWidth * 1.55f);
-            RecyclerView.LayoutParams lp = new RecyclerView.LayoutParams(cardWidth, cardHeight);
+            // Card size: 3 columns on portrait, 5 on landscape
+            int gap         = 4;
+            int screenWidth = parent.getContext().getResources()
+                .getDisplayMetrics().widthPixels;
+            int cardWidth   = (screenWidth - gap * (gridCols + 1)) / gridCols;
+            int cardHeight  = (int)(cardWidth * 1.5f);
+
+            RecyclerView.LayoutParams lp =
+                new RecyclerView.LayoutParams(cardWidth, cardHeight);
             lp.setMargins(gap / 2, gap / 2, gap / 2, gap / 2);
             v.setLayoutParams(lp);
+            v.setBackgroundResource(R.drawable.card_squircle);
+            v.setClipToOutline(true);
             return new VH(v);
         }
 
@@ -429,17 +386,18 @@ public class KisskhActivity extends AppCompatActivity {
         public void onBindViewHolder(VH holder, int position) {
             KisskhDrama d = items.get(position);
             holder.title.setText(d.getTitle());
-            holder.type.setText(d.getType());
-            holder.episodes.setText(d.getEpisodeCount() > 0 ? "Ep " + d.getEpisodeCount() : "");
+            holder.episodes.setText(
+                d.getEpisodeCount() > 0 ? "Ep " + d.getEpisodeCount() : "");
 
             Glide.with(KisskhActivity.this)
                 .load(d.getPoster())
                 .placeholder(android.R.color.darker_gray)
+                .centerCrop()
                 .into(holder.poster);
 
             boolean focused = (position == focusedPosition);
-            holder.itemView.setScaleX(focused ? 1.08f : 1f);
-            holder.itemView.setScaleY(focused ? 1.08f : 1f);
+            holder.itemView.setScaleX(focused ? 1.06f : 1f);
+            holder.itemView.setScaleY(focused ? 1.06f : 1f);
             holder.itemView.setElevation(focused ? 12f : 2f);
             holder.itemView.setBackgroundResource(focused
                 ? R.drawable.card_focus_border : R.drawable.card_squircle);
@@ -451,12 +409,11 @@ public class KisskhActivity extends AppCompatActivity {
 
         class VH extends RecyclerView.ViewHolder {
             ImageView poster;
-            TextView  title, type, episodes;
+            TextView  title, episodes;
             VH(View v) {
                 super(v);
                 poster   = v.findViewById(R.id.kisskh_poster);
                 title    = v.findViewById(R.id.kisskh_title);
-                type     = v.findViewById(R.id.kisskh_type);
                 episodes = v.findViewById(R.id.kisskh_episodes);
             }
         }
