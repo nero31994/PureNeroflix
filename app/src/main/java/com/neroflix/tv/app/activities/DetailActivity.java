@@ -39,71 +39,9 @@ public class DetailActivity extends AppCompatActivity {
     private ProgressBar progressBar;
 
 
-    private android.view.View detailDpadView;
 
-    private void initDetailVirtualDpad() {
-        android.widget.FrameLayout pad = new android.widget.FrameLayout(this);
-        int bs = 90; int gap = 8;
 
-        android.widget.Button btnUp    = makeDetailBtn("▲");
-        android.widget.Button btnDown  = makeDetailBtn("▼");
-        android.widget.Button btnLeft  = makeDetailBtn("◀");
-        android.widget.Button btnRight = makeDetailBtn("▶");
-        android.widget.Button btnOk    = makeDetailBtn("OK");
-        android.widget.Button btnBack  = makeDetailBtn("⬅");
 
-        btnUp.setOnClickListener(v    -> simDetailKey(android.view.KeyEvent.KEYCODE_DPAD_UP));
-        btnDown.setOnClickListener(v  -> simDetailKey(android.view.KeyEvent.KEYCODE_DPAD_DOWN));
-        btnLeft.setOnClickListener(v  -> simDetailKey(android.view.KeyEvent.KEYCODE_DPAD_LEFT));
-        btnRight.setOnClickListener(v -> simDetailKey(android.view.KeyEvent.KEYCODE_DPAD_RIGHT));
-        btnOk.setOnClickListener(v    -> simDetailKey(android.view.KeyEvent.KEYCODE_DPAD_CENTER));
-        btnBack.setOnClickListener(v  -> simDetailKey(android.view.KeyEvent.KEYCODE_BACK));
-
-        android.widget.FrameLayout.LayoutParams pUp    = new android.widget.FrameLayout.LayoutParams(bs,bs); pUp.leftMargin=bs+gap; pUp.topMargin=0;
-        android.widget.FrameLayout.LayoutParams pDown  = new android.widget.FrameLayout.LayoutParams(bs,bs); pDown.leftMargin=bs+gap; pDown.topMargin=(bs+gap)*2;
-        android.widget.FrameLayout.LayoutParams pLeft  = new android.widget.FrameLayout.LayoutParams(bs,bs); pLeft.leftMargin=0; pLeft.topMargin=bs+gap;
-        android.widget.FrameLayout.LayoutParams pRight = new android.widget.FrameLayout.LayoutParams(bs,bs); pRight.leftMargin=(bs+gap)*2; pRight.topMargin=bs+gap;
-        android.widget.FrameLayout.LayoutParams pOk    = new android.widget.FrameLayout.LayoutParams(bs,bs); pOk.leftMargin=bs+gap; pOk.topMargin=bs+gap;
-        android.widget.FrameLayout.LayoutParams pBack  = new android.widget.FrameLayout.LayoutParams(bs,bs); pBack.leftMargin=(bs+gap)*3; pBack.topMargin=0;
-
-        pad.addView(btnUp,pUp); pad.addView(btnDown,pDown); pad.addView(btnLeft,pLeft);
-        pad.addView(btnRight,pRight); pad.addView(btnOk,pOk); pad.addView(btnBack,pBack);
-
-        android.widget.TextView label = new android.widget.TextView(this);
-        label.setBackgroundColor(0xEE000000);
-        label.setTextColor(0xFF00FF00);
-        label.setTextSize(12f);
-        label.setPadding(12,6,12,6);
-        label.setText("DetailActivity");
-        android.widget.FrameLayout.LayoutParams pLabel = new android.widget.FrameLayout.LayoutParams(
-            android.view.ViewGroup.LayoutParams.WRAP_CONTENT,
-            android.view.ViewGroup.LayoutParams.WRAP_CONTENT);
-        pLabel.topMargin = (bs+gap)*3 + 8;
-        pad.addView(label, pLabel);
-
-        int padW = (bs+gap)*4; int padH = (bs+gap)*3 + 60;
-        android.view.WindowManager.LayoutParams params = new android.view.WindowManager.LayoutParams(
-            padW, padH,
-            android.view.WindowManager.LayoutParams.TYPE_APPLICATION,
-            android.view.WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
-            android.graphics.PixelFormat.TRANSLUCENT);
-        params.gravity = android.view.Gravity.BOTTOM | android.view.Gravity.START;
-        params.x = 16; params.y = 16;
-        getWindowManager().addView(pad, params);
-        detailDpadView = pad;
-    }
-
-    private android.widget.Button makeDetailBtn(String label) {
-        android.widget.Button b = new android.widget.Button(this);
-        b.setText(label); b.setTextSize(16f);
-        b.setTextColor(0xFFFFFFFF); b.setBackgroundColor(0xCC111111); b.setAlpha(0.85f);
-        return b;
-    }
-
-    private void simDetailKey(int keyCode) {
-        android.view.KeyEvent down = new android.view.KeyEvent(android.view.KeyEvent.ACTION_DOWN, keyCode);
-        onKeyDown(keyCode, down);
-    }
 
 
     private void showDialogWithDpadHidden(android.app.Dialog dialog) {
@@ -118,8 +56,6 @@ public class DetailActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_detail);
-        initDetailVirtualDpad();
-        highlightDetailBtn(1);
 
         movieId = getIntent().getIntExtra("movie_id", 0);
         mediaType = getIntent().getStringExtra("media_type");
@@ -465,7 +401,6 @@ public class DetailActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        if (detailDpadView != null) try { getWindowManager().removeView(detailDpadView); } catch (Exception e) {}
     }
 
     // Detail screen focus: 0=Back, 1=Play, 2=Download, 3=Watchlist

@@ -253,11 +253,8 @@ public class KisskhActivity extends AppCompatActivity {
                         String[] labels = new String[episodes.size()];
                         for (int i = 0; i < episodes.size(); i++) {
                             KisskhClient.KisskhEpisode ep = episodes.get(i);
-                            labels[i] = "Ep " + (int) ep.number
-                                + (ep.title != null && !ep.title.isEmpty()
-                                    && !ep.title.equals("Episode " + (int) ep.number)
-                                    ? "  " + ep.title : "")
-                                + ("1".equals(ep.sub) ? " [SUB]" : "");
+                            labels[i] = "Episode " + (int) ep.number
+                                + ("1".equals(ep.sub) ? "  [SUB]" : "");
                         }
                         new AlertDialog.Builder(KisskhActivity.this)
                             .setTitle(drama.getTitle())
