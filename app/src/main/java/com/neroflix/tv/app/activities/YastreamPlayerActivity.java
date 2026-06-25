@@ -241,6 +241,63 @@ public class YastreamPlayerActivity extends AppCompatActivity {
         }).start();
     }
 
+    // ── Subtitle picker ───────────────────────────────────────────────────────
+
+    private void showSubtitlePicker() {
+        if (exoPlayer == null) return;
+
+        androidx.media3.common.TrackSelectionParameters currentParams =
+            exoPlayer.getTrackSelectionParameters();
+
+        // Build list of available subtitle tracks
+        androidx.media3.common.Tracks tracks = exoPlayer.getCurrentTracks();
+        java.util.List<String> labels = new ArrayList<>();
+        java.util.List<androidx.media3.common.TrackGroup> subGroups = new ArrayList<>();
+
+        labels.add("Off");
+        subGroups.add(null);
+
+        for (androidx.media3.common.Tracks.Group group : tracks.getGroups()) {
+            if (group.getType() == androidx.media3.common.C.TRACK_TYPE_TEXT) {
+                for (int i = 0; i < group.length; i++) {
+                    androidx.media3.common.Format fmt = group.getTrackFormat(i);
+                    String lang = fmt.language != null ? fmt.language.toUpperCase() : "SUB";
+                    String label = fmt.label != null ? fmt.label : lang;
+                    labels.add(label);
+                    subGroups.add(group.getMediaTrackGroup());
+                }
+            }
+        }
+
+        if (labels.size() <= 1) {
+            android.widget.Toast.makeText(this,
+                "No subtitles available for this stream", android.widget.Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        new android.app.AlertDialog.Builder(this)
+            .setTitle("Subtitles")
+            .setItems(labels.toArray(new String[0]), (d, which) -> {
+                if (which == 0) {
+                    // Turn off subtitles
+                    exoPlayer.setTrackSelectionParameters(
+                        currentParams.buildUpon()
+                            .setIgnoredTextSelectionFlags(
+                                androidx.media3.common.C.SELECTION_FLAG_DEFAULT)
+                            .build());
+                } else {
+                    // Enable selected subtitle track
+                    exoPlayer.setTrackSelectionParameters(
+                        currentParams.buildUpon()
+                            .setPreferredTextLanguage(
+                                labels.get(which).toLowerCase())
+                            .build());
+                }
+            })
+            .setNegativeButton("Cancel", null)
+            .show();
+    }
+
     // ── Stream picker dialog ──────────────────────────────────────────────────
 
     private void showStreamPicker() {
@@ -276,17 +333,13 @@ public class YastreamPlayerActivity extends AppCompatActivity {
         currentStreamIndex = index;
 
         try {
-            JSONObject stream = streamList.getJSONObject(index);
-            String m3u8Url   = stream.optString("url", "");
-            String provider  = stream.optString("provider", "");
-            String quality   = stream.optString("quality", "");
+            JSONObject stream  = streamList.getJSONObject(index);
+            String m3u8Url     = stream.optString("url", "");
+            JSONArray subtitles = stream.optJSONArray("subtitles");
 
             if (m3u8Url.isEmpty()) { showError("Invalid stream URL."); return; }
 
-            String label = ("unknown".equals(quality) || quality.isEmpty())
-                ? provider : provider + " • " + quality;
-
-            initExoPlayer(m3u8Url);
+            initExoPlayer(m3u8Url, subtitles);
         } catch (Exception e) {
             showError("Failed to load stream: " + e.getMessage());
         }
@@ -303,8 +356,42 @@ public class YastreamPlayerActivity extends AppCompatActivity {
             .setReadTimeoutMs(15000)
             .setAllowCrossProtocolRedirects(true);
 
+        // Build MediaItem with subtitle tracks
+        MediaItem.Builder mediaItemBuilder = new MediaItem.Builder()
+            .setUri(m3u8Url);
+
+        // Add subtitles from current stream if available
+        if (streamList != null && currentStreamIndex < streamList.length()) {
+            try {
+                org.json.JSONArray subs = streamList
+                    .getJSONObject(currentStreamIndex)
+                    .optJSONArray("subtitles");
+                if (subs != null && subs.length() > 0) {
+                    java.util.List<MediaItem.SubtitleConfiguration> subConfigs = new java.util.ArrayList<>();
+                    for (int i = 0; i < subs.length(); i++) {
+                        org.json.JSONObject sub = subs.getJSONObject(i);
+                        String subUrl  = sub.optString("url", "");
+                        String subLang = sub.optString("lang", "und");
+                        if (!subUrl.isEmpty()) {
+                            subConfigs.add(new MediaItem.SubtitleConfiguration.Builder(
+                                android.net.Uri.parse(subUrl))
+                                .setMimeType(androidx.media3.common.MimeTypes.TEXT_VTT)
+                                .setLanguage(subLang)
+                                .setSelectionFlags(androidx.media3.common.C.SELECTION_FLAG_DEFAULT)
+                                .build());
+                        }
+                    }
+                    if (!subConfigs.isEmpty()) {
+                        mediaItemBuilder.setSubtitleConfigurations(subConfigs);
+                    }
+                }
+            } catch (Exception e) {
+                android.util.Log.w("YastreamPlayer", "Subtitle parse error: " + e.getMessage());
+            }
+        }
+
         HlsMediaSource mediaSource = new HlsMediaSource.Factory(dataSourceFactory)
-            .createMediaSource(MediaItem.fromUri(m3u8Url));
+            .createMediaSource(mediaItemBuilder.build());
 
         exoPlayer = new ExoPlayer.Builder(this).build();
         playerView.setPlayer(exoPlayer);
@@ -393,9 +480,15 @@ public class YastreamPlayerActivity extends AppCompatActivity {
                     exoPlayer.seekTo(Math.max(pos - 10000, 0));
                 }
                 return true;
+            case KeyEvent.KEYCODE_DPAD_DOWN:
+                toggleSubtitles();
+                return true;
             case KeyEvent.KEYCODE_MENU:
             case KeyEvent.KEYCODE_DPAD_UP:
                 showStreamPicker();
+                return true;
+            case KeyEvent.KEYCODE_DPAD_DOWN:
+                showSubtitlePicker();
                 return true;
             case KeyEvent.KEYCODE_BACK:
             case KeyEvent.KEYCODE_ESCAPE:
@@ -438,6 +531,24 @@ public class YastreamPlayerActivity extends AppCompatActivity {
 
     private void releasePlayer() {
         if (exoPlayer != null) { exoPlayer.stop(); exoPlayer.release(); exoPlayer = null; }
+    }
+
+    private boolean subtitlesOn = true;
+
+    private void toggleSubtitles() {
+        if (exoPlayer == null) return;
+        subtitlesOn = !subtitlesOn;
+        androidx.media3.common.TrackSelectionParameters params =
+            exoPlayer.getTrackSelectionParameters()
+                .buildUpon()
+                .setIgnoredTextSelectionFlags(
+                    subtitlesOn ? 0 : androidx.media3.common.C.SELECTION_FLAG_DEFAULT)
+                .build();
+        exoPlayer.setTrackSelectionParameters(params);
+        setStatus(subtitlesOn ? "Subtitles ON" : "Subtitles OFF");
+        // Clear status after 2 seconds
+        new android.os.Handler(android.os.Looper.getMainLooper())
+            .postDelayed(() -> setStatus(""), 2000);
     }
 
     private void hideSystemUI() {
