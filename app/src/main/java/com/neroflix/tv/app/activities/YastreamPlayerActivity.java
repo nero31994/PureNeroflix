@@ -59,7 +59,9 @@ public class YastreamPlayerActivity extends AppCompatActivity {
     private String movieTitle;
     private int    season;
     private int    episode;
-    private String kisskhId; // direct kisskh:xxx ID if coming from KisskhActivity
+    private String kisskhId;    // direct kisskh:xxx ID if coming from KisskhActivity
+    private int    kisskhEpId;  // kisskh episode ID for direct subtitle fetch
+    private int    kisskhTmdbId; // TMDB ID for subtitle search (optional)
 
     private JSONArray streamList;
     private int       currentStreamIndex = 0;
@@ -77,6 +79,8 @@ public class YastreamPlayerActivity extends AppCompatActivity {
         season     = getIntent().getIntExtra("season", 0);
         episode    = getIntent().getIntExtra("episode", 0);
         kisskhId   = getIntent().getStringExtra("kisskh_id"); // may be null
+        kisskhEpId   = getIntent().getIntExtra("kisskh_ep_id", 0);
+        kisskhTmdbId = getIntent().getIntExtra("kisskh_tmdb_id", 0);
 
         if (movieTitle == null) movieTitle = "Now Playing";
         if (mediaType  == null) mediaType  = "movie";
@@ -256,8 +260,15 @@ public class YastreamPlayerActivity extends AppCompatActivity {
                 // 2. Fetch subtitles in parallel
                 org.json.JSONArray subtitles = null;
                 try {
-                    String subsUrl = NEROTIVI + "/subtitles?type=series&id="
-                        + kisskhId + "&season=1&episode=" + episode;
+                    // Use TMDB ID for OpenSubtitles search if available
+                    String subsUrl;
+                    if (kisskhTmdbId > 0) {
+                        subsUrl = NEROTIVI + "/subtitles?type=series&tmdb=" + kisskhTmdbId
+                            + "&season=1&episode=" + episode + "&lang=en";
+                    } else {
+                        subsUrl = NEROTIVI + "/subtitles?type=series&id="
+                            + kisskhId + "&season=1&episode=" + episode;
+                    }
                     org.json.JSONObject subsJson =
                         new org.json.JSONObject(fetchWorker(subsUrl));
                     subtitles = subsJson.optJSONArray("subtitles");
@@ -455,6 +466,14 @@ public class YastreamPlayerActivity extends AppCompatActivity {
             .createMediaSource(mediaItemBuilder.build());
 
         exoPlayer = new ExoPlayer.Builder(this).build();
+
+        // Auto-select Tagalog subtitles, fall back to English
+        exoPlayer.setTrackSelectionParameters(
+            exoPlayer.getTrackSelectionParameters().buildUpon()
+                .setPreferredTextLanguages("tgl", "eng")
+                .setPreferredTextRoleFlags(androidx.media3.common.C.ROLE_FLAG_SUBTITLE)
+                .build());
+
         playerView.setPlayer(exoPlayer);
         playerView.setUseController(true);
         playerView.setControllerAutoShow(true);
