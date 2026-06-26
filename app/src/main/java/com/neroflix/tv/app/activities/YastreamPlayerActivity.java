@@ -257,15 +257,38 @@ public class YastreamPlayerActivity extends AppCompatActivity {
                     return;
                 }
 
-                // 2. Fetch subtitles in parallel
+                // 2. Fetch subtitles — resolve kisskh ID to TMDB via meta first
                 org.json.JSONArray subtitles = null;
                 try {
-                    // Use TMDB ID for OpenSubtitles search if available
+                    // Step 1: get TMDB ID from yastream meta
+                    String tmdbIdStr = null;
+                    try {
+                        String metaUrl = NEROTIVI + "/meta?type=series&id=" + kisskhId;
+                        org.json.JSONObject metaJson =
+                            new org.json.JSONObject(fetchWorker(metaUrl));
+                        // meta returns id like "tmdb:12345" or "tt1234567"
+                        String metaId = metaJson.optString("id", "");
+                        if (metaId.startsWith("tmdb:")) {
+                            tmdbIdStr = metaId.replace("tmdb:", "");
+                        } else {
+                            // check providerIds
+                            org.json.JSONObject pids = metaJson.optJSONObject("providerIds");
+                            if (pids != null) {
+                                String tmdbPid = pids.optString("tmdb", "");
+                                if (!tmdbPid.isEmpty()) tmdbIdStr = tmdbPid.replace("tmdb:", "");
+                            }
+                        }
+                    } catch (Exception metaErr) {
+                        android.util.Log.w("Yastream", "Meta fetch failed: " + metaErr.getMessage());
+                    }
+
+                    // Step 2: fetch subtitles using TMDB ID
                     String subsUrl;
-                    if (kisskhTmdbId > 0) {
-                        subsUrl = NEROTIVI + "/subtitles?type=series&tmdb=" + kisskhTmdbId
-                            + "&season=1&episode=" + episode + "&lang=en";
+                    if (tmdbIdStr != null && !tmdbIdStr.isEmpty()) {
+                        subsUrl = NEROTIVI + "/subtitles?type=series&tmdb=" + tmdbIdStr
+                            + "&season=1&episode=" + episode;
                     } else {
+                        // fallback: use kisskh id directly
                         subsUrl = NEROTIVI + "/subtitles?type=series&id="
                             + kisskhId + "&season=1&episode=" + episode;
                     }
