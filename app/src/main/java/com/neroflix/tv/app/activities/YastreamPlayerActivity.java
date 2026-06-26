@@ -470,7 +470,8 @@ public class YastreamPlayerActivity extends AppCompatActivity {
                         if ("tgl".equals(l) && tglIdx == -1) tglIdx = i;
                         if ("eng".equals(l) && engIdx == -1) engIdx = i;
                     }
-                    int defIdx = tglIdx != -1 ? tglIdx : engIdx != -1 ? engIdx : 0;
+                    // If no tgl, use eng. If no eng, don't set any default (let user pick)
+                    int defIdx = tglIdx != -1 ? tglIdx : engIdx != -1 ? engIdx : -1;
 
                     for (int i = 0; i < subs.length(); i++) {
                         org.json.JSONObject sub = subs.getJSONObject(i);
@@ -482,7 +483,7 @@ public class YastreamPlayerActivity extends AppCompatActivity {
                                 ? "application/x-subrip"
                                 : androidx.media3.common.MimeTypes.TEXT_VTT;
                             // Only set DEFAULT flag on preferred language
-                            int flags = (i == defIdx)
+                            int flags = (defIdx >= 0 && i == defIdx)
                                 ? androidx.media3.common.C.SELECTION_FLAG_DEFAULT : 0;
                             subConfigs.add(new MediaItem.SubtitleConfiguration.Builder(
                                 android.net.Uri.parse(subUrl))
