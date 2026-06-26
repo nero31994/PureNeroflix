@@ -479,9 +479,16 @@ public class YastreamPlayerActivity extends AppCompatActivity {
                         String subLang  = sub.optString("lang", "und");
                         String subLabel = sub.optString("label", subLang.toUpperCase());
                         if (!subUrl.isEmpty()) {
-                            String mime = subUrl.contains(".srt")
-                                ? "application/x-subrip"
-                                : androidx.media3.common.MimeTypes.TEXT_VTT;
+                            // Detect subtitle format
+                            String mime;
+                            if (subUrl.contains(".srt")) {
+                                mime = "application/x-subrip";
+                            } else if (subUrl.contains(".ass") || subUrl.contains(".ssa")) {
+                                mime = "text/x-ssa";
+                            } else {
+                                // Default to VTT — also works for auto-detect streams
+                                mime = androidx.media3.common.MimeTypes.TEXT_VTT;
+                            }
                             // Only set DEFAULT flag on preferred language
                             int flags = (defIdx >= 0 && i == defIdx)
                                 ? androidx.media3.common.C.SELECTION_FLAG_DEFAULT : 0;
