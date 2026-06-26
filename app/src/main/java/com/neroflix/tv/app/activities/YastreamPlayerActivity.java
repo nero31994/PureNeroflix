@@ -439,16 +439,34 @@ public class YastreamPlayerActivity extends AppCompatActivity {
                     .optJSONArray("subtitles");
                 if (subs != null && subs.length() > 0) {
                     java.util.List<MediaItem.SubtitleConfiguration> subConfigs = new java.util.ArrayList<>();
+
+                    // Find preferred subtitle index: tgl > eng > 0
+                    int tglIdx = -1, engIdx = -1;
+                    for (int i = 0; i < subs.length(); i++) {
+                        String l = subs.getJSONObject(i).optString("lang","");
+                        if ("tgl".equals(l) && tglIdx == -1) tglIdx = i;
+                        if ("eng".equals(l) && engIdx == -1) engIdx = i;
+                    }
+                    int defIdx = tglIdx != -1 ? tglIdx : engIdx != -1 ? engIdx : 0;
+
                     for (int i = 0; i < subs.length(); i++) {
                         org.json.JSONObject sub = subs.getJSONObject(i);
-                        String subUrl  = sub.optString("url", "");
-                        String subLang = sub.optString("lang", "und");
+                        String subUrl   = sub.optString("url", "");
+                        String subLang  = sub.optString("lang", "und");
+                        String subLabel = sub.optString("label", subLang.toUpperCase());
                         if (!subUrl.isEmpty()) {
+                            String mime = subUrl.contains(".srt")
+                                ? "application/x-subrip"
+                                : androidx.media3.common.MimeTypes.TEXT_VTT;
+                            // Only set DEFAULT flag on preferred language
+                            int flags = (i == defIdx)
+                                ? androidx.media3.common.C.SELECTION_FLAG_DEFAULT : 0;
                             subConfigs.add(new MediaItem.SubtitleConfiguration.Builder(
                                 android.net.Uri.parse(subUrl))
-                                .setMimeType(androidx.media3.common.MimeTypes.TEXT_VTT)
+                                .setMimeType(mime)
                                 .setLanguage(subLang)
-                                .setSelectionFlags(androidx.media3.common.C.SELECTION_FLAG_DEFAULT)
+                                .setLabel(subLabel)
+                                .setSelectionFlags(flags)
                                 .build());
                         }
                     }
