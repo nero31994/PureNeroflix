@@ -407,11 +407,10 @@ public class YastreamPlayerActivity extends AppCompatActivity {
         try {
             JSONObject stream  = streamList.getJSONObject(index);
             String m3u8Url     = stream.optString("url", "");
-            JSONArray subtitles = stream.optJSONArray("subtitles");
-
             if (m3u8Url.isEmpty()) { showError("Invalid stream URL."); return; }
 
-            initExoPlayer(m3u8Url, subtitles);
+            // subtitles are read inside initExoPlayer from currentStreamIndex
+            initExoPlayer(m3u8Url);
         } catch (Exception e) {
             showError("Failed to load stream: " + e.getMessage());
         }
@@ -567,10 +566,7 @@ public class YastreamPlayerActivity extends AppCompatActivity {
             case KeyEvent.KEYCODE_DPAD_UP:
                 showStreamPicker();
                 return true;
-            case KeyEvent.KEYCODE_DPAD_DOWN:
-                showSubtitlePicker();
-                return true;
-            case KeyEvent.KEYCODE_BACK:
+                        case KeyEvent.KEYCODE_BACK:
             case KeyEvent.KEYCODE_ESCAPE:
                 finish();
                 overridePendingTransition(R.anim.fade_in, R.anim.fade_out);
