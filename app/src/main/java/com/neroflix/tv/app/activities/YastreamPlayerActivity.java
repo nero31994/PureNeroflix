@@ -477,7 +477,19 @@ public class YastreamPlayerActivity extends AppCompatActivity {
                         org.json.JSONObject sub = subs.getJSONObject(i);
                         String subUrl   = sub.optString("url", "");
                         String subLang  = sub.optString("lang", "und");
-                        String subLabel = sub.optString("label", subLang.toUpperCase());
+                        // Build human-readable label from lang code
+                        java.util.Map<String,String> langNames = new java.util.HashMap<>();
+                        langNames.put("eng","English"); langNames.put("tgl","Filipino");
+                        langNames.put("msa","Malay"); langNames.put("ind","Indonesian");
+                        langNames.put("tha","Thai"); langNames.put("khm","Khmer");
+                        langNames.put("ara","Arabic"); langNames.put("deu","German");
+                        langNames.put("fra","French"); langNames.put("spa","Spanish");
+                        langNames.put("zho","Chinese"); langNames.put("jpn","Japanese");
+                        langNames.put("kor","Korean"); langNames.put("por","Portuguese");
+                        langNames.put("ita","Italian"); langNames.put("rus","Russian");
+                        langNames.put("vie","Vietnamese"); langNames.put("und","Unknown");
+                        String subLabel = langNames.containsKey(subLang)
+                            ? langNames.get(subLang) : subLang.toUpperCase();
                         if (!subUrl.isEmpty()) {
                             // Detect subtitle format
                             String mime;
