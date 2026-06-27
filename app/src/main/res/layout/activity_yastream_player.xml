@@ -12,7 +12,7 @@
         android:layout_height="match_parent"
         android:focusable="true"
         android:focusableInTouchMode="true"
-        app:show_subtitle_button="true"
+        app:show_subtitle_button="false"
         app:use_controller="true" />
 
     <!-- Loading spinner -->
@@ -58,6 +58,17 @@
             android:ellipsize="end"
             android:singleLine="true"
             android:paddingStart="12dp" />
+
+        <TextView
+            android:id="@+id/yastream_cc_btn"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="CC"
+            android:textColor="#FFFFFF"
+            android:textSize="13sp"
+            android:padding="8dp"
+            android:focusable="true"
+            android:clickable="true" />
 
         <TextView
             android:id="@+id/yastream_change_source"

@@ -135,6 +135,7 @@ public class YastreamPlayerActivity extends AppCompatActivity {
         View changeSourceBtn = findViewById(R.id.yastream_change_source);
         if (changeSourceBtn != null)
             changeSourceBtn.setOnClickListener(v -> showStreamPicker());
+        findViewById(R.id.yastream_cc_btn).setOnClickListener(v -> showSubtitlePicker());
 
         View backBtn = findViewById(R.id.yastream_back_btn);
         if (backBtn != null)
