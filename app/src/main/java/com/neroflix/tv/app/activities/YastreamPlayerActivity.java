@@ -356,8 +356,20 @@ public class YastreamPlayerActivity extends AppCompatActivity {
             if (group.getType() == androidx.media3.common.C.TRACK_TYPE_TEXT) {
                 for (int i = 0; i < group.length; i++) {
                     androidx.media3.common.Format fmt = group.getTrackFormat(i);
-                    String lang = fmt.language != null ? fmt.language.toUpperCase() : "SUB";
-                    String label = fmt.label != null ? fmt.label : lang;
+                    java.util.Map<String,String> ln = new java.util.HashMap<>();
+                    ln.put("eng","English"); ln.put("tgl","Filipino");
+                    ln.put("msa","Malay"); ln.put("ind","Indonesian");
+                    ln.put("tha","Thai"); ln.put("khm","Khmer");
+                    ln.put("ara","Arabic"); ln.put("deu","German");
+                    ln.put("fra","French"); ln.put("spa","Spanish");
+                    ln.put("zho","Chinese"); ln.put("jpn","Japanese");
+                    ln.put("kor","Korean"); ln.put("por","Portuguese");
+                    ln.put("ita","Italian"); ln.put("rus","Russian");
+                    ln.put("vie","Vietnamese");
+                    String lang = fmt.language != null ? fmt.language.toLowerCase() : "und";
+                    String label = (fmt.label != null && !fmt.label.isEmpty() && !fmt.label.equals("und"))
+                        ? fmt.label
+                        : (ln.containsKey(lang) ? ln.get(lang) : lang.toUpperCase());
                     labels.add(label);
                     subGroups.add(group.getMediaTrackGroup());
                 }
