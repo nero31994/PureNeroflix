@@ -368,9 +368,16 @@ public class YastreamPlayerActivity extends AppCompatActivity {
                     ln.put("ita","Italian"); ln.put("rus","Russian");
                     ln.put("vie","Vietnamese");
                     String lang = fmt.language != null ? fmt.language.toLowerCase() : "und";
-                    String label = (fmt.label != null && !fmt.label.isEmpty() && !fmt.label.equals("und"))
-                        ? fmt.label
-                        : (ln.containsKey(lang) ? ln.get(lang) : lang.toUpperCase());
+                    String label;
+                    if (fmt.label != null && !fmt.label.isEmpty() && !fmt.label.equals("und")) {
+                        label = fmt.label;
+                    } else if (ln.containsKey(lang)) {
+                        label = ln.get(lang);
+                    } else if ("und".equals(lang)) {
+                        label = "English"; // KissKH embedded track has no metadata, default to English
+                    } else {
+                        label = lang.toUpperCase();
+                    }
                     android.widget.Toast.makeText(this, "lang=" + fmt.language + " label=" + fmt.label, android.widget.Toast.LENGTH_LONG).show();
                     labels.add(label);
                     subGroups.add(group.getMediaTrackGroup());
