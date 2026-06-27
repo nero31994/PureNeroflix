@@ -191,25 +191,28 @@ public class YastreamPlayerActivity extends AppCompatActivity {
                 // Fetch subtitles from nerotivi worker
                 new Thread(() -> {
                     try {
-                        String stremioId = "tmdb:" + tmdbId;
-                        if ("series".equals(mediaType) || "tv".equals(mediaType)) {
-                            stremioId += ":" + season + ":" + episode;
-                        }
-                        String subsUrl = NEROTIVI + "/subtitles?type="
-                            + ("tv".equals(mediaType) ? "series" : mediaType)
-                            + "&id=" + stremioId;
+                        // FIX: use tmdb= param directly — don't embed season:episode in id,
+                        // pass them as separate &season= &episode= params instead.
+                        String resolvedType = "tv".equals(mediaType) ? "series" : mediaType;
+                        String subsUrl = NEROTIVI + "/subtitles?type=" + resolvedType
+                            + "&tmdb=" + tmdbId;
                         if (season > 0 && episode > 0) {
                             subsUrl += "&season=" + season + "&episode=" + episode;
                         }
+                        android.util.Log.d("YastreamPlayer", "Fetching subtitles: " + subsUrl);
                         org.json.JSONObject subsJson =
                             new org.json.JSONObject(fetchWorker(subsUrl));
                         org.json.JSONArray subtitles = subsJson.optJSONArray("subtitles");
+                        android.util.Log.d("YastreamPlayer", "Subtitles received: "
+                            + (subtitles != null ? subtitles.length() : 0));
                         if (subtitles != null && subtitles.length() > 0) {
                             for (int i = 0; i < streams.length(); i++) {
                                 streams.getJSONObject(i).put("subtitles", subtitles);
                             }
                         }
-                    } catch (Exception ignored) {}
+                    } catch (Exception e) {
+                        android.util.Log.e("YastreamPlayer", "Subtitle fetch error: " + e.getMessage());
+                    }
 
                     runOnUiThread(() -> {
                         showLoading(false);
@@ -244,8 +247,9 @@ public class YastreamPlayerActivity extends AppCompatActivity {
         new Thread(() -> {
             try {
                 // 1. Fetch streams
+                int kisskhSeason = (season > 0) ? season : 1;
                 String streamsUrl = NEROTIVI + "/streams?type=series&id="
-                    + kisskhId + "&season=1&episode=" + episode;
+                    + kisskhId + "&season=" + kisskhSeason + "&episode=" + episode;
                 org.json.JSONObject streamsJson =
                     new org.json.JSONObject(fetchWorker(streamsUrl));
                 org.json.JSONArray streams = streamsJson.optJSONArray("streams");
@@ -287,11 +291,11 @@ public class YastreamPlayerActivity extends AppCompatActivity {
                     String subsUrl;
                     if (tmdbIdStr != null && !tmdbIdStr.isEmpty()) {
                         subsUrl = NEROTIVI + "/subtitles?type=series&tmdb=" + tmdbIdStr
-                            + "&season=1&episode=" + episode;
+                            + "&season=" + kisskhSeason + "&episode=" + episode;
                     } else {
                         // fallback: use kisskh id directly
                         subsUrl = NEROTIVI + "/subtitles?type=series&id="
-                            + kisskhId + "&season=1&episode=" + episode;
+                            + kisskhId + "&season=" + kisskhSeason + "&episode=" + episode;
                     }
                     org.json.JSONObject subsJson =
                         new org.json.JSONObject(fetchWorker(subsUrl));
@@ -347,26 +351,30 @@ public class YastreamPlayerActivity extends AppCompatActivity {
 
         // Build list of available subtitle tracks
         androidx.media3.common.Tracks tracks = exoPlayer.getCurrentTracks();
-        java.util.List<String> labels = new ArrayList<>();
+        java.util.List<String> labels    = new ArrayList<>();
+        java.util.List<String> langCodes = new ArrayList<>(); // FIX: track BCP-47 codes separately
         java.util.List<androidx.media3.common.TrackGroup> subGroups = new ArrayList<>();
 
         labels.add("Off");
+        langCodes.add(null);
         subGroups.add(null);
+
+        java.util.Map<String,String> ln = new java.util.HashMap<>();
+        ln.put("eng","English"); ln.put("tgl","Filipino");
+        ln.put("msa","Malay");   ln.put("ind","Indonesian");
+        ln.put("tha","Thai");    ln.put("khm","Khmer");
+        ln.put("ara","Arabic");  ln.put("deu","German");
+        ln.put("fra","French");  ln.put("spa","Spanish");
+        ln.put("zho","Chinese"); ln.put("jpn","Japanese");
+        ln.put("kor","Korean");  ln.put("por","Portuguese");
+        ln.put("ita","Italian"); ln.put("rus","Russian");
+        ln.put("vie","Vietnamese");
 
         for (androidx.media3.common.Tracks.Group group : tracks.getGroups()) {
             if (group.getType() == androidx.media3.common.C.TRACK_TYPE_TEXT) {
                 for (int i = 0; i < group.length; i++) {
                     androidx.media3.common.Format fmt = group.getTrackFormat(i);
-                    java.util.Map<String,String> ln = new java.util.HashMap<>();
-                    ln.put("eng","English"); ln.put("tgl","Filipino");
-                    ln.put("msa","Malay"); ln.put("ind","Indonesian");
-                    ln.put("tha","Thai"); ln.put("khm","Khmer");
-                    ln.put("ara","Arabic"); ln.put("deu","German");
-                    ln.put("fra","French"); ln.put("spa","Spanish");
-                    ln.put("zho","Chinese"); ln.put("jpn","Japanese");
-                    ln.put("kor","Korean"); ln.put("por","Portuguese");
-                    ln.put("ita","Italian"); ln.put("rus","Russian");
-                    ln.put("vie","Vietnamese");
+                    // FIX: use raw language code for selection, human label only for display
                     String lang = fmt.language != null ? fmt.language.toLowerCase() : "und";
                     String label;
                     if (fmt.label != null && !fmt.label.isEmpty() && !fmt.label.equals("und")) {
@@ -378,8 +386,9 @@ public class YastreamPlayerActivity extends AppCompatActivity {
                     } else {
                         label = lang.toUpperCase();
                     }
-                    android.widget.Toast.makeText(this, "lang=" + fmt.language + " label=" + fmt.label, android.widget.Toast.LENGTH_LONG).show();
+                    android.util.Log.d("YastreamPlayer", "Sub track: lang=" + lang + " label=" + label);
                     labels.add(label);
+                    langCodes.add(lang); // FIX: store BCP-47 code for later use
                     subGroups.add(group.getMediaTrackGroup());
                 }
             }
@@ -402,11 +411,12 @@ public class YastreamPlayerActivity extends AppCompatActivity {
                                 androidx.media3.common.C.SELECTION_FLAG_DEFAULT)
                             .build());
                 } else {
-                    // Enable selected subtitle track
+                    // FIX: pass the actual BCP-47 lang code, not the human-readable label
+                    String selectedLang = langCodes.get(which);
                     exoPlayer.setTrackSelectionParameters(
                         currentParams.buildUpon()
-                            .setPreferredTextLanguage(
-                                labels.get(which).toLowerCase())
+                            .setIgnoredTextSelectionFlags(0) // FIX: clear any disabled flags first
+                            .setPreferredTextLanguage(selectedLang)
                             .build());
                 }
             })
