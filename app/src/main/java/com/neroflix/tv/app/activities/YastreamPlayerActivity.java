@@ -370,6 +370,7 @@ public class YastreamPlayerActivity extends AppCompatActivity {
                     String label = (fmt.label != null && !fmt.label.isEmpty() && !fmt.label.equals("und"))
                         ? fmt.label
                         : (ln.containsKey(lang) ? ln.get(lang) : lang.toUpperCase());
+                    android.widget.Toast.makeText(this, "lang=" + fmt.language + " label=" + fmt.label, android.widget.Toast.LENGTH_LONG).show();
                     labels.add(label);
                     subGroups.add(group.getMediaTrackGroup());
                 }
