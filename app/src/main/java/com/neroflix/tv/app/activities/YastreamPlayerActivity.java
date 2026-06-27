@@ -452,7 +452,8 @@ public class YastreamPlayerActivity extends AppCompatActivity {
 
         // Build MediaItem with subtitle tracks
         MediaItem.Builder mediaItemBuilder = new MediaItem.Builder()
-            .setUri(m3u8Url);
+            .setUri(m3u8Url)
+            .setMimeType(androidx.media3.common.MimeTypes.APPLICATION_M3U8);
 
         // Add subtitles from current stream if available
         if (streamList != null && currentStreamIndex < streamList.length()) {
