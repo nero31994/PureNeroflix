@@ -526,7 +526,6 @@ public class YastreamPlayerActivity extends AppCompatActivity {
         playerView.setUseController(true);
         playerView.setControllerAutoShow(true);
         playerView.setControllerHideOnTouch(true);
-        playerView.setShowSubtitles(true);
         if (playerView.getSubtitleView() != null)
             playerView.getSubtitleView().setVisibility(android.view.View.VISIBLE);
 
