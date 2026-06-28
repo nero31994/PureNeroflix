@@ -202,7 +202,7 @@ public class YastreamPlayerActivity extends AppCompatActivity {
                             subsUrl += "&season=" + season + "&episode=" + episode;
                         }
                         org.json.JSONObject subsJson =
-                            new org.json.JSONObject(fetchWorker(subsUrl));
+                            new org.json.JSONObject(fetchUrl(subsUrl));
                         org.json.JSONArray subtitles = subsJson.optJSONArray("subtitles");
                         if (subtitles != null && subtitles.length() > 0) {
                             for (int i = 0; i < streams.length(); i++) {
