@@ -191,28 +191,25 @@ public class YastreamPlayerActivity extends AppCompatActivity {
                 // Fetch subtitles from nerotivi worker
                 new Thread(() -> {
                     try {
-                        // FIX: use tmdb= param directly — don't embed season:episode in id,
-                        // pass them as separate &season= &episode= params instead.
-                        String resolvedType = "tv".equals(mediaType) ? "series" : mediaType;
-                        String subsUrl = NEROTIVI + "/subtitles?type=" + resolvedType
-                            + "&tmdb=" + tmdbId;
+                        String stremioId = "tmdb:" + tmdbId;
+                        if ("series".equals(mediaType) || "tv".equals(mediaType)) {
+                            stremioId += ":" + season + ":" + episode;
+                        }
+                        String subsUrl = NEROTIVI + "/subtitles?type="
+                            + ("tv".equals(mediaType) ? "series" : mediaType)
+                            + "&id=" + stremioId;
                         if (season > 0 && episode > 0) {
                             subsUrl += "&season=" + season + "&episode=" + episode;
                         }
-                        android.util.Log.d("YastreamPlayer", "Fetching subtitles: " + subsUrl);
                         org.json.JSONObject subsJson =
                             new org.json.JSONObject(fetchWorker(subsUrl));
                         org.json.JSONArray subtitles = subsJson.optJSONArray("subtitles");
-                        android.util.Log.d("YastreamPlayer", "Subtitles received: "
-                            + (subtitles != null ? subtitles.length() : 0));
                         if (subtitles != null && subtitles.length() > 0) {
                             for (int i = 0; i < streams.length(); i++) {
                                 streams.getJSONObject(i).put("subtitles", subtitles);
                             }
                         }
-                    } catch (Exception e) {
-                        android.util.Log.e("YastreamPlayer", "Subtitle fetch error: " + e.getMessage());
-                    }
+                    } catch (Exception ignored) {}
 
                     runOnUiThread(() -> {
                         showLoading(false);
@@ -223,16 +220,20 @@ public class YastreamPlayerActivity extends AppCompatActivity {
         );
     }
 
-    // ── Direct kisskh fetch via nerotivi worker ───────────────────────────────
+    // ── Direct kisskh fetch — calls yastream directly (bypasses CF Worker) ──────
 
-    private static final String NEROTIVI = "https://nerotivi.kkt01.workers.dev";
+    // Yastream kdrama config — direct path format (not query param)
+    private static final String YASTREAM_BASE   = "https://yastream.tamthai.de";
+    private static final String YASTREAM_CONFIG = "eyJjYXRhbG9ncyI6WyJraXNza2guc2VyaWVzLktvcmVhbiIsImtpc3NraC5tb3ZpZS5Lb3JlYW4iLCJraXNza2gubW92aWUuQ2hpbmVzZSIsImtpc3NraC5zZXJpZXMuQ2hpbmVzZSIsImtpc3NraC5tb3ZpZS5UaGFpIiwia2lzc2toLnNlcmllcy5UaGFpIiwia2lzc2toLm1vdmllLkphcGFuZXNlIiwia2lzc2toLnNlcmllcy5KYXBhbmVzZSIsImtpc3NraC5tb3ZpZS5Ib25na29uZyIsImtpc3NraC5zZXJpZXMuSG9uZ2tvbmciLCJraXNza2gubW92aWUuVGFpd2FuZXNlIiwia2lzc2toLnNlcmllcy5UYWl3YW5lc2UiLCJraXNza2guc2VyaWVzLlBoaWxpcHBpbmUiLCJvbmV0b3VjaHR2LnNlcmllcy5Lb3JlYW4iLCJvbmV0b3VjaHR2LnNlcmllcy5Qb3B1bGFyIiwib25ldG91Y2h0di5zZXJpZXMuQ2hpbmVzZSIsIm9uZXRvdWNodHYuc2VyaWVzLlRoYWkiLCJraXNza2guc2VyaWVzLlNlYXJjaCIsImtpc3NraC5tb3ZpZS5TZWFyY2giLCJvbmV0b3VjaHR2LnNlcmllcy5TZWFyY2giLCJpZHJhbWEuc2VyaWVzLmlEcmFtYSIsImlkcmFtYS5zZXJpZXMuU2VhcmNoIl0sImNhdGFsb2ciOlsia2lzc2toIiwib25ldG91Y2h0diIsImlkcmFtYSJdLCJzdHJlYW0iOlsia2lzc2toIiwib25ldG91Y2h0diIsImlkcmFtYSJdLCJuc2Z3IjpmYWxzZSwiaW5mbyI6ZmFsc2UsInBvc3RlciI6ImVyZGIiLCJtZnBVcmwiOiIiLCJ0YktleSI6IiIsIm1mcFBhc3MiOiIifQ==";
+    private static final String NEROTIVI        = "https://nerotivi.kkt01.workers.dev";
 
-    private String fetchWorker(String url) throws Exception {
+    private String fetchUrl(String url) throws Exception {
         java.net.HttpURLConnection conn =
             (java.net.HttpURLConnection) new java.net.URL(url).openConnection();
-        conn.setRequestProperty("User-Agent", "NeroFlix/1.0");
-        conn.setConnectTimeout(10000);
-        conn.setReadTimeout(10000);
+        conn.setRequestProperty("User-Agent", "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36");
+        conn.setRequestProperty("Referer", "https://kisskh.co/");
+        conn.setConnectTimeout(15000);
+        conn.setReadTimeout(15000);
         java.io.BufferedReader reader = new java.io.BufferedReader(
             new java.io.InputStreamReader(conn.getInputStream()));
         StringBuilder sb = new StringBuilder();
@@ -243,15 +244,24 @@ public class YastreamPlayerActivity extends AppCompatActivity {
         return sb.toString();
     }
 
+    // Build yastream direct URL: YASTREAM_BASE/CONFIG/stream/series/kisskh:2121:1:1.json
+    private String yastreamUrl(String path) {
+        return YASTREAM_BASE + "/" + YASTREAM_CONFIG + path;
+    }
+
     private void fetchKisskhDirect(String kisskhId) {
         new Thread(() -> {
             try {
-                // 1. Fetch streams
                 int kisskhSeason = (season > 0) ? season : 1;
-                String streamsUrl = NEROTIVI + "/streams?type=series&id="
-                    + kisskhId + "&season=" + kisskhSeason + "&episode=" + episode;
+
+                // 1. Fetch streams directly from yastream (not CF Worker)
+                String stremioId  = kisskhId + ":" + kisskhSeason + ":" + episode;
+                String streamsUrl = yastreamUrl("/stream/series/"
+                    + java.net.URLEncoder.encode(stremioId, "UTF-8") + ".json");
+
+                android.util.Log.d("Yastream", "Direct stream URL: " + streamsUrl);
                 org.json.JSONObject streamsJson =
-                    new org.json.JSONObject(fetchWorker(streamsUrl));
+                    new org.json.JSONObject(fetchUrl(streamsUrl));
                 org.json.JSONArray streams = streamsJson.optJSONArray("streams");
 
                 if (streams == null || streams.length() == 0) {
@@ -262,52 +272,38 @@ public class YastreamPlayerActivity extends AppCompatActivity {
                     return;
                 }
 
-                // 2. Fetch subtitles — resolve kisskh ID to TMDB via meta first
+                // 2. Fetch subtitles directly from yastream
+                // Subtitles are returned separately by yastream using tbKey
                 org.json.JSONArray subtitles = null;
                 try {
-                    // Step 1: get TMDB ID from yastream meta
-                    String tmdbIdStr = null;
-                    try {
-                        String metaUrl = NEROTIVI + "/meta?type=series&id=" + kisskhId;
-                        org.json.JSONObject metaJson =
-                            new org.json.JSONObject(fetchWorker(metaUrl));
-                        // meta returns id like "tmdb:12345" or "tt1234567"
-                        String metaId = metaJson.optString("id", "");
-                        if (metaId.startsWith("tmdb:")) {
-                            tmdbIdStr = metaId.replace("tmdb:", "");
-                        } else {
-                            // check providerIds
-                            org.json.JSONObject pids = metaJson.optJSONObject("providerIds");
-                            if (pids != null) {
-                                String tmdbPid = pids.optString("tmdb", "");
-                                if (!tmdbPid.isEmpty()) tmdbIdStr = tmdbPid.replace("tmdb:", "");
-                            }
-                        }
-                    } catch (Exception metaErr) {
-                        android.util.Log.w("Yastream", "Meta fetch failed: " + metaErr.getMessage());
-                    }
-
-                    // Step 2: fetch subtitles using TMDB ID
-                    String subsUrl;
-                    if (tmdbIdStr != null && !tmdbIdStr.isEmpty()) {
-                        subsUrl = NEROTIVI + "/subtitles?type=series&tmdb=" + tmdbIdStr
-                            + "&season=" + kisskhSeason + "&episode=" + episode;
-                    } else {
-                        // fallback: use kisskh id directly
-                        subsUrl = NEROTIVI + "/subtitles?type=series&id="
-                            + kisskhId + "&season=" + kisskhSeason + "&episode=" + episode;
-                    }
+                    String subsUrl = yastreamUrl("/subtitles/series/"
+                        + java.net.URLEncoder.encode(stremioId, "UTF-8") + ".json");
+                    android.util.Log.d("Yastream", "Direct subtitle URL: " + subsUrl);
                     org.json.JSONObject subsJson =
-                        new org.json.JSONObject(fetchWorker(subsUrl));
+                        new org.json.JSONObject(fetchUrl(subsUrl));
                     subtitles = subsJson.optJSONArray("subtitles");
-                    if (subtitles != null && subtitles.length() > 0) {
-                        android.util.Log.d("Yastream", "Got " + subtitles.length() + " subtitles");
-                    }
+                    android.util.Log.d("Yastream", "Subtitles from yastream: "
+                        + (subtitles != null ? subtitles.length() : 0));
                 } catch (Exception subErr) {
                     android.util.Log.w("Yastream", "Subtitle fetch failed: " + subErr.getMessage());
                 }
 
-                // 3. Inject subtitles into each stream object
+                // 3. Also check if subtitles are embedded in each stream object
+                // yastream sometimes includes subtitles[] inside the stream response
+                if (subtitles == null || subtitles.length() == 0) {
+                    for (int i = 0; i < streams.length(); i++) {
+                        org.json.JSONArray embeddedSubs =
+                            streams.getJSONObject(i).optJSONArray("subtitles");
+                        if (embeddedSubs != null && embeddedSubs.length() > 0) {
+                            subtitles = embeddedSubs;
+                            android.util.Log.d("Yastream", "Using embedded subs from stream: "
+                                + subtitles.length());
+                            break;
+                        }
+                    }
+                }
+
+                // 4. Inject subtitles into all stream objects for the player
                 if (subtitles != null && subtitles.length() > 0) {
                     for (int i = 0; i < streams.length(); i++) {
                         streams.getJSONObject(i).put("subtitles", subtitles);
@@ -316,23 +312,25 @@ public class YastreamPlayerActivity extends AppCompatActivity {
 
                 streamList = streams;
 
-                // 4. Find kisskh stream index
-                int kisskhIndex = 0;
+                // 5. Find best stream (prefer kisskh provider)
+                int bestIndex = 0;
                 for (int i = 0; i < streams.length(); i++) {
                     try {
-                        if ("kisskh".equals(streams.getJSONObject(i).optString("provider",""))) {
-                            kisskhIndex = i; break;
+                        String provider = streams.getJSONObject(i).optString("title","");
+                        if (provider.toLowerCase().contains("kisskh")) {
+                            bestIndex = i; break;
                         }
                     } catch (Exception ignored) {}
                 }
 
-                final int finalIndex = kisskhIndex;
+                final int finalIndex = bestIndex;
                 runOnUiThread(() -> {
                     showLoading(false);
                     playStream(finalIndex);
                 });
 
             } catch (Exception e) {
+                android.util.Log.e("Yastream", "fetchKisskhDirect failed: " + e.getMessage());
                 runOnUiThread(() -> {
                     showLoading(false);
                     showError("Failed to fetch stream: " + e.getMessage());
@@ -351,30 +349,26 @@ public class YastreamPlayerActivity extends AppCompatActivity {
 
         // Build list of available subtitle tracks
         androidx.media3.common.Tracks tracks = exoPlayer.getCurrentTracks();
-        java.util.List<String> labels    = new ArrayList<>();
-        java.util.List<String> langCodes = new ArrayList<>(); // FIX: track BCP-47 codes separately
+        java.util.List<String> labels = new ArrayList<>();
         java.util.List<androidx.media3.common.TrackGroup> subGroups = new ArrayList<>();
 
         labels.add("Off");
-        langCodes.add(null);
         subGroups.add(null);
-
-        java.util.Map<String,String> ln = new java.util.HashMap<>();
-        ln.put("eng","English"); ln.put("tgl","Filipino");
-        ln.put("msa","Malay");   ln.put("ind","Indonesian");
-        ln.put("tha","Thai");    ln.put("khm","Khmer");
-        ln.put("ara","Arabic");  ln.put("deu","German");
-        ln.put("fra","French");  ln.put("spa","Spanish");
-        ln.put("zho","Chinese"); ln.put("jpn","Japanese");
-        ln.put("kor","Korean");  ln.put("por","Portuguese");
-        ln.put("ita","Italian"); ln.put("rus","Russian");
-        ln.put("vie","Vietnamese");
 
         for (androidx.media3.common.Tracks.Group group : tracks.getGroups()) {
             if (group.getType() == androidx.media3.common.C.TRACK_TYPE_TEXT) {
                 for (int i = 0; i < group.length; i++) {
                     androidx.media3.common.Format fmt = group.getTrackFormat(i);
-                    // FIX: use raw language code for selection, human label only for display
+                    java.util.Map<String,String> ln = new java.util.HashMap<>();
+                    ln.put("eng","English"); ln.put("tgl","Filipino");
+                    ln.put("msa","Malay"); ln.put("ind","Indonesian");
+                    ln.put("tha","Thai"); ln.put("khm","Khmer");
+                    ln.put("ara","Arabic"); ln.put("deu","German");
+                    ln.put("fra","French"); ln.put("spa","Spanish");
+                    ln.put("zho","Chinese"); ln.put("jpn","Japanese");
+                    ln.put("kor","Korean"); ln.put("por","Portuguese");
+                    ln.put("ita","Italian"); ln.put("rus","Russian");
+                    ln.put("vie","Vietnamese");
                     String lang = fmt.language != null ? fmt.language.toLowerCase() : "und";
                     String label;
                     if (fmt.label != null && !fmt.label.isEmpty() && !fmt.label.equals("und")) {
@@ -386,9 +380,8 @@ public class YastreamPlayerActivity extends AppCompatActivity {
                     } else {
                         label = lang.toUpperCase();
                     }
-                    android.util.Log.d("YastreamPlayer", "Sub track: lang=" + lang + " label=" + label);
+                    android.widget.Toast.makeText(this, "lang=" + fmt.language + " label=" + fmt.label, android.widget.Toast.LENGTH_LONG).show();
                     labels.add(label);
-                    langCodes.add(lang); // FIX: store BCP-47 code for later use
                     subGroups.add(group.getMediaTrackGroup());
                 }
             }
@@ -411,12 +404,11 @@ public class YastreamPlayerActivity extends AppCompatActivity {
                                 androidx.media3.common.C.SELECTION_FLAG_DEFAULT)
                             .build());
                 } else {
-                    // FIX: pass the actual BCP-47 lang code, not the human-readable label
-                    String selectedLang = langCodes.get(which);
+                    // Enable selected subtitle track
                     exoPlayer.setTrackSelectionParameters(
                         currentParams.buildUpon()
-                            .setIgnoredTextSelectionFlags(0) // FIX: clear any disabled flags first
-                            .setPreferredTextLanguage(selectedLang)
+                            .setPreferredTextLanguage(
+                                labels.get(which).toLowerCase())
                             .build());
                 }
             })
