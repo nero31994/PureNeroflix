@@ -577,7 +577,7 @@ public class MainActivity extends AppCompatActivity {
         if (heroBackdrop != null && movie.getBackdropPath() != null && !movie.getBackdropPath().isEmpty()) {
             com.bumptech.glide.Glide.with(this)
                 .load("https://image.tmdb.org/t/p/w1280" + movie.getBackdropPath())
-                .placeholder(R.drawable.placeholder_backdrop)
+                .placeholder(android.R.color.black)
                 .into(heroBackdrop);
         }
     }
