@@ -567,8 +567,6 @@ if (!activityDestroyed) runOnUiThread(() -> {
         if (subView != null) {
             subView.setVisibility(android.view.View.VISIBLE);
             // Apply TV-friendly style: large text, black outline, bottom position
-            androidx.media3.common.text.CueGroup.CuePriority priority =
-                androidx.media3.common.text.CueGroup.CuePriority.TEXT;
             subView.setUserDefaultStyle();
             subView.setUserDefaultTextSize();
             // Override with TV-sized text (1.4x default = ~22sp equivalent on TV)
