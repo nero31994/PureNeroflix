@@ -304,7 +304,9 @@ public class TmdbClient {
             try {
                 Request request = new Request.Builder().url(url).build();
                 Response response = httpClient.newCall(request).execute();
-                String body = response.body().string();
+                okhttp3.ResponseBody rb = response.body();
+                if (rb == null) { mainHandler.post(() -> callback.onError("Empty response")); return; }
+                String body = rb.string();
                 jsonCache.put(url, body);
                 JSONObject json = new JSONObject(body);
                 String logoPath = json.optString("logo_path", "");
@@ -331,7 +333,9 @@ public class TmdbClient {
                 String url = BASE_URL + "/tv/" + tvId + "?api_key=" + API_KEY;
                 Request request = new Request.Builder().url(url).build();
                 Response response = httpClient.newCall(request).execute();
-                JSONObject json = new JSONObject(response.body().string());
+                okhttp3.ResponseBody tvBody = response.body();
+                if (tvBody == null) { mainHandler.post(() -> callback.onError("Empty response")); return; }
+                JSONObject json = new JSONObject(tvBody.string());
                 JSONArray seasonsArray = json.optJSONArray("seasons");
                 java.util.List<String> seasonNames = new java.util.ArrayList<>();
                 if (seasonsArray != null) {
@@ -362,7 +366,9 @@ public class TmdbClient {
                 String url = BASE_URL + "/tv/" + tvId + "/season/" + season + "?api_key=" + API_KEY;
                 Request request = new Request.Builder().url(url).build();
                 Response response = httpClient.newCall(request).execute();
-                JSONObject json = new JSONObject(response.body().string());
+                okhttp3.ResponseBody epBody = response.body();
+                if (epBody == null) { mainHandler.post(() -> callback.onError("Empty response")); return; }
+                JSONObject json = new JSONObject(epBody.string());
                 JSONArray eps = json.optJSONArray("episodes");
                 java.util.List<String> names = new java.util.ArrayList<>();
                 if (eps != null) {

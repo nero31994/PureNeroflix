@@ -204,7 +204,7 @@ public class DetailActivity extends AppCompatActivity {
 
     private void loadDetailInfo() {
         progressBar.setVisibility(View.VISIBLE);
-        TmdbClient.getInstance().fetchMovieDetail(movieId, mediaType, new TmdbClient.MovieDetailCallback() {
+        TmdbClient.getInstance(this).fetchMovieDetail(movieId, mediaType, new TmdbClient.MovieDetailCallback() {
             @Override
             public void onSuccess(Movie m) {
                 movie = m;
@@ -249,7 +249,7 @@ public class DetailActivity extends AppCompatActivity {
             .create();
         loadingDialog.show();
 
-        com.neroflix.tv.app.network.TmdbClient.getInstance().fetchTVDetails(movieId,
+        com.neroflix.tv.app.network.TmdbClient.getInstance(this).fetchTVDetails(movieId,
             new com.neroflix.tv.app.network.TmdbClient.TVDetailsCallback() {
                 @Override
                 public void onSuccess(int numSeasons, java.util.List<String> seasonNames) {
@@ -281,7 +281,7 @@ public class DetailActivity extends AppCompatActivity {
             .create();
         loadingDialog.show();
 
-        com.neroflix.tv.app.network.TmdbClient.getInstance().fetchEpisodes(movieId, season,
+        com.neroflix.tv.app.network.TmdbClient.getInstance(this).fetchEpisodes(movieId, season,
             new com.neroflix.tv.app.network.TmdbClient.EpisodesCallback() {
                 @Override
                 public void onSuccess(java.util.List<String> episodeNames) {
@@ -483,7 +483,7 @@ public class DetailActivity extends AppCompatActivity {
             .create();
         loadingDialog.show();
 
-        com.neroflix.tv.app.network.TmdbClient.getInstance().fetchTVDetails(movieId,
+        com.neroflix.tv.app.network.TmdbClient.getInstance(this).fetchTVDetails(movieId,
             new com.neroflix.tv.app.network.TmdbClient.TVDetailsCallback() {
                 @Override
                 public void onSuccess(int numSeasons, java.util.List<String> seasonNames) {
@@ -525,7 +525,7 @@ public class DetailActivity extends AppCompatActivity {
             .create();
         loadingDialog.show();
 
-        com.neroflix.tv.app.network.TmdbClient.getInstance().fetchEpisodes(movieId, season,
+        com.neroflix.tv.app.network.TmdbClient.getInstance(this).fetchEpisodes(movieId, season,
             new com.neroflix.tv.app.network.TmdbClient.EpisodesCallback() {
                 @Override
                 public void onSuccess(java.util.List<String> episodeNames) {

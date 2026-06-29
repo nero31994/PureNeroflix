@@ -147,10 +147,17 @@ public class PlayerActivity extends AppCompatActivity {
             @Override
             public void onHideCustomView() {
                 if (customView != null) {
-                    setContentView(R.layout.activity_player);
-                    setupViews();
-                    loadPlayer(currentServerUrl, currentServerUrlTv, "standard");
                     customView = null;
+                    // Restore layout and re-bind views before loading player
+                    setContentView(R.layout.activity_player);
+                    webView        = findViewById(R.id.player_webview);
+                    loadingBar     = findViewById(R.id.player_loading_bar);
+                    playerTitle    = findViewById(R.id.player_title);
+                    loadingOverlay = findViewById(R.id.player_loading_overlay);
+                    setupViews();
+                    String fmt = getIntent().getStringExtra("server_url_format");
+                    loadPlayer(currentServerUrl, currentServerUrlTv,
+                        fmt != null ? fmt : "standard");
                 }
             }
         });
