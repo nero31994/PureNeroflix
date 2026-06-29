@@ -27,6 +27,7 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 /**
@@ -495,14 +496,17 @@ if (!activityDestroyed) runOnUiThread(() -> {
                         String subLabel = LANG_NAMES.containsKey(subLang)
                             ? LANG_NAMES.get(subLang) : subLang.toUpperCase();
                         if (!subUrl.isEmpty()) {
-                            // Detect subtitle format
+                            // Detect subtitle format from URL extension
                             String mime;
-                            if (subUrl.contains(".srt")) {
-                                mime = "application/x-subrip";
-                            } else if (subUrl.contains(".ass") || subUrl.contains(".ssa")) {
+                            String subUrlLower = subUrl.toLowerCase();
+                            if (subUrlLower.contains(".srt") || subUrlLower.contains("format=srt")) {
+                                mime = androidx.media3.common.MimeTypes.APPLICATION_SUBRIP;
+                            } else if (subUrlLower.contains(".ass") || subUrlLower.contains(".ssa")) {
                                 mime = "text/x-ssa";
+                            } else if (subUrlLower.contains(".vtt") || subUrlLower.contains("format=vtt")) {
+                                mime = androidx.media3.common.MimeTypes.TEXT_VTT;
                             } else {
-                                // Default to VTT — also works for auto-detect streams
+                                // Unknown extension — try VTT first (most common from SubDL/OpenSubs)
                                 mime = androidx.media3.common.MimeTypes.TEXT_VTT;
                             }
                             // Only set DEFAULT flag on preferred language
@@ -542,8 +546,23 @@ if (!activityDestroyed) runOnUiThread(() -> {
         playerView.setUseController(true);
         playerView.setControllerAutoShow(true);
         playerView.setControllerHideOnTouch(true);
-        if (playerView.getSubtitleView() != null)
-            playerView.getSubtitleView().setVisibility(android.view.View.VISIBLE);
+
+        // ── TV subtitle styling ──────────────────────────────────────────
+        androidx.media3.ui.SubtitleView subView = playerView.getSubtitleView();
+        if (subView != null) {
+            subView.setVisibility(android.view.View.VISIBLE);
+            // Apply TV-friendly style: large text, black outline, bottom position
+            androidx.media3.common.text.CueGroup.CuePriority priority =
+                androidx.media3.common.text.CueGroup.CuePriority.TEXT;
+            subView.setUserDefaultStyle();
+            subView.setUserDefaultTextSize();
+            // Override with TV-sized text (1.4x default = ~22sp equivalent on TV)
+            subView.setFixedTextSize(
+                android.util.TypedValue.COMPLEX_UNIT_SP, 22);
+            // Bottom padding so subs don't overlap the control bar
+            subView.setPadding(0, 0, 0,
+                (int)(16 * getResources().getDisplayMetrics().density));
+        }
 
         exoPlayer.addListener(new Player.Listener() {
             @Override
