@@ -296,7 +296,10 @@ public class MainActivity extends AppCompatActivity {
 
         TmdbClient.getInstance(this).fetchTrending("movie", new TmdbClient.MovieListCallback() {
             @Override public void onSuccess(List<Movie> movies) {
-                if (!movies.isEmpty()) { heroMovie = movies.get(0); }
+                if (!movies.isEmpty()) {
+                    heroMovie = movies.get(0);
+                    runOnUiThread(() -> updateHero(heroMovie));
+                }
             }
             @Override public void onError(String e) {}
         });
@@ -564,7 +567,20 @@ public class MainActivity extends AppCompatActivity {
         overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
     }
 
-    private void updateHero(Movie movie) { /* hero hidden */ }
+    private void updateHero(Movie movie) {
+        if (movie == null || heroSection == null) return;
+        heroSection.setVisibility(View.VISIBLE);
+        if (heroTitle    != null) heroTitle.setText(movie.getTitle());
+        if (heroOverview != null) heroOverview.setText(movie.getOverview());
+        if (heroRating   != null) heroRating.setText(String.format("★ %.1f", movie.getVoteAverage()));
+        if (heroYear     != null) heroYear.setText(movie.getYear());
+        if (heroBackdrop != null && movie.getBackdropPath() != null && !movie.getBackdropPath().isEmpty()) {
+            com.bumptech.glide.Glide.with(this)
+                .load("https://image.tmdb.org/t/p/w1280" + movie.getBackdropPath())
+                .placeholder(R.drawable.placeholder_backdrop)
+                .into(heroBackdrop);
+        }
+    }
 
     private boolean handleNavKey(View v, int keyCode, KeyEvent event) {
         if (event.getAction() == KeyEvent.ACTION_DOWN && keyCode == KeyEvent.KEYCODE_DPAD_CENTER) {

@@ -359,16 +359,6 @@ public class YastreamPlayerActivity extends AppCompatActivity {
             if (group.getType() == androidx.media3.common.C.TRACK_TYPE_TEXT) {
                 for (int i = 0; i < group.length; i++) {
                     androidx.media3.common.Format fmt = group.getTrackFormat(i);
-                    java.util.Map<String,String> ln = new java.util.HashMap<>();
-                    ln.put("eng","English"); ln.put("tgl","Filipino");
-                    ln.put("msa","Malay"); ln.put("ind","Indonesian");
-                    ln.put("tha","Thai"); ln.put("khm","Khmer");
-                    ln.put("ara","Arabic"); ln.put("deu","German");
-                    ln.put("fra","French"); ln.put("spa","Spanish");
-                    ln.put("zho","Chinese"); ln.put("jpn","Japanese");
-                    ln.put("kor","Korean"); ln.put("por","Portuguese");
-                    ln.put("ita","Italian"); ln.put("rus","Russian");
-                    ln.put("vie","Vietnamese");
                     String lang = fmt.language != null ? fmt.language.toLowerCase() : "und";
                     String label;
                     if (fmt.label != null && !fmt.label.isEmpty() && !fmt.label.equals("und")) {
@@ -501,18 +491,8 @@ public class YastreamPlayerActivity extends AppCompatActivity {
                         String subUrl   = sub.optString("url", "");
                         String subLang  = sub.optString("lang", "und");
                         // Build human-readable label from lang code
-                        java.util.Map<String,String> langNames = new java.util.HashMap<>();
-                        langNames.put("eng","English"); langNames.put("tgl","Filipino");
-                        langNames.put("msa","Malay"); langNames.put("ind","Indonesian");
-                        langNames.put("tha","Thai"); langNames.put("khm","Khmer");
-                        langNames.put("ara","Arabic"); langNames.put("deu","German");
-                        langNames.put("fra","French"); langNames.put("spa","Spanish");
-                        langNames.put("zho","Chinese"); langNames.put("jpn","Japanese");
-                        langNames.put("kor","Korean"); langNames.put("por","Portuguese");
-                        langNames.put("ita","Italian"); langNames.put("rus","Russian");
-                        langNames.put("vie","Vietnamese"); langNames.put("und","Unknown");
-                        String subLabel = langNames.containsKey(subLang)
-                            ? langNames.get(subLang) : subLang.toUpperCase();
+                        String subLabel = LANG_NAMES.containsKey(subLang)
+                            ? LANG_NAMES.get(subLang) : subLang.toUpperCase();
                         if (!subUrl.isEmpty()) {
                             // Detect subtitle format
                             String mime;

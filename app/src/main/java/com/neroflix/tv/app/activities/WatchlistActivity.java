@@ -65,6 +65,13 @@ public class WatchlistActivity extends AppCompatActivity {
             startActivity(intent);
         });
         recycler.setAdapter(adapter);
+
+        // Set initial D-pad focus so remote works immediately on entering the screen
+        if (!movies.isEmpty()) {
+            recycler.setFocusable(true);
+            recycler.setFocusableInTouchMode(false);
+            recycler.post(() -> recycler.requestFocus());
+        }
     }
 
     @Override
