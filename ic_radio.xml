@@ -1,0 +1,29 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp" android:height="24dp"
+    android:viewportWidth="24" android:viewportHeight="24">
+    <!-- Radio body -->
+    <path android:strokeColor="#FFFFFF" android:strokeWidth="1.8"
+        android:fillColor="@android:color/transparent"
+        android:strokeLineCap="round" android:strokeLineJoin="round"
+        android:pathData="M3,10 L21,10 Q22,10 22,11 L22,20 Q22,21 21,21 L3,21 Q2,21 2,20 L2,11 Q2,10 3,10 Z"/>
+    <!-- Antenna -->
+    <path android:strokeColor="#FFFFFF" android:strokeWidth="1.8"
+        android:fillColor="@android:color/transparent"
+        android:strokeLineCap="round"
+        android:pathData="M6,10 L10,4"/>
+    <path android:strokeColor="#FFFFFF" android:strokeWidth="1.8"
+        android:fillColor="@android:color/transparent"
+        android:strokeLineCap="round"
+        android:pathData="M10,4 L18,4"/>
+    <!-- Speaker grille lines -->
+    <path android:strokeColor="#FFFFFF" android:strokeWidth="1.5"
+        android:fillColor="@android:color/transparent"
+        android:strokeLineCap="round"
+        android:pathData="M5,14 L5,17 M7,14 L7,17 M9,14 L9,17"/>
+    <!-- Tuner knob -->
+    <circle android:fillColor="#FFFFFF"
+        android:cx="17" android:cy="15.5" android:r="2.5"/>
+    <!-- Signal dot -->
+    <circle android:fillColor="#E50914"
+        android:cx="17" android:cy="15.5" android:r="1"/>
+</vector>

@@ -204,7 +204,7 @@ public class MainActivity extends AppCompatActivity {
             "Search", "Movies", "TV Shows",
             "Anime", "Watchlist", "History",
             "Downloads", "Live TV", "Genre",
-            "K-Drama"
+            "Radio"
         };
 
         navRecycler.setLayoutManager(new LinearLayoutManager(this));
@@ -251,7 +251,7 @@ public class MainActivity extends AppCompatActivity {
                 case 9: showGenrePicker(); break;
                 case 10:
                     startActivity(new Intent(this,
-                        com.neroflix.tv.app.activities.KisskhActivity.class));
+                        com.neroflix.tv.app.activities.RadioActivity.class));
                     overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
                     break;
             }
