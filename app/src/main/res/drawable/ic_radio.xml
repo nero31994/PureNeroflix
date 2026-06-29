@@ -15,15 +15,15 @@
         android:fillColor="@android:color/transparent"
         android:strokeLineCap="round"
         android:pathData="M10,4 L18,4"/>
-    <!-- Speaker grille lines -->
+    <!-- Speaker grille -->
     <path android:strokeColor="#FFFFFF" android:strokeWidth="1.5"
         android:fillColor="@android:color/transparent"
         android:strokeLineCap="round"
         android:pathData="M5,14 L5,17 M7,14 L7,17 M9,14 L9,17"/>
-    <!-- Tuner knob -->
-    <circle android:fillColor="#FFFFFF"
-        android:cx="17" android:cy="15.5" android:r="2.5"/>
-    <!-- Signal dot -->
-    <circle android:fillColor="#E50914"
-        android:cx="17" android:cy="15.5" android:r="1"/>
+    <!-- Tuner knob (circle via path) -->
+    <path android:fillColor="#FFFFFF"
+        android:pathData="M17,13 m-2.5,0 a2.5,2.5 0 1,0 5,0 a2.5,2.5 0 1,0 -5,0"/>
+    <!-- Center dot -->
+    <path android:fillColor="#E50914"
+        android:pathData="M17,14.5 m-1,0 a1,1 0 1,0 2,0 a1,1 0 1,0 -2,0"/>
 </vector>
