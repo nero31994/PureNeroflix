@@ -38,7 +38,7 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 
-@OptIn(markerClass = UnstableApi.class)
+
 public class RadioActivity extends AppCompatActivity {
 
     // ── CONFIGURE YOUR RADIO M3U URL HERE ──────────────────────────────────

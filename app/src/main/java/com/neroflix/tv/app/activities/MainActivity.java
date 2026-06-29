@@ -197,7 +197,7 @@ public class MainActivity extends AppCompatActivity {
             R.drawable.ic_search, R.drawable.ic_movies, R.drawable.ic_tv,
             R.drawable.ic_anime,  R.drawable.ic_watchlist, R.drawable.ic_history,
             R.drawable.ic_download, R.drawable.ic_iptv, R.drawable.ic_genre,
-            R.drawable.ic_tv
+            R.drawable.ic_radio
         };
         String[] navLabels = {
             "Menu",
