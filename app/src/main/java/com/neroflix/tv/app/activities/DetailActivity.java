@@ -253,12 +253,12 @@ public class DetailActivity extends AppCompatActivity {
             new com.neroflix.tv.app.network.TmdbClient.TVDetailsCallback() {
                 @Override
                 public void onSuccess(int numSeasons, java.util.List<String> seasonNames) {
-                    loadingDialog.dismiss();
+                    if (!isFinishing() && !isDestroyed() && loadingDialog.isShowing()) loadingDialog.dismiss();
                     showSeasonDialog(numSeasons, seasonNames);
                 }
                 @Override
                 public void onError(String error) {
-                    loadingDialog.dismiss();
+                    if (!isFinishing() && !isDestroyed() && loadingDialog.isShowing()) loadingDialog.dismiss();
                     showSimpleEpisodePicker();
                 }
             });
@@ -285,7 +285,7 @@ public class DetailActivity extends AppCompatActivity {
             new com.neroflix.tv.app.network.TmdbClient.EpisodesCallback() {
                 @Override
                 public void onSuccess(java.util.List<String> episodeNames) {
-                    loadingDialog.dismiss();
+                    if (!isFinishing() && !isDestroyed() && loadingDialog.isShowing()) loadingDialog.dismiss();
                     String[] episodes = episodeNames.toArray(new String[0]);
                     new AlertDialog.Builder(DetailActivity.this)
                         .setTitle("Season " + season + " — Select Episode")
@@ -295,7 +295,7 @@ public class DetailActivity extends AppCompatActivity {
                 }
                 @Override
                 public void onError(String error) {
-                    loadingDialog.dismiss();
+                    if (!isFinishing() && !isDestroyed() && loadingDialog.isShowing()) loadingDialog.dismiss();
                     showSimpleEpisodePicker();
                 }
             });
@@ -487,7 +487,7 @@ public class DetailActivity extends AppCompatActivity {
             new com.neroflix.tv.app.network.TmdbClient.TVDetailsCallback() {
                 @Override
                 public void onSuccess(int numSeasons, java.util.List<String> seasonNames) {
-                    loadingDialog.dismiss();
+                    if (!isFinishing() && !isDestroyed() && loadingDialog.isShowing()) loadingDialog.dismiss();
                     String[] seasons = seasonNames.toArray(new String[0]);
                     new AlertDialog.Builder(DetailActivity.this)
                         .setTitle("Select Season to Download")
@@ -497,7 +497,7 @@ public class DetailActivity extends AppCompatActivity {
                 }
                 @Override
                 public void onError(String error) {
-                    loadingDialog.dismiss();
+                    if (!isFinishing() && !isDestroyed() && loadingDialog.isShowing()) loadingDialog.dismiss();
                     android.widget.NumberPicker sp = new android.widget.NumberPicker(DetailActivity.this);
                     sp.setMinValue(1); sp.setMaxValue(15);
                     android.widget.NumberPicker ep = new android.widget.NumberPicker(DetailActivity.this);
@@ -529,7 +529,7 @@ public class DetailActivity extends AppCompatActivity {
             new com.neroflix.tv.app.network.TmdbClient.EpisodesCallback() {
                 @Override
                 public void onSuccess(java.util.List<String> episodeNames) {
-                    loadingDialog.dismiss();
+                    if (!isFinishing() && !isDestroyed() && loadingDialog.isShowing()) loadingDialog.dismiss();
                     String[] episodes = episodeNames.toArray(new String[0]);
                     new AlertDialog.Builder(DetailActivity.this)
                         .setTitle("Season " + season + " — Select Episode")
@@ -539,7 +539,7 @@ public class DetailActivity extends AppCompatActivity {
                 }
                 @Override
                 public void onError(String error) {
-                    loadingDialog.dismiss();
+                    if (!isFinishing() && !isDestroyed() && loadingDialog.isShowing()) loadingDialog.dismiss();
                     launchDownload(season, 1);
                 }
             });

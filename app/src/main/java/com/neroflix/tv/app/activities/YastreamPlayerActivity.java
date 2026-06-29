@@ -65,6 +65,7 @@ public class YastreamPlayerActivity extends AppCompatActivity {
 
     private JSONArray streamList;
     private int       currentStreamIndex = 0;
+    private volatile boolean activityDestroyed = false; // guards background threads
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -211,7 +212,7 @@ public class YastreamPlayerActivity extends AppCompatActivity {
                         }
                     } catch (Exception ignored) {}
 
-                    runOnUiThread(() -> {
+                    if (!activityDestroyed) runOnUiThread(() -> {
                         showLoading(false);
                         playStream(0);
                     });
@@ -265,7 +266,7 @@ public class YastreamPlayerActivity extends AppCompatActivity {
                 org.json.JSONArray streams = streamsJson.optJSONArray("streams");
 
                 if (streams == null || streams.length() == 0) {
-                    runOnUiThread(() -> {
+    if (!activityDestroyed) runOnUiThread(() -> {
                         showLoading(false);
                         showError("No streams available.\nThis episode may not be on kisskh yet.");
                     });
@@ -324,14 +325,14 @@ public class YastreamPlayerActivity extends AppCompatActivity {
                 }
 
                 final int finalIndex = bestIndex;
-                runOnUiThread(() -> {
+                if (!activityDestroyed) runOnUiThread(() -> {
                     showLoading(false);
                     playStream(finalIndex);
                 });
 
             } catch (Exception e) {
                 android.util.Log.e("Yastream", "fetchKisskhDirect failed: " + e.getMessage());
-                runOnUiThread(() -> {
+if (!activityDestroyed) runOnUiThread(() -> {
                     showLoading(false);
                     showError("Failed to fetch stream: " + e.getMessage());
                 });
@@ -669,7 +670,12 @@ public class YastreamPlayerActivity extends AppCompatActivity {
 
     @Override protected void onResume()  { super.onResume();  hideSystemUI(); if (exoPlayer != null) exoPlayer.play(); }
     @Override protected void onPause()   { super.onPause();   if (exoPlayer != null) exoPlayer.pause(); }
-    @Override protected void onDestroy() { super.onDestroy(); releasePlayer(); hideHandler.removeCallbacks(hideTopBar); }
+    @Override protected void onDestroy() {
+        activityDestroyed = true;
+        super.onDestroy();
+        releasePlayer();
+        hideHandler.removeCallbacks(hideTopBar);
+    }
 
     private void releasePlayer() {
         if (exoPlayer != null) { exoPlayer.stop(); exoPlayer.release(); exoPlayer = null; }

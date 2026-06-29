@@ -96,7 +96,7 @@ public class SearchActivity extends AppCompatActivity {
         progressBar.setVisibility(View.VISIBLE);
         emptyText.setVisibility(View.GONE);
 
-        TmdbClient.getInstance().searchMulti(query, new TmdbClient.MovieListCallback() {
+        TmdbClient.getInstance(this).searchMulti(query, new TmdbClient.MovieListCallback() {
             @Override
             public void onSuccess(List<Movie> movies) {
                 progressBar.setVisibility(View.GONE);

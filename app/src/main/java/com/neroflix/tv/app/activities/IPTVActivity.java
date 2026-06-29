@@ -103,6 +103,9 @@ public class IPTVActivity extends AppCompatActivity {
     private String m3uUrl = null;
 
     private final Handler timeHandler = new Handler(Looper.getMainLooper());
+    // Shared OkHttpClient — rebuilt only when referrer changes, never on every channel switch
+    private OkHttpClient sharedOkHttpClient = null;
+    private String       sharedOkHttpReferrer = null;
 
     // ── Lifecycle ────────────────────────────────────────────────────────────
 
@@ -286,6 +289,11 @@ public class IPTVActivity extends AppCompatActivity {
         pipHideHandler.removeCallbacksAndMessages(null);
         timeHandler.removeCallbacksAndMessages(null);
         if (player != null) { player.stop(); player.release(); player = null; }
+        if (sharedOkHttpClient != null) {
+            sharedOkHttpClient.dispatcher().executorService().shutdown();
+            sharedOkHttpClient.connectionPool().evictAll();
+            sharedOkHttpClient = null;
+        }
     }
 
     // ── Player setup ─────────────────────────────────────────────────────────
@@ -297,18 +305,22 @@ public class IPTVActivity extends AppCompatActivity {
             player.release();
         }
         final String ref = referrer == null ? "" : referrer.trim();
-        OkHttpClient okHttpClient = new OkHttpClient.Builder()
-            .addInterceptor(chain -> {
-                okhttp3.Request.Builder rb = chain.request().newBuilder()
-                    .header("User-Agent", "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36");
-                if (!ref.isEmpty()) {
-                    rb.header("Referer", ref);
-                    rb.header("Origin", ref.replaceAll("(https?://[^/]+).*", "$1"));
-                }
-                return chain.proceed(rb.build());
-            })
-            .build();
-        DataSource.Factory dsFactory = new OkHttpDataSource.Factory(okHttpClient);
+        // Reuse the existing OkHttpClient if referrer hasn't changed — avoids thread pool leaks
+        if (sharedOkHttpClient == null || !ref.equals(sharedOkHttpReferrer)) {
+            sharedOkHttpReferrer = ref;
+            sharedOkHttpClient = new OkHttpClient.Builder()
+                .addInterceptor(chain -> {
+                    okhttp3.Request.Builder rb = chain.request().newBuilder()
+                        .header("User-Agent", "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36");
+                    if (!ref.isEmpty()) {
+                        rb.header("Referer", ref);
+                        rb.header("Origin", ref.replaceAll("(https?://[^/]+).*", "$1"));
+                    }
+                    return chain.proceed(rb.build());
+                })
+                .build();
+        }
+        DataSource.Factory dsFactory = new OkHttpDataSource.Factory(sharedOkHttpClient);
         player = new ExoPlayer.Builder(this)
             .setMediaSourceFactory(new DefaultMediaSourceFactory(dsFactory))
             .build();
