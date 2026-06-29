@@ -207,7 +207,19 @@ public class LicenseManager {
         String deviceId = getDeviceId(context);
 
         if (token.isEmpty()) {
-            callback.onResult(null);
+            Log.w("LicenseManager", "fetchYastreamStreams: token is empty — device not activated or token expired");
+            // Try to re-authenticate before giving up
+            new Thread(() -> doFullServerCheck(context, deviceId, prefs, servers -> {
+                // After re-auth, retry if we now have a token
+                String refreshedToken = prefs.getString(PREF_TOKEN, "");
+                if (!refreshedToken.isEmpty()) {
+                    // Re-enter with the new token
+                    fetchYastreamStreams(context, tmdbId, mediaType, season, episode, callback);
+                } else {
+                    Log.e("LicenseManager", "fetchYastreamStreams: re-auth failed, still no token");
+                    callback.onResult(null);
+                }
+            })).start();
             return;
         }
 

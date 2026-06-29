@@ -448,11 +448,39 @@ public class IPTVActivity extends AppCompatActivity {
                     loadEpgInBackground(playlistText);
                 });
             } catch (Exception e) {
+                android.util.Log.e("IPTVActivity", "loadChannels failed", e);
+                // Try to fall back to stale cache even if expired
+                String staleCache = readCachedPlaylist();
+                if (staleCache == null) {
+                    // Check for any cache file at all regardless of TTL
+                    try {
+                        java.io.File f = new java.io.File(getFilesDir(), CACHE_FILE);
+                        if (f.exists()) {
+                            java.io.BufferedReader r2 = new java.io.BufferedReader(new java.io.FileReader(f));
+                            StringBuilder sb2 = new StringBuilder();
+                            String line2;
+                            while ((line2 = r2.readLine()) != null) sb2.append(line2).append("\n");
+                            r2.close();
+                            if (sb2.length() > 0) staleCache = sb2.toString();
+                        }
+                    } catch (Exception ignored) {}
+                }
+                final String fallback = staleCache;
                 new Handler(Looper.getMainLooper()).post(() -> {
                     loadingBar.setVisibility(View.GONE);
-                    Toast.makeText(this,
-                        "Failed to load channels: " + e.getMessage(),
-                        Toast.LENGTH_LONG).show();
+                    if (fallback != null) {
+                        channels = com.neroflix.tv.app.iptv.M3UParser.parse(fallback);
+                        buildGroupTabs();
+                        setupRecycler();
+                        buildEpgTimelineHeader();
+                        if (!channels.isEmpty()) playChannel(0);
+                        Toast.makeText(IPTVActivity.this,
+                            "Offline mode — showing cached channels", Toast.LENGTH_LONG).show();
+                    } else {
+                        currentChannelText.setText("Failed to load channels. Check your connection.");
+                        Toast.makeText(IPTVActivity.this,
+                            "Failed to load channels: " + e.getMessage(), Toast.LENGTH_LONG).show();
+                    }
                 });
             }
         }).start();

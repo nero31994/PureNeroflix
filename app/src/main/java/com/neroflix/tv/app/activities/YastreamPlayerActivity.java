@@ -380,7 +380,6 @@ public class YastreamPlayerActivity extends AppCompatActivity {
                     } else {
                         label = lang.toUpperCase();
                     }
-                    android.widget.Toast.makeText(this, "lang=" + fmt.language + " label=" + fmt.label, android.widget.Toast.LENGTH_LONG).show();
                     labels.add(label);
                     subGroups.add(group.getMediaTrackGroup());
                 }

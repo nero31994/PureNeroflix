@@ -41,7 +41,7 @@ public class SplashActivity extends AppCompatActivity {
                 new Handler(Looper.getMainLooper()).post(() ->
                     fadeOutAndLaunch(status)
                 )
-            ), 10000);
+            ), 2000);
     }
 
     private void fadeOutAndLaunch(LicenseManager.Status status) {
