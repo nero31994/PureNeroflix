@@ -431,22 +431,6 @@ public class MainActivity extends AppCompatActivity {
 
     // Genre / network pickers
 
-    private void showGenrePicker() {
-        final String[] genres   = {"All","Action","Comedy","Drama","Horror","Sci-Fi","Romance","Animation","Thriller","Crime","Fantasy","Documentary","Family","Mystery"};
-        final String[] genreIds = {null,  "28",    "35",    "18",   "27",    "878",   "10749",  "16",       "53",      "80",   "14",     "99",         "10751", "9648"};
-        new AlertDialog.Builder(this)
-            .setTitle("Filter by Genre")
-            .setItems(genres, (d, which) -> {
-                String genreId = genreIds[which];
-                String[][] defs = genreId == null ? CATEGORY_DEFS : new String[][]{
-                    {"🎬 " + genres[which] + " Movies",   "/discover/movie?with_genres=" + genreId, "movie"},
-                    {"📺 " + genres[which] + " TV Shows", "/discover/tv?with_genres="    + genreId, "tv"},
-                };
-                currentMode = "genre_" + which;
-                reloadWithDefs(defs);
-            }).show();
-    }
-
     private static final String[][] NETWORKS = {
         {"Netflix",     "213",  ""},
         {"Apple TV+",   "2552", ""},
