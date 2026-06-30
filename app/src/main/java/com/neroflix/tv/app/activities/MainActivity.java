@@ -107,7 +107,12 @@ public class MainActivity extends BaseTvActivity {
         setupBrowseRows("mixed");
         addContinueWatchingRow();
         loadContent();
-        findViewById(R.id.refresh_btn).setOnClickListener(v -> refreshAllCategories());
+        View refreshBtn = findViewById(R.id.refresh_btn);
+        if (refreshBtn != null) {
+            refreshBtn.setOnClickListener(v -> refreshAllCategories());
+        } else {
+            android.util.Log.w("MainActivity", "refresh_btn view not found in layout — skipping listener");
+        }
         UpdateChecker.check(this);
         AnnouncementChecker.check(this);
         RemoteConfig.fetch(this, url -> {});
