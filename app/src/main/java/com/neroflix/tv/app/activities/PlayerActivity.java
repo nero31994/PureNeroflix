@@ -1,6 +1,7 @@
 package com.neroflix.tv.app.activities;
 
 import android.annotation.SuppressLint;
+import android.content.Intent;
 import android.app.AlertDialog;
 import android.os.Bundle;
 import android.view.KeyEvent;
@@ -41,6 +42,12 @@ public class PlayerActivity extends BaseTvActivity {
     private String currentServerUrl;
     // Separate TV URL if the provider uses different paths for movie vs TV
     private String currentServerUrlTv;
+    // Stream sniffing: set to true once we hand off to ExoPlayer so we
+    // don't launch it twice if multiple .m3u8 requests fire together.
+    private volatile boolean streamHandedOff = false;
+    // Referrer of the current embed — passed to ExoPlayer so it can send
+    // the correct Referer header when fetching the sniffed HLS stream.
+    private String currentEmbedReferrer = "";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -109,6 +116,34 @@ public class PlayerActivity extends BaseTvActivity {
         webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
 
         webView.setWebViewClient(new WebViewClient() {
+
+            @Override
+            public android.webkit.WebResourceResponse shouldInterceptRequest(
+                    WebView view, WebResourceRequest request) {
+                String url = request.getUrl().toString();
+
+                // Only intercept once per player session
+                if (!streamHandedOff && isStreamUrl(url)) {
+                    streamHandedOff = true;
+                    final String streamUrl = url;
+                    android.util.Log.d("StreamSniff", "Captured stream: " + streamUrl);
+
+                    // Must launch ExoPlayer on the main thread
+                    new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
+                        if (!isFinishing() && !isDestroyed()) {
+                            launchExoPlayer(streamUrl);
+                        }
+                    });
+
+                    // Return empty response — WebView doesn't need to
+                    // actually fetch this stream since ExoPlayer will.
+                    return new android.webkit.WebResourceResponse(
+                        "application/octet-stream", "utf-8",
+                        new java.io.ByteArrayInputStream(new byte[0]));
+                }
+                return super.shouldInterceptRequest(view, request);
+            }
+
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 String url = request.getUrl().toString();
@@ -194,6 +229,7 @@ public class PlayerActivity extends BaseTvActivity {
             finish();
             return;
         }
+        streamHandedOff = false; // reset for each new server attempt
         loadingOverlay.setVisibility(View.VISIBLE);
         boolean isTV = "tv".equals(mediaType);
         String embedUrl;
@@ -281,7 +317,62 @@ public class PlayerActivity extends BaseTvActivity {
         });
     }
 
-        @Override
+        /**
+     * Returns true if the URL looks like a playable video stream that
+     * ExoPlayer can handle directly — HLS manifests (.m3u8), progressive
+     * MP4/WebM, and common stream CDN patterns used by vidsrc and similar.
+     * Conservative: only matches patterns very unlikely to be false positives.
+     */
+    private boolean isStreamUrl(String url) {
+        if (url == null) return false;
+        String lower = url.toLowerCase();
+
+        // HLS manifest — most common from vidsrc, anyembed, etc.
+        if (lower.contains(".m3u8")) return true;
+
+        // Progressive MP4/WebM with video parameters
+        if ((lower.contains(".mp4") || lower.contains(".webm"))
+                && (lower.contains("stream") || lower.contains("video")
+                    || lower.contains("play") || lower.contains("media"))) {
+            return true;
+        }
+
+        // Known stream CDN patterns used by vidsrc providers
+        if (lower.contains("/hls/") && lower.contains(".ts"))   return false; // segment, not manifest
+        if (lower.contains("/hls/") || lower.contains("/dash/")) return true;
+        if (lower.contains("manifest") && lower.contains("video")) return true;
+
+        return false;
+    }
+
+    /**
+     * Launches YastreamPlayerActivity with the sniffed stream URL.
+     * YastreamPlayerActivity already has a fully configured ExoPlayer
+     * with HLS support, subtitle handling, and proper TV UI — reusing
+     * it avoids duplicating all that setup here.
+     */
+    private void launchExoPlayer(String streamUrl) {
+        android.util.Log.d("StreamSniff", "Handing off to ExoPlayer: " + streamUrl);
+
+        // Stop the WebView immediately — no point loading further
+        if (webView != null) webView.stopLoading();
+
+        Intent intent = new Intent(this, YastreamPlayerActivity.class);
+        intent.putExtra("movie_id",       movieId);
+        intent.putExtra("media_type",     mediaType);
+        intent.putExtra("movie_title",    movieTitle);
+        intent.putExtra("season",         season);
+        intent.putExtra("episode",        episode);
+        // Pass the direct stream URL — YastreamPlayerActivity checks this
+        // extra and plays it directly, skipping the yastream API fetch.
+        intent.putExtra("direct_stream_url",  streamUrl);
+        intent.putExtra("direct_stream_referrer", currentEmbedReferrer);
+        startActivity(intent);
+        // Don't finish() — user can back-navigate back to server picker.
+        // The WebView activity goes to background, ExoPlayer comes to front.
+    }
+
+    @Override
     protected boolean onTvKeyDown(int keyCode, KeyEvent event) {
         switch (keyCode) {
             case KeyEvent.KEYCODE_DPAD_CENTER:

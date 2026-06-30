@@ -82,6 +82,9 @@ public class YastreamPlayerActivity extends BaseTvActivity {
     private JSONArray streamList;
     private int       currentStreamIndex = 0;
     private volatile boolean activityDestroyed = false; // guards background threads
+    // Direct play mode — set when launched from PlayerActivity stream sniff
+    private boolean directPlayMode       = false;
+    private String  directStreamReferrer = "";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -478,6 +481,15 @@ if (!activityDestroyed) runOnUiThread(() -> {
             .setConnectTimeoutMs(15000)
             .setReadTimeoutMs(15000)
             .setAllowCrossProtocolRedirects(true);
+
+        // In direct play mode (stream-sniff from PlayerActivity), pass the
+        // embed page URL as Referer so vidsrc CDNs accept the HLS request.
+        // Without this, some CDNs return 403 because the request looks like
+        // it came out of nowhere rather than from the embed page.
+        if (directPlayMode && !directStreamReferrer.isEmpty()) {
+            dataSourceFactory.setDefaultRequestProperties(
+                java.util.Collections.singletonMap("Referer", directStreamReferrer));
+        }
 
         // Build MediaItem with subtitle tracks
         MediaItem.Builder mediaItemBuilder = new MediaItem.Builder()
