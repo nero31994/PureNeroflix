@@ -102,6 +102,18 @@ public class YastreamPlayerActivity extends BaseTvActivity {
         kisskhEpId   = getIntent().getIntExtra("kisskh_ep_id", 0);
         kisskhTmdbId = getIntent().getIntExtra("kisskh_tmdb_id", 0);
 
+        // Stream-sniff direct play mode: PlayerActivity captured a .m3u8
+        // URL from the WebView and launched us with it — skip yastream fetch.
+        String directUrl      = getIntent().getStringExtra("direct_stream_url");
+        String directReferrer = getIntent().getStringExtra("direct_stream_referrer");
+        if (directUrl != null && !directUrl.isEmpty()) {
+            android.util.Log.d("YastreamPlayer", "Direct play mode: " + directUrl);
+            directPlayMode = true;
+            directStreamReferrer = directReferrer != null ? directReferrer : "";
+            initExoPlayer(directUrl);
+            return;
+        }
+
         if (movieTitle == null) movieTitle = "Now Playing";
         if (mediaType  == null) mediaType  = "movie";
 

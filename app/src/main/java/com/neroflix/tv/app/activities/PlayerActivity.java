@@ -286,6 +286,8 @@ public class PlayerActivity extends BaseTvActivity {
             + "});"
             + "</script></body></html>";
 
+        // Store embed URL as referrer for ExoPlayer stream sniff handoff
+        currentEmbedReferrer = embedUrl;
         webView.loadDataWithBaseURL("https://neroflix.local/", html, "text/html", "UTF-8", null);
     }
     // Server switcher — re-contacts Worker to get fresh server list
