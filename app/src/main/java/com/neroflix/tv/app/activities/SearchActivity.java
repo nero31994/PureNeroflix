@@ -25,7 +25,7 @@ import com.neroflix.tv.app.network.TmdbClient;
 import java.util.ArrayList;
 import java.util.List;
 
-public class SearchActivity extends AppCompatActivity {
+public class SearchActivity extends BaseTvActivity {
 
     private EditText searchInput;
     private RecyclerView resultsRecycler;
@@ -128,12 +128,12 @@ public class SearchActivity extends AppCompatActivity {
         startActivity(intent);
     }
 
-    @Override
-    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        @Override
+    protected boolean onTvKeyDown(int keyCode, KeyEvent event) {
         if (keyCode == KeyEvent.KEYCODE_BACK) {
             finish();
             return true;
         }
-        return super.onKeyDown(keyCode, event);
+        return false; // fallback now handled by BaseTvActivity
     }
 }

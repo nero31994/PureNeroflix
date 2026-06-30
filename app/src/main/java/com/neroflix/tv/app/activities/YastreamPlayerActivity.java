@@ -45,7 +45,7 @@ import java.util.List;
  *   kisskh_id   (String) — e.g. "kisskh:123" (only when media_type="kisskh")
  */
 @OptIn(markerClass = UnstableApi.class)
-public class YastreamPlayerActivity extends AppCompatActivity {
+public class YastreamPlayerActivity extends BaseTvActivity {
 
     // Language code → display name
     private static final java.util.Map<String, String> LANG_NAMES;
@@ -617,8 +617,8 @@ if (!activityDestroyed) runOnUiThread(() -> {
 
     // ── D-pad ─────────────────────────────────────────────────────────────────
 
-    @Override
-    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        @Override
+    protected boolean onTvKeyDown(int keyCode, KeyEvent event) {
         // Show top bar on any key press, then auto-hide
         if (keyCode != KeyEvent.KEYCODE_BACK && topBar != null) {
             if (!topBarVisible) {
@@ -671,7 +671,7 @@ if (!activityDestroyed) runOnUiThread(() -> {
                 overridePendingTransition(R.anim.fade_in, R.anim.fade_out);
                 return true;
         }
-        return super.onKeyDown(keyCode, event);
+        return false; // fallback now handled by BaseTvActivity
     }
 
     // ── UI helpers ────────────────────────────────────────────────────────────

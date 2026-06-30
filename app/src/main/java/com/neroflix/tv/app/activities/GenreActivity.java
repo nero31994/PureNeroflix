@@ -23,7 +23,7 @@ import java.util.List;
  * GenreActivity — tap a genre chip, see a full poster grid of movies+TV
  * matching that genre, with infinite scroll pagination via TMDB /discover.
  */
-public class GenreActivity extends AppCompatActivity {
+public class GenreActivity extends BaseTvActivity {
 
     // {display label, TMDB genre id}
     private static final String[][] GENRES = {
@@ -259,9 +259,9 @@ public class GenreActivity extends AppCompatActivity {
         return Math.round(value * getResources().getDisplayMetrics().density);
     }
 
-    @Override
-    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        @Override
+    protected boolean onTvKeyDown(int keyCode, KeyEvent event) {
         if (keyCode == KeyEvent.KEYCODE_BACK) { finish(); return true; }
-        return super.onKeyDown(keyCode, event);
+        return false; // fallback now handled by BaseTvActivity
     }
 }

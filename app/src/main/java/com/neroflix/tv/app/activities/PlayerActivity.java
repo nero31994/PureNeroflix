@@ -19,7 +19,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.neroflix.tv.app.R;
 
-public class PlayerActivity extends AppCompatActivity {
+public class PlayerActivity extends BaseTvActivity {
 
     // No hardcoded server arrays here — URLs come from the Worker via DetailActivity
 
@@ -255,8 +255,8 @@ public class PlayerActivity extends AppCompatActivity {
         });
     }
 
-    @Override
-    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        @Override
+    protected boolean onTvKeyDown(int keyCode, KeyEvent event) {
         switch (keyCode) {
             case KeyEvent.KEYCODE_DPAD_CENTER:
             case KeyEvent.KEYCODE_ENTER:
@@ -298,7 +298,7 @@ public class PlayerActivity extends AppCompatActivity {
                 overridePendingTransition(R.anim.fade_in, R.anim.fade_out);
                 return true;
         }
-        return super.onKeyDown(keyCode, event);
+        return false; // fallback now handled by BaseTvActivity
     }
 
     // Dispatches a keyboard event into the embed iframe via the wrapper page JS

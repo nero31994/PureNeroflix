@@ -24,7 +24,7 @@ import com.neroflix.tv.app.network.TmdbClient;
 import java.util.ArrayList;
 import java.util.List;
 
-public class NetworkActivity extends AppCompatActivity {
+public class NetworkActivity extends BaseTvActivity {
 
     private static final String EXTRA_NETWORK_ID    = "network_id";
     private static final String EXTRA_NETWORK_NAME  = "network_name";
@@ -182,10 +182,10 @@ public class NetworkActivity extends AppCompatActivity {
         super.onDestroy();
     }
 
-    @Override
-    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        @Override
+    protected boolean onTvKeyDown(int keyCode, KeyEvent event) {
         int totalItems = adapter.getItemCount();
-        if (totalItems == 0) return super.onKeyDown(keyCode, event);
+        if (totalItems == 0) return false; // fallback now handled by BaseTvActivity
 
         int totalRows = (int) Math.ceil((double) totalItems / gridCols);
         int focusedPos = focusedRow * gridCols + focusedCol;

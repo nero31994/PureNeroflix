@@ -31,7 +31,7 @@ import com.neroflix.tv.app.network.KisskhClient;
 import java.util.ArrayList;
 import java.util.List;
 
-public class KisskhActivity extends AppCompatActivity {
+public class KisskhActivity extends BaseTvActivity {
 
     private RecyclerView   recycler;
     private ProgressBar    loading;
@@ -292,8 +292,8 @@ public class KisskhActivity extends AppCompatActivity {
 
     // ── D-pad ─────────────────────────────────────────────────────────────────
 
-    @Override
-    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        @Override
+    protected boolean onTvKeyDown(int keyCode, KeyEvent event) {
         int total     = adapter.getItemCount();
         int totalRows = total > 0 ? (int) Math.ceil((double) total / gridCols) : 0;
 
@@ -343,7 +343,7 @@ public class KisskhActivity extends AppCompatActivity {
         }
 
         // ── GRID zone ─────────────────────────────────────────────────────────
-        if (total == 0) return super.onKeyDown(keyCode, event);
+        if (total == 0) return false; // fallback now handled by BaseTvActivity
 
         switch (keyCode) {
             case KeyEvent.KEYCODE_DPAD_RIGHT:
@@ -387,7 +387,7 @@ public class KisskhActivity extends AppCompatActivity {
                 if (pos < total) openDrama(items.get(pos));
                 return true;
         }
-        return super.onKeyDown(keyCode, event);
+        return false; // fallback now handled by BaseTvActivity
     }
 
     private void highlightHeader(boolean focused) {

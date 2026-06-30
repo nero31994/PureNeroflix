@@ -35,7 +35,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends BaseTvActivity {
 
     // SHA-256 of release signing cert in hex — split to avoid easy extraction from DEX
     // Matches the value in LicenseManager.java
@@ -736,8 +736,8 @@ public class MainActivity extends AppCompatActivity {
         super.onDestroy();
     }
 
-    @Override
-    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        @Override
+    protected boolean onTvKeyDown(int keyCode, KeyEvent event) {
         if (keyCode == KeyEvent.KEYCODE_SEARCH || keyCode == KeyEvent.KEYCODE_S) {
             openSearch(); return true;
         }
@@ -942,7 +942,7 @@ public class MainActivity extends AppCompatActivity {
                 break;
         }
 
-        return super.onKeyDown(keyCode, event);
+        return false; // fallback now handled by BaseTvActivity
     }
 
     private void clampCol() {

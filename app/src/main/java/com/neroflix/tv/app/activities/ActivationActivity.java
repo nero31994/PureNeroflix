@@ -1,5 +1,7 @@
 package com.neroflix.tv.app.activities;
 
+import android.view.KeyEvent;
+
 import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
@@ -19,7 +21,7 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.neroflix.tv.app.LicenseManager;
 import com.neroflix.tv.app.R;
 
-public class ActivationActivity extends AppCompatActivity {
+public class ActivationActivity extends BaseTvActivity {
 
     private static final String PREFS = "neroflix_license";
     private static final String PREF_FREE_CODE = "saved_free_code";
@@ -188,8 +190,8 @@ public class ActivationActivity extends AppCompatActivity {
         }
     }
 
-    @Override
-    public boolean onKeyDown(int keyCode, android.view.KeyEvent event) {
+        @Override
+    protected boolean onTvKeyDown(int keyCode, KeyEvent event) {
         switch (keyCode) {
             case android.view.KeyEvent.KEYCODE_DPAD_DOWN:
                 if (focusedIndex < focusOrder.length - 1) {
@@ -212,6 +214,6 @@ public class ActivationActivity extends AppCompatActivity {
                 finish();
                 return true;
         }
-        return super.onKeyDown(keyCode, event);
+        return false; // fallback now handled by BaseTvActivity
     }
 }

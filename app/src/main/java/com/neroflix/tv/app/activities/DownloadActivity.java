@@ -18,7 +18,7 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.neroflix.tv.app.R;
 
-public class DownloadActivity extends AppCompatActivity {
+public class DownloadActivity extends BaseTvActivity {
 
     private WebView webView;
     private ProgressBar progressBar;
@@ -205,8 +205,8 @@ private void loadDownloadPage() {
         }).start();
     }
 
-    @Override
-    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        @Override
+    protected boolean onTvKeyDown(int keyCode, KeyEvent event) {
         switch (keyCode) {
             case KeyEvent.KEYCODE_BACK:
                 if (webView.canGoBack()) webView.goBack();
@@ -237,7 +237,7 @@ private void loadDownloadPage() {
                     "var v=document.querySelector('video');if(v){if(v.paused)v.play();else v.pause();}", null);
                 return true;
         }
-        return super.onKeyDown(keyCode, event);
+        return false; // fallback now handled by BaseTvActivity
     }
 
     @Override

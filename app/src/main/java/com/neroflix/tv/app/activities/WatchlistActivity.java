@@ -16,7 +16,7 @@ import com.neroflix.tv.app.models.Movie;
 
 import java.util.List;
 
-public class WatchlistActivity extends AppCompatActivity {
+public class WatchlistActivity extends BaseTvActivity {
 
     private String mode; // "history" or "watchlist"
 
@@ -74,9 +74,9 @@ public class WatchlistActivity extends AppCompatActivity {
         }
     }
 
-    @Override
-    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        @Override
+    protected boolean onTvKeyDown(int keyCode, KeyEvent event) {
         if (keyCode == KeyEvent.KEYCODE_BACK) { finish(); return true; }
-        return super.onKeyDown(keyCode, event);
+        return false; // fallback now handled by BaseTvActivity
     }
 }

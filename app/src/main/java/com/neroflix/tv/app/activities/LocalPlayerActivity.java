@@ -19,7 +19,7 @@ import com.neroflix.tv.app.R;
 
 import java.io.File;
 
-public class LocalPlayerActivity extends AppCompatActivity implements SurfaceHolder.Callback {
+public class LocalPlayerActivity extends BaseTvActivity implements SurfaceHolder.Callback {
 
     private SurfaceView surfaceView;
     private MediaPlayer mediaPlayer;
@@ -143,8 +143,8 @@ public class LocalPlayerActivity extends AppCompatActivity implements SurfaceHol
         }, 3000);
     }
 
-    @Override
-    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        @Override
+    protected boolean onTvKeyDown(int keyCode, KeyEvent event) {
         if (!controlsVisible) { showControls(); return true; }
         switch (keyCode) {
             case KeyEvent.KEYCODE_DPAD_CENTER:
@@ -159,7 +159,7 @@ public class LocalPlayerActivity extends AppCompatActivity implements SurfaceHol
             case KeyEvent.KEYCODE_BACK:
                 finish(); return true;
         }
-        return super.onKeyDown(keyCode, event);
+        return false; // fallback now handled by BaseTvActivity
     }
 
     @Override

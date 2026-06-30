@@ -54,7 +54,7 @@ import java.util.Locale;
 import okhttp3.OkHttpClient;
 
 @OptIn(markerClass = UnstableApi.class)
-public class IPTVActivity extends AppCompatActivity {
+public class IPTVActivity extends BaseTvActivity {
 
     // XOR encrypted app key for M3U Worker (key=0x4E)
     private static final byte[] M3U_KEY_ENC = {
@@ -706,8 +706,8 @@ public class IPTVActivity extends AppCompatActivity {
 
     // ── D-pad / key input ────────────────────────────────────────────────────
 
-    @Override
-    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        @Override
+    protected boolean onTvKeyDown(int keyCode, KeyEvent event) {
         resetAutoHide(); // reset inactivity timer on any key
         // Any key press shows the sidebar
         if (!sidebarVisible && keyCode != KeyEvent.KEYCODE_BACK) {
@@ -876,7 +876,7 @@ public class IPTVActivity extends AppCompatActivity {
             finish();
             return true;
         }
-        return super.onKeyDown(keyCode, event);
+        return false; // fallback now handled by BaseTvActivity
     }
 
 

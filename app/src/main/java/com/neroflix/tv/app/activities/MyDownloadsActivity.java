@@ -17,7 +17,7 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
-public class MyDownloadsActivity extends AppCompatActivity {
+public class MyDownloadsActivity extends BaseTvActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -125,9 +125,9 @@ public class MyDownloadsActivity extends AppCompatActivity {
         return String.format("%.1f MB", bytes / (1024.0 * 1024.0));
     }
 
-    @Override
-    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        @Override
+    protected boolean onTvKeyDown(int keyCode, KeyEvent event) {
         if (keyCode == KeyEvent.KEYCODE_BACK) { finish(); return true; }
-        return super.onKeyDown(keyCode, event);
+        return false; // fallback now handled by BaseTvActivity
     }
 }

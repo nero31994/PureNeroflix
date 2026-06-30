@@ -19,7 +19,7 @@ import com.neroflix.tv.app.R;
 import com.neroflix.tv.app.models.Movie;
 import com.neroflix.tv.app.network.TmdbClient;
 
-public class DetailActivity extends AppCompatActivity {
+public class DetailActivity extends BaseTvActivity {
 
     private int movieId;
     private String mediaType;
@@ -430,8 +430,8 @@ public class DetailActivity extends AppCompatActivity {
         }
     }
 
-    @Override
-    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        @Override
+    protected boolean onTvKeyDown(int keyCode, KeyEvent event) {
         switch (keyCode) {
             case KeyEvent.KEYCODE_BACK:
                 finish();
@@ -451,7 +451,7 @@ public class DetailActivity extends AppCompatActivity {
                 if (btn != null) btn.performClick();
                 return true;
         }
-        return super.onKeyDown(keyCode, event);
+        return false; // fallback now handled by BaseTvActivity
     }
 
     private void openDownload() {
