@@ -285,10 +285,15 @@ public class TmdbClient {
         fetchLogoById("/company/" + companyId, callback);
     }
 
+    // Persistent prefs file just for network/studio logo paths — these
+    // essentially never change, so unlike movie lists this cache has NO
+    // expiry. Once resolved, a logo is never re-fetched from TMDB again.
+    private static final String LOGO_PREFS = "tmdb_logo_cache";
+
     private void fetchLogoById(String path, NetworkCallback callback) {
         String url = BASE_URL + path + "?api_key=" + API_KEY;
 
-        // Cache the raw JSON string for network calls too
+        // 1. In-memory hit — fastest path, valid for this process lifetime
         if (jsonCache.containsKey(url)) {
             String cached = jsonCache.get(url);
             try {
@@ -300,6 +305,25 @@ public class TmdbClient {
             return;
         }
 
+        // 2. Persistent disk hit — survives app restarts, no expiry
+        if (context != null) {
+            String diskCached = context
+                .getSharedPreferences(LOGO_PREFS, Context.MODE_PRIVATE)
+                .getString(url, null);
+            if (diskCached != null) {
+                jsonCache.put(url, diskCached); // promote to memory too
+                try {
+                    String logoPath = new JSONObject(diskCached).optString("logo_path", "");
+                    mainHandler.post(() -> callback.onSuccess(logoPath));
+                } catch (Exception e) {
+                    mainHandler.post(() -> callback.onError(e.getMessage()));
+                }
+                return;
+            }
+        }
+
+        // 3. Neither cache has it — fetch from network once, then persist
+        //    permanently so this exact lookup never happens again.
         executor.execute(() -> {
             try {
                 Request request = new Request.Builder().url(url).build();
@@ -308,6 +332,13 @@ public class TmdbClient {
                 if (rb == null) { mainHandler.post(() -> callback.onError("Empty response")); return; }
                 String body = rb.string();
                 jsonCache.put(url, body);
+
+                // Persist to disk so it survives app restarts — fire and forget
+                if (context != null) {
+                    context.getSharedPreferences(LOGO_PREFS, Context.MODE_PRIVATE)
+                        .edit().putString(url, body).apply();
+                }
+
                 JSONObject json = new JSONObject(body);
                 String logoPath = json.optString("logo_path", "");
                 mainHandler.post(() -> callback.onSuccess(logoPath));

@@ -11,6 +11,7 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.engine.DiskCacheStrategy;
 import com.neroflix.tv.app.R;
 
 public class NetworkLogoAdapter extends RecyclerView.Adapter<NetworkLogoAdapter.ViewHolder> {
@@ -52,14 +53,26 @@ public class NetworkLogoAdapter extends RecyclerView.Adapter<NetworkLogoAdapter.
             public void onSuccess(String logoPath) {
                 if (logoPath != null && !logoPath.isEmpty()) {
                     String logoUrl = "https://image.tmdb.org/t/p/w500" + logoPath;
-                    Glide.with(context).load(logoUrl).placeholder(android.R.color.darker_gray).fitCenter().into(holder.logo);
+                    Glide.with(context).load(logoUrl)
+                        .diskCacheStrategy(DiskCacheStrategy.ALL)
+                        .placeholder(android.R.color.darker_gray)
+                        .fitCenter()
+                        .into(holder.logo);
                 } else {
-                    Glide.with(context).load(network[2]).placeholder(android.R.color.darker_gray).fitCenter().into(holder.logo);
+                    Glide.with(context).load(network[2])
+                    .diskCacheStrategy(DiskCacheStrategy.ALL)
+                    .placeholder(android.R.color.darker_gray)
+                    .fitCenter()
+                    .into(holder.logo);
                 }
             }
             @Override
             public void onError(String error) {
-                Glide.with(context).load(network[2]).placeholder(android.R.color.darker_gray).fitCenter().into(holder.logo);
+                Glide.with(context).load(network[2])
+                    .diskCacheStrategy(DiskCacheStrategy.ALL)
+                    .placeholder(android.R.color.darker_gray)
+                    .fitCenter()
+                    .into(holder.logo);
             }
         };
         if ("company".equals(type)) {
