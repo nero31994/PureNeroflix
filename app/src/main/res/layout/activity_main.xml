@@ -221,6 +221,20 @@
             android:indeterminateTint="@color/neon_red"
             android:visibility="gone" />
 
+        <TextView
+            android:id="@+id/offline_banner"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_alignParentTop="true"
+            android:text="⚠ You're offline — check your internet connection"
+            android:textColor="#FFFFFF"
+            android:textSize="13sp"
+            android:gravity="center"
+            android:padding="10dp"
+            android:background="#CC8B0000"
+            android:visibility="gone"
+            android:elevation="20dp" />
+
     </RelativeLayout>
 
 </LinearLayout>

@@ -19,9 +19,12 @@ import java.util.List;
 
 public class CategoryRowAdapter extends RecyclerView.Adapter<CategoryRowAdapter.CategoryViewHolder> {
 
+    public interface OnRetryListener { void onRetry(int position); }
+
     private final Context context;
     private final List<Category> categories;
     private final MovieCardAdapter.OnMovieClickListener movieClickListener;
+    private OnRetryListener retryListener;
 
     // Track which row+col has D-pad focus
     private int focusRow = -1;
@@ -33,6 +36,10 @@ public class CategoryRowAdapter extends RecyclerView.Adapter<CategoryRowAdapter.
         this.categories = categories;
         this.movieClickListener = listener;
         setHasStableIds(false); // avoid ID conflicts causing wrong rebinds
+    }
+
+    public void setOnRetryListener(OnRetryListener listener) {
+        this.retryListener = listener;
     }
 
     @Override
@@ -119,6 +126,21 @@ public class CategoryRowAdapter extends RecyclerView.Adapter<CategoryRowAdapter.
             categoryTitle.setText(category.getTitle());
             List<Movie> movies = category.getMovies();
             movieAdapter.setMovies(movies != null ? movies : new ArrayList<>());
+
+            // Show retry state if this category's last fetch failed and is
+            // still empty — lets the user tap to reload instead of staying
+            // permanently blank.
+            TextView retryView = itemView.findViewById(R.id.category_retry);
+            if (retryView != null) {
+                boolean showRetry = category.hasError() && (movies == null || movies.isEmpty());
+                retryView.setVisibility(showRetry ? View.VISIBLE : View.GONE);
+                moviesRv.setVisibility(showRetry ? View.GONE : View.VISIBLE);
+                if (showRetry) {
+                    retryView.setOnClickListener(v -> {
+                        if (retryListener != null) retryListener.onRetry(position);
+                    });
+                }
+            }
 
             // Only reset scroll if this row is NOT the focused one
             if (position != focusRow) {

@@ -185,6 +185,24 @@ public class MainActivity extends BaseTvActivity {
         lm.setInitialPrefetchItemCount(4);
         mainRecyclerView.setLayoutManager(lm);
         adapter = new CategoryRowAdapter(this, categories, this::openDetail);
+        adapter.setOnRetryListener(position -> {
+            if (position >= 0 && position < categories.size()) {
+                Category cat = categories.get(position);
+                cat.setError(false);
+                TmdbClient.getInstance(this).fetchMovies(cat.getEndpoint(), cat.getMediaType(),
+                    new TmdbClient.MovieListCallback() {
+                        @Override public void onSuccess(List<Movie> movies) {
+                            cat.setMovies(movies);
+                            adapter.notifyItemChanged(position);
+                            checkOfflineState();
+                        }
+                        @Override public void onError(String e) {
+                            cat.setError(true);
+                            adapter.notifyItemChanged(position);
+                        }
+                    });
+            }
+        });
         mainRecyclerView.setAdapter(adapter);
     }
 
@@ -308,6 +326,21 @@ public class MainActivity extends BaseTvActivity {
         initialLoadDone = true;
     }
 
+    /**
+     * Shows a persistent banner if ALL visible categories failed to load —
+     * a strong signal the device has no internet connection, rather than
+     * just one flaky endpoint. Hides automatically once any category
+     * succeeds (e.g. after the user reconnects and taps retry).
+     */
+    private void checkOfflineState() {
+        View banner = findViewById(R.id.offline_banner);
+        if (banner == null) return;
+        boolean allFailed = !categories.isEmpty()
+            && categories.stream().allMatch(c -> c.hasError()
+                && (c.getMovies() == null || c.getMovies().isEmpty()));
+        banner.setVisibility(allFailed ? View.VISIBLE : View.GONE);
+    }
+
     private void loadCategories() {
         final int total = categories.size();
         final AtomicInteger loaded = new AtomicInteger(0);
@@ -327,7 +360,10 @@ public class MainActivity extends BaseTvActivity {
                         if (loaded.incrementAndGet() >= total) progressBar.setVisibility(View.GONE);
                     }
                     @Override public void onError(String e) {
+                        cat.setError(true);
+                        adapter.notifyItemChanged(idx);
                         if (loaded.incrementAndGet() >= total) progressBar.setVisibility(View.GONE);
+                        checkOfflineState();
                     }
                 });
         }
