@@ -572,8 +572,16 @@ public class IPTVActivity extends BaseTvActivity {
         adapter.onHideSidebar = () -> {
             hideSidebar();
             focusZone = FocusZone.PLAYER;
-        };        recyclerView.setLayoutManager(new LinearLayoutManager(this));
+        };
+        recyclerView.setLayoutManager(new LinearLayoutManager(this));
         recyclerView.setAdapter(adapter);
+        // Perf tuning for large playlists (2000+ channels common on full
+        // IPTV packages): fixed item size skips a measure pass per scroll,
+        // and a larger view cache keeps recently-scrolled-past EPG strips
+        // alive instead of rebuilding their TextViews from scratch every
+        // time they re-enter the viewport.
+        recyclerView.setHasFixedSize(true);
+        recyclerView.setItemViewCacheSize(12);
         recyclerView.addOnScrollListener(new androidx.recyclerview.widget.RecyclerView.OnScrollListener() {
             @Override
             public void onScrolled(androidx.recyclerview.widget.RecyclerView rv, int dx, int dy) {

@@ -95,6 +95,7 @@ public class PlayerActivity extends BaseTvActivity {
         settings.setLoadWithOverviewMode(true);
         settings.setUseWideViewPort(true);
         settings.setCacheMode(WebSettings.LOAD_DEFAULT);
+        trimWebViewCacheIfLarge();
         settings.setUserAgentString(
             "Mozilla/5.0 (Linux; Android 14; Haier TV) AppleWebKit/537.36 "
             + "(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36");
@@ -352,6 +353,36 @@ public class PlayerActivity extends BaseTvActivity {
             "var f=document.getElementById('embedFrame');"
             + "if(f&&f.contentWindow)f.contentWindow.postMessage({action:'pause'},'*');", null);
     }
+    /**
+     * WebView's Chromium cache has no app-facing size limit API since API 28.
+     * On TV boxes with small (8-16GB) internal storage, this can slowly eat
+     * available space over weeks of use. Checked once per Activity creation:
+     * if the app's webview cache directory exceeds ~150MB, clear it. Safe to
+     * do since it's just a cache — next page load simply re-downloads assets.
+     */
+    private void trimWebViewCacheIfLarge() {
+        try {
+            java.io.File cacheDir = new java.io.File(getCacheDir(), "WebView");
+            if (!cacheDir.exists()) return;
+            long sizeBytes = getDirSize(cacheDir);
+            long maxBytes  = 150L * 1024 * 1024; // 150MB threshold
+            if (sizeBytes > maxBytes) {
+                if (webView != null) webView.clearCache(true);
+                android.util.Log.d("WebViewCache", "Cache trimmed — was " + (sizeBytes / 1024 / 1024) + "MB");
+            }
+        } catch (Exception ignored) {}
+    }
+
+    private long getDirSize(java.io.File dir) {
+        long size = 0;
+        java.io.File[] files = dir.listFiles();
+        if (files == null) return 0;
+        for (java.io.File f : files) {
+            size += f.isDirectory() ? getDirSize(f) : f.length();
+        }
+        return size;
+    }
+
 
     @Override
     protected void onDestroy() {

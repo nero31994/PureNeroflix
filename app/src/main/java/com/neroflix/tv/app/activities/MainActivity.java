@@ -105,7 +105,9 @@ public class MainActivity extends BaseTvActivity {
         findViewById(android.R.id.content).requestFocus();
         setupViews();
         setupBrowseRows("mixed");
+        addContinueWatchingRow();
         loadContent();
+        findViewById(R.id.refresh_btn).setOnClickListener(v -> refreshAllCategories());
         UpdateChecker.check(this);
         AnnouncementChecker.check(this);
         RemoteConfig.fetch(this, url -> {});
@@ -341,32 +343,91 @@ public class MainActivity extends BaseTvActivity {
         banner.setVisibility(allFailed ? View.VISIBLE : View.GONE);
     }
 
+    // Stagger category fetches instead of firing all ~9 simultaneously.
+    // On weak/congested connections (rural PH networks, public wifi), 9
+    // concurrent requests competing for bandwidth can cause several to time
+    // out together. Small batches with a short delay between them complete
+    // far more reliably without noticeably slowing down the perceived load
+    // time (first batch still starts instantly).
+    private static final int CATEGORY_BATCH_SIZE     = 3;
+    private static final int CATEGORY_BATCH_DELAY_MS = 250;
+
+    /**
+     * Continue Watching row — populated from recently-viewed titles in
+     * WatchManager history. Shown only when history is non-empty, inserted
+     * at the front of the category list so it's the first row users see.
+     *
+     * Note: this reflects "recently watched" rather than true resume
+     * position, since playback progress isn't currently persisted by the
+     * player activities. A true resume-position feature would need
+     * PlayerActivity/YastreamPlayerActivity to report position back to
+     * WatchManager on pause/exit — a larger follow-up feature.
+     */
+    private void addContinueWatchingRow() {
+        List<Movie> history = com.neroflix.tv.app.WatchManager.getHistory(this);
+        if (history == null || history.isEmpty()) return;
+
+        Category continueWatching = new Category(
+            "\u25B6 Continue Watching", null, null);
+        continueWatching.setMovies(
+            history.size() > 15 ? history.subList(0, 15) : history);
+        categories.add(0, continueWatching);
+    }
+
     private void loadCategories() {
         final int total = categories.size();
         final AtomicInteger loaded = new AtomicInteger(0);
+
+        // Pre-mark already-cached categories as done immediately (no delay needed)
+        List<Integer> pending = new ArrayList<>();
         for (int i = 0; i < total; i++) {
-            final int idx = i;
-            final Category cat = categories.get(i);
+            Category cat = categories.get(i);
             if (cat.getMovies() != null && !cat.getMovies().isEmpty()) {
-                adapter.notifyItemChanged(idx);
+                adapter.notifyItemChanged(i);
                 if (loaded.incrementAndGet() >= total) progressBar.setVisibility(View.GONE);
-                continue;
+            } else {
+                pending.add(i);
             }
-            TmdbClient.getInstance(this).fetchMovies(cat.getEndpoint(), cat.getMediaType(),
-                new TmdbClient.MovieListCallback() {
-                    @Override public void onSuccess(List<Movie> movies) {
-                        cat.setMovies(movies);
-                        adapter.notifyItemChanged(idx);
-                        if (loaded.incrementAndGet() >= total) progressBar.setVisibility(View.GONE);
-                    }
-                    @Override public void onError(String e) {
-                        cat.setError(true);
-                        adapter.notifyItemChanged(idx);
-                        if (loaded.incrementAndGet() >= total) progressBar.setVisibility(View.GONE);
-                        checkOfflineState();
-                    }
-                });
         }
+
+        android.os.Handler staggerHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+        for (int batchStart = 0; batchStart < pending.size(); batchStart += CATEGORY_BATCH_SIZE) {
+            int batchEnd = Math.min(batchStart + CATEGORY_BATCH_SIZE, pending.size());
+            List<Integer> batch = pending.subList(batchStart, batchEnd);
+            long delay = (batchStart / CATEGORY_BATCH_SIZE) * (long) CATEGORY_BATCH_DELAY_MS;
+
+            staggerHandler.postDelayed(() -> {
+                if (isFinishing() || isDestroyed()) return;
+                for (int idx : batch) {
+                    final Category cat = categories.get(idx);
+                    TmdbClient.getInstance(MainActivity.this).fetchMovies(cat.getEndpoint(), cat.getMediaType(),
+                        new TmdbClient.MovieListCallback() {
+                            @Override public void onSuccess(List<Movie> movies) {
+                                cat.setMovies(movies);
+                                adapter.notifyItemChanged(idx);
+                                if (loaded.incrementAndGet() >= total) progressBar.setVisibility(View.GONE);
+                            }
+                            @Override public void onError(String e) {
+                                cat.setError(true);
+                                adapter.notifyItemChanged(idx);
+                                if (loaded.incrementAndGet() >= total) progressBar.setVisibility(View.GONE);
+                                checkOfflineState();
+                            }
+                        });
+                }
+            }, delay);
+        }
+    }
+
+    /** Re-fetches all categories from scratch — used by the manual refresh button. */
+    private void refreshAllCategories() {
+        for (Category cat : categories) {
+            cat.setMovies(new ArrayList<>());
+            cat.setError(false);
+        }
+        progressBar.setVisibility(View.VISIBLE);
+        findViewById(R.id.offline_banner).setVisibility(View.GONE);
+        loadCategories();
     }
 
     // Mode / filter switching
