@@ -248,7 +248,7 @@ public class MainActivity extends AppCompatActivity {
                     startActivity(new Intent(this, IPTVActivity.class));
                     overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
                     break;
-                case 9: showGenrePicker(); break;
+                case 9: startActivity(new Intent(this, GenreActivity.class)); break;
                 case 10:
                     startActivity(new Intent(this,
                         com.neroflix.tv.app.activities.RadioActivity.class));
