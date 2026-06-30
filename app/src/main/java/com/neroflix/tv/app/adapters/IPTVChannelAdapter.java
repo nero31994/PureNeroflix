@@ -131,9 +131,11 @@ public class IPTVChannelAdapter extends RecyclerView.Adapter<IPTVChannelAdapter.
                     dayStart.set(java.util.Calendar.SECOND, 0);
                     dayStart.set(java.util.Calendar.MILLISECOND, 0);
                     long elapsedMs = System.currentTimeMillis() - dayStart.getTimeInMillis();
-                    // Use dp() to match block widths which are also in dp-converted-to-px
-                    int scrollX = (int)((elapsedMs / 3600000.0) * dp(PX_PER_HOUR));
-                    holder.epgScroll.scrollTo(Math.max(0, scrollX - dp(40)), 0);
+                    // Scroll so "now" marker is centered in the visible strip width
+                    int nowPx  = (int)((elapsedMs / 3600000.0) * dp(PX_PER_HOUR));
+                    int halfW  = holder.epgScroll.getWidth() / 2;
+                    int scrollX = Math.max(0, nowPx - halfW);
+                    holder.epgScroll.scrollTo(scrollX, 0);
                 }
             }
         );
@@ -255,6 +257,32 @@ public class IPTVChannelAdapter extends RecyclerView.Adapter<IPTVChannelAdapter.
 
     @Override
     public int getItemCount() { return channels.size(); }
+
+    // Refresh EPG highlights every 60 seconds so "now" block stays accurate
+    private final android.os.Handler refreshHandler = new android.os.Handler(
+        android.os.Looper.getMainLooper());
+
+    @Override
+    public void onViewAttachedToWindow(@NonNull ViewHolder holder) {
+        super.onViewAttachedToWindow(holder);
+        Runnable refreshTask = new Runnable() {
+            @Override public void run() {
+                if (holder.itemView.isAttachedToWindow()) {
+                    refreshEpgHighlights(holder);
+                    refreshHandler.postDelayed(this, 60_000);
+                }
+            }
+        };
+        holder.itemView.setTag(R.id.epg_start_ms, refreshTask);
+        refreshHandler.postDelayed(refreshTask, 60_000);
+    }
+
+    @Override
+    public void onViewDetachedFromWindow(@NonNull ViewHolder holder) {
+        super.onViewDetachedFromWindow(holder);
+        Object tag = holder.itemView.getTag(R.id.epg_start_ms);
+        if (tag instanceof Runnable) refreshHandler.removeCallbacks((Runnable) tag);
+    }
 
     static class ViewHolder extends RecyclerView.ViewHolder {
         ImageView logo;

@@ -1,3 +1,10 @@
+#!/bin/bash
+# fix_epg.sh — Fix EPG accuracy and reliability
+# Run from repo root: bash fix_epg.sh
+set -e
+
+echo "=== [1/3] Fix EpgManager — sorting, timezone, cache expiry, tvg-id normalization ==="
+cat > app/src/main/java/com/neroflix/tv/app/iptv/EpgManager.java << 'JAVAEOF'
 package com.neroflix.tv.app.iptv;
 
 import org.xmlpull.v1.XmlPullParser;
@@ -455,3 +462,169 @@ public class EpgManager {
         list.add(p);
     }
 }
+JAVAEOF
+echo "  EpgManager.java replaced"
+
+echo ""
+echo "=== [2/3] Fix EpgProgram — add description field + improve getTimeRange ==="
+cat > app/src/main/java/com/neroflix/tv/app/iptv/EpgProgram.java << 'JAVAEOF'
+package com.neroflix.tv.app.iptv;
+
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
+
+public class EpgProgram {
+    public String channelId   = "";
+    public String channelName = "";
+    public String title       = "";
+    public String description = ""; // NEW: from <desc> tag
+    public long   startMs     = 0;
+    public long   stopMs      = 0;
+
+    /** 0.0–1.0 progress of current program */
+    public float getProgress() {
+        long now = System.currentTimeMillis();
+        if (now <= startMs) return 0f;
+        if (now >= stopMs)  return 1f;
+        long total = stopMs - startMs;
+        if (total <= 0) return 0f;
+        return (float)(now - startMs) / (float) total;
+    }
+
+    /** "6:00 PM - 7:00 PM" */
+    public String getTimeRange() {
+        SimpleDateFormat fmt = new SimpleDateFormat("h:mm a", Locale.getDefault());
+        return fmt.format(new Date(startMs)) + " – " + fmt.format(new Date(stopMs));
+    }
+
+    /** Duration in minutes */
+    public int getDurationMinutes() {
+        return (int)((stopMs - startMs) / 60000L);
+    }
+
+    /** True if this program is currently airing */
+    public boolean isNow() {
+        long now = System.currentTimeMillis();
+        return now >= startMs && now < stopMs;
+    }
+}
+JAVAEOF
+echo "  EpgProgram.java replaced"
+
+echo ""
+echo "=== [3/3] Fix IPTVChannelAdapter — refresh highlights periodically, fix scroll offset ==="
+python3 - << 'PYEOF'
+with open("app/src/main/java/com/neroflix/tv/app/adapters/IPTVChannelAdapter.java", "r") as f:
+    src = f.read()
+
+# Fix 1: EPG strip scroll — scroll to show "now" centered, not just from day start
+old_scroll = (
+    '                    long elapsedMs = System.currentTimeMillis() - dayStart.getTimeInMillis();\n'
+    '                    // Use dp() to match block widths which are also in dp-converted-to-px\n'
+    '                    int scrollX = (int)((elapsedMs / 3600000.0) * dp(PX_PER_HOUR));\n'
+    '                    holder.epgScroll.scrollTo(Math.max(0, scrollX - dp(40)), 0);'
+)
+new_scroll = (
+    '                    long elapsedMs = System.currentTimeMillis() - dayStart.getTimeInMillis();\n'
+    '                    // Scroll so "now" marker is centered in the visible strip width\n'
+    '                    int nowPx  = (int)((elapsedMs / 3600000.0) * dp(PX_PER_HOUR));\n'
+    '                    int halfW  = holder.epgScroll.getWidth() / 2;\n'
+    '                    int scrollX = Math.max(0, nowPx - halfW);\n'
+    '                    holder.epgScroll.scrollTo(scrollX, 0);'
+)
+if old_scroll in src:
+    src = src.replace(old_scroll, new_scroll, 1)
+    print("  EPG scroll: now centered in visible strip")
+else:
+    print("  EPG scroll pattern not found — check manually")
+
+# Fix 2: Add a "now" progress indicator line inside buildEpgStrip, after the for loop
+old_after_loop = (
+    '            holder.epgStrip.addView(block);\n'
+    '        }\n'
+    '    }\n'
+    '\n'
+    '    private int dp(int dp) {'
+)
+new_after_loop = (
+    '            holder.epgStrip.addView(block);\n'
+    '        }\n'
+    '\n'
+    '        // Add a thin red "now" line at the current time position\n'
+    '        java.util.Calendar dayStart2 = java.util.Calendar.getInstance();\n'
+    '        dayStart2.set(java.util.Calendar.HOUR_OF_DAY, 0);\n'
+    '        dayStart2.set(java.util.Calendar.MINUTE, 0);\n'
+    '        dayStart2.set(java.util.Calendar.SECOND, 0);\n'
+    '        dayStart2.set(java.util.Calendar.MILLISECOND, 0);\n'
+    '        long elapsedMs2 = System.currentTimeMillis() - dayStart2.getTimeInMillis();\n'
+    '        int nowPx2 = (int)((elapsedMs2 / 3600000.0) * dp(PX_PER_HOUR));\n'
+    '        android.view.View nowLine = new android.view.View(context);\n'
+    '        nowLine.setBackgroundColor(0xFFE50914);\n'
+    '        LinearLayout.LayoutParams nlp = new LinearLayout.LayoutParams(dp(2),\n'
+    '            LinearLayout.LayoutParams.MATCH_PARENT);\n'
+    '        nlp.setMarginStart(nowPx2);\n'
+    '        nowLine.setLayoutParams(nlp);\n'
+    '        // Wrap in a FrameLayout so it overlays the strip\n'
+    '        // (placed as a sibling in the parent, not the strip)\n'
+    '    }\n'
+    '\n'
+    '    private int dp(int dp) {'
+)
+# This overlay approach is complex for a RecyclerView adapter — instead just highlight
+# the current block more strongly (already done) and skip the line overlay
+# Just ensure the highlights refresh timer is added
+
+# Fix 3: Refresh EPG highlights every minute via a Handler in onViewAttachedToWindow
+old_class_end = (
+    '    @Override\n'
+    '    public int getItemCount() { return channels.size(); }\n'
+    '\n'
+    '    static class ViewHolder extends RecyclerView.ViewHolder {'
+)
+new_class_end = (
+    '    @Override\n'
+    '    public int getItemCount() { return channels.size(); }\n'
+    '\n'
+    '    // Refresh EPG highlights every 60 seconds so "now" block stays accurate\n'
+    '    private final android.os.Handler refreshHandler = new android.os.Handler(\n'
+    '        android.os.Looper.getMainLooper());\n'
+    '\n'
+    '    @Override\n'
+    '    public void onViewAttachedToWindow(@NonNull ViewHolder holder) {\n'
+    '        super.onViewAttachedToWindow(holder);\n'
+    '        Runnable refreshTask = new Runnable() {\n'
+    '            @Override public void run() {\n'
+    '                if (holder.itemView.isAttachedToWindow()) {\n'
+    '                    refreshEpgHighlights(holder);\n'
+    '                    refreshHandler.postDelayed(this, 60_000);\n'
+    '                }\n'
+    '            }\n'
+    '        };\n'
+    '        holder.itemView.setTag(R.id.epg_start_ms, refreshTask);\n'
+    '        refreshHandler.postDelayed(refreshTask, 60_000);\n'
+    '    }\n'
+    '\n'
+    '    @Override\n'
+    '    public void onViewDetachedFromWindow(@NonNull ViewHolder holder) {\n'
+    '        super.onViewDetachedFromWindow(holder);\n'
+    '        Object tag = holder.itemView.getTag(R.id.epg_start_ms);\n'
+    '        if (tag instanceof Runnable) refreshHandler.removeCallbacks((Runnable) tag);\n'
+    '    }\n'
+    '\n'
+    '    static class ViewHolder extends RecyclerView.ViewHolder {'
+)
+
+if old_class_end in src:
+    src = src.replace(old_class_end, new_class_end, 1)
+    print("  EPG highlights: auto-refresh every 60s added")
+else:
+    print("  Auto-refresh pattern not found — check manually")
+
+with open("app/src/main/java/com/neroflix/tv/app/adapters/IPTVChannelAdapter.java", "w") as f:
+    f.write(src)
+PYEOF
+
+echo ""
+echo "✅ Done! Run:"
+echo "   git add -A && git commit -m 'Fix EPG: sorting, timezone, tvg-id normalization, description, refresh timer, scroll centering' && git push"
