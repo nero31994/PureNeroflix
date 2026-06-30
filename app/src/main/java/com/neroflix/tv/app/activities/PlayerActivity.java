@@ -78,6 +78,14 @@ public class PlayerActivity extends BaseTvActivity {
         playerTitle.setText(movieTitle);
         playerTitle.setOnClickListener(v -> showServerPicker());
 
+        // Enable remote WebView debugging on debug builds — lets you
+        // inspect black-screen embeds live via chrome://inspect on a PC
+        // on the same network (Settings > About > tap build 7x for ADB,
+        // then `adb tcpip 5555` if the TV supports network ADB).
+        if (com.neroflix.tv.app.BuildConfig.DEBUG) {
+            WebView.setWebContentsDebuggingEnabled(true);
+        }
+
         WebSettings settings = webView.getSettings();
         settings.setJavaScriptEnabled(true);
         settings.setDomStorageEnabled(true);
@@ -91,7 +99,11 @@ public class PlayerActivity extends BaseTvActivity {
             "Mozilla/5.0 (Linux; Android 14; Haier TV) AppleWebKit/537.36 "
             + "(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36");
 
-        webView.setLayerType(View.LAYER_TYPE_HARDWARE, null);
+        // Avoid forcing hardware layer — many budget Android TV GPUs
+        // (Allwinner/Amlogic low-end SoCs) have broken WebView hardware
+        // compositing, which plays audio but shows a black video rect.
+        // LAYER_TYPE_NONE lets the WebView choose safely per-device.
+        webView.setLayerType(View.LAYER_TYPE_NONE, null);
         webView.setScrollBarStyle(View.SCROLLBARS_INSIDE_OVERLAY);
         webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
 
@@ -121,6 +133,19 @@ public class PlayerActivity extends BaseTvActivity {
                     "window.open=function(){return null;};" +
                     "window.alert=function(){};" +
                     "window.confirm=function(){return true;};", null);
+
+                // Watchdog: on some budget Android TV GPUs, the embed page
+                // finishes loading and video plays (audio works) but the
+                // frame never visually composites -- pure black screen.
+                // If still showing nothing after 6s, retry with a software
+                // rendering layer, which is slower but far more reliable on
+                // broken WebView hardware compositors.
+                new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                    if (!isFinishing() && !isDestroyed() && webView != null) {
+                        webView.setLayerType(View.LAYER_TYPE_SOFTWARE, null);
+                        webView.invalidate();
+                    }
+                }, 6000);
             }
             @Override
             public void onReceivedError(WebView view, int errorCode, String desc, String url) {
