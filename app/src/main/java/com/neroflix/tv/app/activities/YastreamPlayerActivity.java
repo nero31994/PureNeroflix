@@ -495,13 +495,19 @@ if (!activityDestroyed) runOnUiThread(() -> {
             .setReadTimeoutMs(15000)
             .setAllowCrossProtocolRedirects(true);
 
-        // In direct play mode (stream-sniff from PlayerActivity), pass the
-        // embed page URL as Referer so vidsrc CDNs accept the HLS request.
-        // Without this, some CDNs return 403 because the request looks like
-        // it came out of nowhere rather than from the embed page.
+        // In direct play mode, apply Referer + Origin headers to ALL
+        // requests (manifest AND segments) so vidsrc CDNs accept them.
+        // setDefaultRequestProperties applies to every request the factory
+        // makes, including HLS segment fetches, not just the manifest.
         if (directPlayMode && !directStreamReferrer.isEmpty()) {
-            dataSourceFactory.setDefaultRequestProperties(
-                java.util.Collections.singletonMap("Referer", directStreamReferrer));
+            String origin = directStreamReferrer.replaceAll("(https?://[^/]+).*", "$1");
+            java.util.Map<String,String> headers = new java.util.HashMap<>();
+            headers.put("Referer", directStreamReferrer);
+            headers.put("Origin", origin);
+            headers.put("Sec-Fetch-Site", "cross-site");
+            headers.put("Sec-Fetch-Mode", "cors");
+            headers.put("Sec-Fetch-Dest", "empty");
+            dataSourceFactory.setDefaultRequestProperties(headers);
         }
 
         // Build MediaItem with subtitle tracks
