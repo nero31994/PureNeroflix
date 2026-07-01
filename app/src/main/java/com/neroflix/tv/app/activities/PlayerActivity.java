@@ -48,6 +48,9 @@ public class PlayerActivity extends BaseTvActivity {
     // Referrer of the current embed — passed to ExoPlayer so it can send
     // the correct Referer header when fetching the sniffed HLS stream.
     private String currentEmbedReferrer = "";
+    private String moviePosterPath   = "";
+    private String movieBackdropPath = "";
+    private android.animation.ObjectAnimator pulseAnimator;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
