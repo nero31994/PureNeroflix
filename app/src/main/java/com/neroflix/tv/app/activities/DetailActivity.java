@@ -391,7 +391,7 @@ public class DetailActivity extends BaseTvActivity {
         // Pass movie art for the loading screen
         intent.putExtra("movie_poster",   getIntent().getStringExtra("movie_poster"));
         intent.putExtra("movie_backdrop", getIntent().getStringExtra("movie_backdrop"));
-        intent.putExtra("movie_title",    title);
+        intent.putExtra("movie_title",    getIntent().getStringExtra("movie_title"));
         intent.putExtra("server_url_format", serverUrlFormat != null ? serverUrlFormat : "standard");
         String title = (movie != null) ? movie.getTitle()
                 : getIntent().getStringExtra("movie_title");
