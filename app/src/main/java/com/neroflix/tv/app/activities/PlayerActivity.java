@@ -598,6 +598,8 @@ public class PlayerActivity extends BaseTvActivity {
                                 .load(logoUrl)
                                 .placeholder(R.drawable.ic_launcher_foreground)
                                 .error(R.drawable.ic_launcher_foreground)
+                                // Decode as ARGB_8888 to preserve PNG transparency
+                                .format(com.bumptech.glide.load.DecodeFormat.PREFER_ARGB_8888)
                                 .into(logoView);
                         }
                         @Override

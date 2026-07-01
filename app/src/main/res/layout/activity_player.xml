@@ -41,7 +41,7 @@
                 android:layout_height="180dp"
                 android:scaleType="fitCenter"
                 android:layout_marginBottom="24dp"
-                android:background="#1A1A1A" />
+                 />
 
             <ProgressBar
                 android:layout_width="40dp"
