@@ -1,0 +1,506 @@
+package com.neroflix.tv.app.activities;
+
+import android.annotation.SuppressLint;
+import android.content.Intent;
+import android.app.AlertDialog;
+import android.os.Bundle;
+import android.view.KeyEvent;
+import android.view.View;
+import android.view.WindowManager;
+import android.webkit.WebChromeClient;
+import android.webkit.WebResourceRequest;
+import android.webkit.WebSettings;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
+import android.widget.ProgressBar;
+import android.widget.TextView;
+import android.widget.Toast;
+
+import androidx.appcompat.app.AppCompatActivity;
+
+import com.neroflix.tv.app.R;
+
+public class PlayerActivity extends BaseTvActivity {
+
+    // No hardcoded server arrays here — URLs come from the Worker via DetailActivity
+
+    private WebView webView;
+    private ProgressBar loadingBar;
+    private TextView playerTitle;
+    private View loadingOverlay;
+
+    private int    movieId;
+    private String mediaType;
+    private String movieTitle;
+    private int    season;
+    private int    episode;
+    private int    currentServer = 0;
+
+    // Server list received from DetailActivity (fetched from Worker)
+    private String[][] passedServers;
+    // The base URL of the current server (passed in from DetailActivity)
+    private String currentServerUrl;
+    // Separate TV URL if the provider uses different paths for movie vs TV
+    private String currentServerUrlTv;
+    // Stream sniffing: set to true once we hand off to ExoPlayer so we
+    // don't launch it twice if multiple .m3u8 requests fire together.
+    private volatile boolean streamHandedOff = false;
+    // Referrer of the current embed — passed to ExoPlayer so it can send
+    // the correct Referer header when fetching the sniffed HLS stream.
+    private String currentEmbedReferrer = "";
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        hideSystemUI();
+        setContentView(R.layout.activity_player);
+
+        movieId       = getIntent().getIntExtra("movie_id", 0);
+        mediaType     = getIntent().getStringExtra("media_type");
+        movieTitle    = getIntent().getStringExtra("movie_title");
+        season        = getIntent().getIntExtra("season", 1);
+        episode       = getIntent().getIntExtra("episode", 1);
+        currentServer    = getIntent().getIntExtra("server_index", 0);
+        currentServerUrl = getIntent().getStringExtra("server_url");
+        currentServerUrlTv = getIntent().getStringExtra("server_url_tv");
+        String urlFormat = getIntent().getStringExtra("server_url_format");
+
+        moviePosterPath   = getIntent().getStringExtra("movie_poster");
+        movieBackdropPath = getIntent().getStringExtra("movie_backdrop");
+        if (moviePosterPath   == null) moviePosterPath   = "";
+        if (movieBackdropPath == null) movieBackdropPath = "";
+        if (movieTitle == null)        movieTitle = "Now Playing";
+        if (currentServerUrl == null)  currentServerUrl = "";
+        if (currentServerUrlTv == null) currentServerUrlTv = "";
+        if (urlFormat == null)         urlFormat = "standard";
+
+        setupViews();
+        loadPlayer(currentServerUrl, currentServerUrlTv, urlFormat);
+    }
+
+    @SuppressLint("SetJavaScriptEnabled")
+    private void setupViews() {
+        webView        = findViewById(R.id.player_webview);
+        loadingBar     = findViewById(R.id.player_loading_bar);
+        playerTitle    = findViewById(R.id.player_title);
+        loadingOverlay = findViewById(R.id.player_loading_overlay);
+
+        playerTitle.setText(movieTitle);
+        loadLoadingArtwork();
+        startPulseAnimation();
+        playerTitle.setOnClickListener(v -> showServerPicker());
+
+        // Enable remote WebView debugging on debug builds — lets you
+        // inspect black-screen embeds live via chrome://inspect on a PC
+        // on the same network (Settings > About > tap build 7x for ADB,
+        // then `adb tcpip 5555` if the TV supports network ADB).
+        if (com.neroflix.tv.app.BuildConfig.DEBUG) {
+            WebView.setWebContentsDebuggingEnabled(true);
+        }
+
+        WebSettings settings = webView.getSettings();
+        settings.setJavaScriptEnabled(true);
+        settings.setDomStorageEnabled(true);
+        settings.setAllowFileAccess(true);
+        settings.setMediaPlaybackRequiresUserGesture(false);
+        settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+        settings.setLoadWithOverviewMode(true);
+        settings.setUseWideViewPort(true);
+        settings.setCacheMode(WebSettings.LOAD_DEFAULT);
+        trimWebViewCacheIfLarge();
+        settings.setUserAgentString(
+            "Mozilla/5.0 (Linux; Android 14; Haier TV) AppleWebKit/537.36 "
+            + "(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36");
+
+        // Avoid forcing hardware layer — many budget Android TV GPUs
+        // (Allwinner/Amlogic low-end SoCs) have broken WebView hardware
+        // compositing, which plays audio but shows a black video rect.
+        // LAYER_TYPE_NONE lets the WebView choose safely per-device.
+        webView.setLayerType(View.LAYER_TYPE_NONE, null);
+        webView.setScrollBarStyle(View.SCROLLBARS_INSIDE_OVERLAY);
+        webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
+
+        webView.setWebViewClient(new WebViewClient() {
+
+            @Override
+            public android.webkit.WebResourceResponse shouldInterceptRequest(
+                    WebView view, WebResourceRequest request) {
+                String url = request.getUrl().toString();
+
+                // Only intercept once per player session
+                if (!streamHandedOff && isStreamUrl(url)) {
+                    streamHandedOff = true;
+                    final String streamUrl = url;
+                    android.util.Log.d("StreamSniff", "Captured stream: " + streamUrl);
+                    android.widget.TextView statusView = findViewById(R.id.player_loading_status);
+                    if (statusView != null) statusView.setText("Stream found! Starting player...");
+                    stopPulseAnimation();
+
+                    // Must launch ExoPlayer on the main thread
+                    new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
+                        if (!isFinishing() && !isDestroyed()) {
+                            launchExoPlayer(streamUrl);
+                        }
+                    });
+
+                    // Return empty response — WebView doesn't need to
+                    // actually fetch this stream since ExoPlayer will.
+                    return new android.webkit.WebResourceResponse(
+                        "application/octet-stream", "utf-8",
+                        new java.io.ByteArrayInputStream(new byte[0]));
+                }
+                return super.shouldInterceptRequest(view, request);
+            }
+
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+                String url = request.getUrl().toString();
+                if (url.startsWith("about:")) return false;
+                // Allow embed domains — block everything else
+                if (url.contains("ythd.org"))           return false;
+                if (url.contains("vidfast.pro"))         return false;
+                if (url.contains("vaplayer.ru"))         return false;
+                if (url.contains("vidcore.net"))         return false;
+                if (url.contains("vidsrc.pm"))           return false;
+                if (url.contains("peachify.top"))        return false;
+                if (url.contains("cinesrc.st"))          return false;
+                if (url.contains("anyembed.xyz"))        return false;
+                if (url.contains("vidsrc.wtf"))          return false;
+                if (url.contains("vidsrc-embed.ru"))     return false;
+                return true;
+            }
+            @Override
+            public void onPageFinished(WebView view, String url) {
+                super.onPageFinished(view, url);
+                loadingOverlay.setVisibility(View.GONE);
+                view.evaluateJavascript(
+                    "window.open=function(){return null;};" +
+                    "window.alert=function(){};" +
+                    "window.confirm=function(){return true;};", null);
+
+                // Watchdog: on some budget Android TV GPUs, the embed page
+                // finishes loading and video plays (audio works) but the
+                // frame never visually composites -- pure black screen.
+                // If still showing nothing after 6s, retry with a software
+                // rendering layer, which is slower but far more reliable on
+                // broken WebView hardware compositors.
+                new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                    if (!isFinishing() && !isDestroyed() && webView != null) {
+                        webView.setLayerType(View.LAYER_TYPE_SOFTWARE, null);
+                        webView.invalidate();
+                    }
+                }, 6000);
+            }
+            @Override
+            public void onReceivedError(WebView view, int errorCode, String desc, String url) {
+                loadingOverlay.setVisibility(View.GONE);
+                Toast.makeText(PlayerActivity.this, "Stream error: " + desc, Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        webView.setWebChromeClient(new WebChromeClient() {
+            private View customView;
+            @Override
+            public void onProgressChanged(WebView view, int p) {
+                if (loadingBar != null) {
+                    loadingBar.setProgress(p);
+                    loadingBar.setVisibility(p < 100 ? View.VISIBLE : View.GONE);
+                }
+            }
+            @Override
+            public void onShowCustomView(View view, CustomViewCallback cb) {
+                customView = view;
+                webView.setVisibility(View.GONE);
+                setContentView(view);
+            }
+            @Override
+            public void onHideCustomView() {
+                if (customView != null) {
+                    customView = null;
+                    // Restore layout and re-bind views before loading player
+                    setContentView(R.layout.activity_player);
+                    webView        = findViewById(R.id.player_webview);
+                    loadingBar     = findViewById(R.id.player_loading_bar);
+                    playerTitle    = findViewById(R.id.player_title);
+                    loadingOverlay = findViewById(R.id.player_loading_overlay);
+                    setupViews();
+                    String fmt = getIntent().getStringExtra("server_url_format");
+                    loadPlayer(currentServerUrl, currentServerUrlTv,
+                        fmt != null ? fmt : "standard");
+                }
+            }
+        });
+    }
+
+    private void loadPlayer(String serverUrl, String serverUrlTv, String urlFormat) {
+        if (movieId == 0 || serverUrl == null || serverUrl.isEmpty()) {
+            finish();
+            return;
+        }
+        streamHandedOff = false; // reset for each new server attempt
+        loadingOverlay.setVisibility(View.VISIBLE);
+        boolean isTV = "tv".equals(mediaType);
+        String embedUrl;
+
+        if ("anyembed".equals(urlFormat)) {
+            // AnyEmbed uses: /embed/tmdb-movie-{id} and /embed/tmdb-tv-{id}-{s}-{e}
+            if (isTV) {
+                embedUrl = serverUrl + "tmdb-tv-" + movieId + "-" + season + "-" + episode + "?autoplay=1";
+            } else {
+                embedUrl = serverUrl + "tmdb-movie-" + movieId + "?autoplay=1";
+            }
+        } else {
+            // Standard format: /movie/{id} and /tv/{id}/{s}/{e}
+            if (isTV) {
+                embedUrl = serverUrlTv + "tv/" + movieId + "/" + season + "/" + episode + "?autoplay=1";
+            } else {
+                embedUrl = serverUrl + "movie/" + movieId + "?autoplay=1";
+            }
+        }
+
+        currentServerUrl   = serverUrl;
+        currentServerUrlTv = serverUrlTv != null ? serverUrlTv : serverUrl;
+
+        String html = "<!DOCTYPE html><html><head>"
+            + "<meta name='viewport' content='width=device-width,initial-scale=1'>"
+            + "<style>"
+            + "*{margin:0;padding:0;box-sizing:border-box}"
+            + "html,body{width:100%;height:100%;background:#000;overflow:hidden}"
+            + "iframe{width:100%;height:100%;border:none;display:block}"
+            + "</style></head><body>"
+            + "<iframe id='embedFrame' src='" + embedUrl + "' "
+            + "allowfullscreen allow='autoplay;fullscreen;picture-in-picture' "
+            + "scrolling='no'></iframe>"
+            + "<script>"
+            + "window.open=function(){return{focus:function(){},blur:function(){}}};"
+            + "window.alert=function(){};"
+            + "window.confirm=function(){return true;};"
+            + "document.addEventListener('keydown',function(e){"
+            + "  var f=document.getElementById('embedFrame');"
+            + "  if(!f||!f.contentWindow)return;"
+            + "  var act=null;"
+            + "  if(e.keyCode===13||e.keyCode===179){act='playpause';}"
+            + "  else if(e.keyCode===39||e.keyCode===228){act='seekforward';}"
+            + "  else if(e.keyCode===37||e.keyCode===227){act='seekback';}"
+            + "  else if(e.keyCode===32){act='playpause';}"
+            + "  else if(e.keyCode===70){act='fullscreen';}"
+            + "  if(act){"
+            + "    f.contentWindow.postMessage({action:act},'*');"
+            + "    try{f.contentWindow.document.dispatchEvent("
+            + "      new KeyboardEvent('keydown',{keyCode:e.keyCode,which:e.keyCode,bubbles:true})"
+            + "    );}catch(ex){}"
+            + "    e.preventDefault();"
+            + "  }"
+            + "});"
+            + "</script></body></html>";
+
+        // Store embed URL as referrer for ExoPlayer stream sniff handoff
+        currentEmbedReferrer = embedUrl;
+        webView.loadDataWithBaseURL("https://neroflix.local/", html, "text/html", "UTF-8", null);
+    }
+    // Server switcher — re-contacts Worker to get fresh server list
+    private void showServerPicker() {
+        com.neroflix.tv.app.LicenseManager.fetchServers(this, servers -> {
+            runOnUiThread(() -> {
+                if (servers == null || servers.length <= 1) {
+                    new AlertDialog.Builder(this)
+                        .setTitle("🔒 Premium Required")
+                        .setMessage("Upgrade to Premium to switch servers.\nServer 1 is available for free.")
+                        .setPositiveButton("OK", null)
+                        .show();
+                    return;
+                }
+                passedServers = servers;
+                String[] labels = new String[servers.length];
+                for (int i = 0; i < servers.length; i++) labels[i] = servers[i][0];
+                new AlertDialog.Builder(this)
+                    .setTitle("Select Server")
+                    .setItems(labels, (d, which) -> {
+                        currentServer = which;
+                        String tvUrl  = passedServers[which][2];
+                        String format = passedServers[which].length > 3 ? passedServers[which][3] : "standard";
+                        loadPlayer(passedServers[which][1], tvUrl, format);
+                        playerTitle.setText(movieTitle + "  •  " + passedServers[which][0]);
+                    })
+                    .show();
+            });
+        });
+    }
+
+        /**
+     * Returns true if the URL looks like a playable video stream that
+     * ExoPlayer can handle directly — HLS manifests (.m3u8), progressive
+     * MP4/WebM, and common stream CDN patterns used by vidsrc and similar.
+     * Conservative: only matches patterns very unlikely to be false positives.
+     */
+    private boolean isStreamUrl(String url) {
+        if (url == null) return false;
+        String lower = url.toLowerCase();
+
+        // HLS manifest — most common from vidsrc, anyembed, etc.
+        if (lower.contains(".m3u8")) return true;
+
+        // Progressive MP4/WebM with video parameters
+        if ((lower.contains(".mp4") || lower.contains(".webm"))
+                && (lower.contains("stream") || lower.contains("video")
+                    || lower.contains("play") || lower.contains("media"))) {
+            return true;
+        }
+
+        // Known stream CDN patterns used by vidsrc providers
+        if (lower.contains("/hls/") && lower.contains(".ts"))   return false; // segment, not manifest
+        if (lower.contains("/hls/") || lower.contains("/dash/")) return true;
+        if (lower.contains("manifest") && lower.contains("video")) return true;
+
+        return false;
+    }
+
+    /**
+     * Launches YastreamPlayerActivity with the sniffed stream URL.
+     * YastreamPlayerActivity already has a fully configured ExoPlayer
+     * with HLS support, subtitle handling, and proper TV UI — reusing
+     * it avoids duplicating all that setup here.
+     */
+    private void launchExoPlayer(String streamUrl) {
+        android.util.Log.d("StreamSniff", "Handing off to ExoPlayer: " + streamUrl);
+
+        // Stop the WebView immediately — no point loading further
+        if (webView != null) webView.stopLoading();
+
+        Intent intent = new Intent(this, YastreamPlayerActivity.class);
+        intent.putExtra("movie_id",       movieId);
+        intent.putExtra("media_type",     mediaType);
+        intent.putExtra("movie_title",    movieTitle);
+        intent.putExtra("season",         season);
+        intent.putExtra("episode",        episode);
+        // Pass the direct stream URL — YastreamPlayerActivity checks this
+        // extra and plays it directly, skipping the yastream API fetch.
+        intent.putExtra("direct_stream_url",  streamUrl);
+        intent.putExtra("direct_stream_referrer", currentEmbedReferrer);
+        startActivity(intent);
+        // Finish PlayerActivity so the back stack is clean — pressing Back
+        // from YastreamPlayerActivity returns to DetailActivity (server picker)
+        // instead of briefly showing the black WebView behind it.
+        finish();
+    }
+
+    @Override
+    protected boolean onTvKeyDown(int keyCode, KeyEvent event) {
+        switch (keyCode) {
+            case KeyEvent.KEYCODE_DPAD_CENTER:
+            case KeyEvent.KEYCODE_ENTER:
+            case KeyEvent.KEYCODE_BUTTON_A:
+            case KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE:
+            case KeyEvent.KEYCODE_MEDIA_PLAY:
+            case KeyEvent.KEYCODE_MEDIA_PAUSE:
+                forwardKey(13); // Enter keyCode — triggers play/pause in most embed players
+                return true;
+            case KeyEvent.KEYCODE_DPAD_RIGHT:
+                forwardKey(39);
+                return true;
+            case KeyEvent.KEYCODE_DPAD_LEFT:
+                forwardKey(37);
+                return true;
+            case KeyEvent.KEYCODE_MEDIA_FAST_FORWARD:
+                forwardKey(228);
+                return true;
+            case KeyEvent.KEYCODE_MEDIA_REWIND:
+                forwardKey(227);
+                return true;
+            case KeyEvent.KEYCODE_DPAD_UP:
+                // Volume up — try via postMessage and direct JS
+                webView.evaluateJavascript(
+                    "var f=document.getElementById('embedFrame');"
+                    + "if(f&&f.contentWindow)f.contentWindow.postMessage({action:'volumeup'},'*');", null);
+                return true;
+            case KeyEvent.KEYCODE_DPAD_DOWN:
+                webView.evaluateJavascript(
+                    "var f=document.getElementById('embedFrame');"
+                    + "if(f&&f.contentWindow)f.contentWindow.postMessage({action:'volumedown'},'*');", null);
+                return true;
+            case KeyEvent.KEYCODE_MENU:
+                showServerPicker();
+                return true;
+            case KeyEvent.KEYCODE_BACK:
+            case KeyEvent.KEYCODE_ESCAPE:
+                finish();
+                overridePendingTransition(R.anim.fade_in, R.anim.fade_out);
+                return true;
+        }
+        return false; // fallback now handled by BaseTvActivity
+    }
+
+    // Dispatches a keyboard event into the embed iframe via the wrapper page JS
+    private void forwardKey(int keyCode) {
+        webView.evaluateJavascript(
+            "var f=document.getElementById('embedFrame');"
+            + "if(f&&f.contentWindow){"
+            + "  f.contentWindow.postMessage({action:'key',keyCode:" + keyCode + "},'*');"
+            + "  try{"
+            + "    f.contentWindow.document.dispatchEvent("
+            + "      new KeyboardEvent('keydown',{keyCode:" + keyCode + ",which:" + keyCode + ",bubbles:true})"
+            + "    );"
+            + "  }catch(e){}"
+            + "}", null);
+    }
+
+    @Override
+    protected void onResume() { super.onResume(); webView.onResume(); hideSystemUI(); }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        webView.onPause();
+        // Try to pause via iframe postMessage
+        webView.evaluateJavascript(
+            "var f=document.getElementById('embedFrame');"
+            + "if(f&&f.contentWindow)f.contentWindow.postMessage({action:'pause'},'*');", null);
+    }
+    /**
+     * WebView's Chromium cache has no app-facing size limit API since API 28.
+     * On TV boxes with small (8-16GB) internal storage, this can slowly eat
+     * available space over weeks of use. Checked once per Activity creation:
+     * if the app's webview cache directory exceeds ~150MB, clear it. Safe to
+     * do since it's just a cache — next page load simply re-downloads assets.
+     */
+    private void trimWebViewCacheIfLarge() {
+        try {
+            java.io.File cacheDir = new java.io.File(getCacheDir(), "WebView");
+            if (!cacheDir.exists()) return;
+            long sizeBytes = getDirSize(cacheDir);
+            long maxBytes  = 150L * 1024 * 1024; // 150MB threshold
+            if (sizeBytes > maxBytes) {
+                if (webView != null) webView.clearCache(true);
+                android.util.Log.d("WebViewCache", "Cache trimmed — was " + (sizeBytes / 1024 / 1024) + "MB");
+            }
+        } catch (Exception ignored) {}
+    }
+
+    private long getDirSize(java.io.File dir) {
+        long size = 0;
+        java.io.File[] files = dir.listFiles();
+        if (files == null) return 0;
+        for (java.io.File f : files) {
+            size += f.isDirectory() ? getDirSize(f) : f.length();
+        }
+        return size;
+    }
+
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        if (webView != null) { webView.stopLoading(); webView.destroy(); }
+    }
+
+    private void hideSystemUI() {
+        getWindow().getDecorView().setSystemUiVisibility(
+            View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+            | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+            | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
+            | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+            | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+            | View.SYSTEM_UI_FLAG_FULLSCREEN);
+    }
+}
