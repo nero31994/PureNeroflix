@@ -180,7 +180,9 @@ public class PlayerActivity extends BaseTvActivity {
             @Override
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
-                loadingOverlay.setVisibility(View.GONE);
+                // Keep overlay visible — we never want the WebView visible
+                // to the user. Overlay stays up until stream is sniffed
+                // and we hand off to YastreamPlayerActivity.
                 view.evaluateJavascript(
                     "window.open=function(){return null;};" +
                     "window.alert=function(){};" +

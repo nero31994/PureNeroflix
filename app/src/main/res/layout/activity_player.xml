@@ -6,16 +6,17 @@
 
     <WebView
         android:id="@+id/player_webview"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent" />
+        android:layout_width="1dp"
+        android:layout_height="1dp"
+        android:visibility="invisible" />
 
     <!-- Loading overlay -->
     <RelativeLayout
         android:id="@+id/player_loading_overlay"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:background="#EE000000"
-        android:visibility="gone">
+        android:background="#FF000000"
+        android:visibility="visible">
 
         <!-- Dim backdrop -->
         <ImageView
