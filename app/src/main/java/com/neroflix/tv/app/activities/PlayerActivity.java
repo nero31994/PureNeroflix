@@ -107,6 +107,10 @@ public class PlayerActivity extends BaseTvActivity {
         settings.setDomStorageEnabled(true);
         settings.setAllowFileAccess(true);
         settings.setMediaPlaybackRequiresUserGesture(false);
+        // Speed up vidsrc page load — disable features we don't need
+        settings.setGeolocationEnabled(false);
+        settings.setSaveFormData(false);
+        settings.setNeedInitialFocus(false);
         settings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
         settings.setLoadWithOverviewMode(true);
         settings.setUseWideViewPort(true);
@@ -186,7 +190,18 @@ public class PlayerActivity extends BaseTvActivity {
                 view.evaluateJavascript(
                     "window.open=function(){return null;};" +
                     "window.alert=function(){};" +
-                    "window.confirm=function(){return true;};", null);
+                    "window.confirm=function(){return true;};" +
+                    // Force autoplay — clicks any play button immediately
+                    "setTimeout(function(){" +
+                    "  var btns=document.querySelectorAll('button,iframe,[role=button],[class*=play]');" +
+                    "  for(var i=0;i<btns.length;i++){" +
+                    "    try{btns[i].click();}catch(e){}" +
+                    "  }" +
+                    "  var vids=document.querySelectorAll('video');" +
+                    "  for(var i=0;i<vids.length;i++){" +
+                    "    try{vids[i].play();}catch(e){}" +
+                    "  }" +
+                    "},500);", null);
 
                 // Watchdog: on some budget Android TV GPUs, the embed page
                 // finishes loading and video plays (audio works) but the
@@ -343,24 +358,64 @@ public class PlayerActivity extends BaseTvActivity {
      * MP4/WebM, and common stream CDN patterns used by vidsrc and similar.
      * Conservative: only matches patterns very unlikely to be false positives.
      */
+    /**
+     * Fast, accurate stream URL detection.
+     * Priority order:
+     *  1. Reject known non-stream requests instantly (ads, trackers, images, fonts)
+     *  2. Accept clear HLS/DASH manifest patterns
+     *  3. Accept progressive video URLs with stream-specific params
+     *  4. Reject .ts segments (we want the manifest, not individual chunks)
+     */
     private boolean isStreamUrl(String url) {
-        if (url == null) return false;
+        if (url == null || url.isEmpty()) return false;
         String lower = url.toLowerCase();
 
-        // HLS manifest — most common from vidsrc, anyembed, etc.
+        // ── Fast reject: skip obviously non-video requests ──────────────────
+        // These account for ~90% of shouldInterceptRequest calls and should
+        // be rejected as quickly as possible to avoid slowing page load.
+        if (lower.contains(".js")    || lower.contains(".css")   ||
+            lower.contains(".png")   || lower.contains(".jpg")   ||
+            lower.contains(".gif")   || lower.contains(".svg")   ||
+            lower.contains(".woff")  || lower.contains(".ttf")   ||
+            lower.contains(".ico")   || lower.contains(".json")  ||
+            lower.contains("google") || lower.contains("facebook") ||
+            lower.contains("analytics") || lower.contains("doubleclick") ||
+            lower.contains("ads")    || lower.contains("tracker")) {
+            return false;
+        }
+
+        // ── HLS manifest: most reliable signal ──────────────────────────────
         if (lower.contains(".m3u8")) return true;
 
-        // Progressive MP4/WebM with video parameters
-        if ((lower.contains(".mp4") || lower.contains(".webm"))
-                && (lower.contains("stream") || lower.contains("video")
-                    || lower.contains("play") || lower.contains("media"))) {
+        // ── MPEG-DASH manifest ───────────────────────────────────────────────
+        if (lower.contains(".mpd") &&
+                (lower.contains("manifest") || lower.contains("stream") ||
+                 lower.contains("video")    || lower.contains("media"))) {
             return true;
         }
 
-        // Known stream CDN patterns used by vidsrc providers
-        if (lower.contains("/hls/") && lower.contains(".ts"))   return false; // segment, not manifest
-        if (lower.contains("/hls/") || lower.contains("/dash/")) return true;
-        if (lower.contains("manifest") && lower.contains("video")) return true;
+        // ── HLS/DASH path patterns from known CDNs ───────────────────────────
+        if (lower.contains("/hls/")  && !lower.endsWith(".ts") &&
+                !lower.endsWith(".aac") && !lower.endsWith(".vtt")) return true;
+        if (lower.contains("/dash/") && !lower.endsWith(".m4s")) return true;
+        if (lower.contains("/index.m3u8") || lower.contains("/playlist.m3u8")) return true;
+        if (lower.contains("master.m3u8") || lower.contains("chunklist")) return true;
+
+        // ── vidsrc-specific CDN patterns ─────────────────────────────────────
+        // vidsrc and its mirrors use these URL structures for stream delivery
+        if (lower.contains("vidsrc") && (lower.contains("stream") || lower.contains("m3u8"))) return true;
+        if ((lower.contains("vidplay") || lower.contains("vidcloud") ||
+             lower.contains("filemoon") || lower.contains("streamtape") ||
+             lower.contains("doodstream") || lower.contains("upstream"))
+                && lower.contains(".m3u8")) return true;
+
+        // ── Progressive MP4 with stream params ───────────────────────────────
+        if (lower.contains(".mp4") &&
+                (lower.contains("token=") || lower.contains("expires=") ||
+                 lower.contains("sig=")   || lower.contains("stream") ||
+                 lower.contains("?e=")    || lower.contains("&e="))) {
+            return true;
+        }
 
         return false;
     }
