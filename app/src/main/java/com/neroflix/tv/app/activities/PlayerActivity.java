@@ -370,8 +370,10 @@ public class PlayerActivity extends BaseTvActivity {
         intent.putExtra("direct_stream_url",  streamUrl);
         intent.putExtra("direct_stream_referrer", currentEmbedReferrer);
         startActivity(intent);
-        // Don't finish() — user can back-navigate back to server picker.
-        // The WebView activity goes to background, ExoPlayer comes to front.
+        // Finish PlayerActivity so the back stack is clean — pressing Back
+        // from YastreamPlayerActivity returns to DetailActivity (server picker)
+        // instead of briefly showing the black WebView behind it.
+        finish();
     }
 
     @Override
