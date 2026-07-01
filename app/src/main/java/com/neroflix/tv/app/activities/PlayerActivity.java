@@ -503,4 +503,39 @@ public class PlayerActivity extends BaseTvActivity {
             | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
             | View.SYSTEM_UI_FLAG_FULLSCREEN);
     }
+
+    private void loadLoadingArtwork() {
+        android.widget.ImageView backdrop = findViewById(R.id.player_loading_backdrop);
+        android.widget.ImageView poster   = findViewById(R.id.player_loading_poster);
+        if (backdrop == null || poster == null) return;
+        String tmdbBase = "https://image.tmdb.org/t/p/";
+        if (!movieBackdropPath.isEmpty()) {
+            com.bumptech.glide.Glide.with(this).load(tmdbBase + "w780" + movieBackdropPath)
+                .placeholder(android.R.color.black).into(backdrop);
+        } else if (!moviePosterPath.isEmpty()) {
+            com.bumptech.glide.Glide.with(this).load(tmdbBase + "w500" + moviePosterPath)
+                .placeholder(android.R.color.black).into(backdrop);
+        }
+        if (!moviePosterPath.isEmpty()) {
+            com.bumptech.glide.Glide.with(this).load(tmdbBase + "w342" + moviePosterPath)
+                .placeholder(R.drawable.ic_launcher_foreground).into(poster);
+        } else {
+            poster.setImageResource(R.drawable.ic_launcher_foreground);
+        }
+    }
+
+    private void startPulseAnimation() {
+        android.widget.ImageView poster = findViewById(R.id.player_loading_poster);
+        if (poster == null) return;
+        pulseAnimator = android.animation.ObjectAnimator.ofFloat(poster, "alpha", 1f, 0.4f);
+        pulseAnimator.setDuration(900);
+        pulseAnimator.setRepeatCount(android.animation.ValueAnimator.INFINITE);
+        pulseAnimator.setRepeatMode(android.animation.ValueAnimator.REVERSE);
+        pulseAnimator.setInterpolator(new android.view.animation.AccelerateDecelerateInterpolator());
+        pulseAnimator.start();
+    }
+
+    private void stopPulseAnimation() {
+        if (pulseAnimator != null) { pulseAnimator.cancel(); pulseAnimator = null; }
+    }
 }
