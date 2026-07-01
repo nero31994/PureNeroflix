@@ -185,7 +185,11 @@ public class YastreamPlayerActivity extends BaseTvActivity {
             });
 
         // Tap anywhere on player to toggle top bar
-        playerView.setOnClickListener(v -> toggleTopBar());
+        if (playerView != null) {
+            playerView.setOnClickListener(v -> toggleTopBar());
+        } else {
+            android.util.Log.e("YastreamPlayer", "playerView is NULL after setupViews() — layout may not have inflated correctly");
+        }
 
         // Auto-hide after 3 seconds on start
         scheduleHideTopBar();
@@ -588,6 +592,11 @@ if (!activityDestroyed) runOnUiThread(() -> {
                 .setPreferredTextRoleFlags(androidx.media3.common.C.ROLE_FLAG_SUBTITLE)
                 .build());
 
+        if (playerView == null) {
+            android.util.Log.e("YastreamPlayer", "initExoPlayer: playerView is null — cannot set player");
+            showError("Player initialization failed. Please try again.");
+            return;
+        }
         playerView.setPlayer(exoPlayer);
         playerView.setUseController(true);
         playerView.setControllerAutoShow(true);
