@@ -272,6 +272,102 @@ public class TmdbClient {
         executor.shutdown();
     }
 
+    // ── Title logo (PNG treatment, used on loading screen) ──────────────────
+
+    public interface TitleLogoCallback {
+        void onSuccess(String logoUrl); // full https URL, transparent PNG
+        void onError(String error);
+    }
+
+    /**
+     * Fetches the TMDB title treatment logo (PNG with transparent background)
+     * for a given movie or TV show. This is the stylized title image used by
+     * Netflix, Disney+, etc. instead of plain text title overlays.
+     *
+     * Returns the best English PNG logo URL, or null if none available.
+     * Falls back to SVG if no PNG found. Cached permanently (logos rarely change).
+     */
+    public void fetchTitleLogo(int tmdbId, String mediaType, TitleLogoCallback callback) {
+        String endpoint = "/" + ("tv".equals(mediaType) ? "tv" : "movie")
+            + "/" + tmdbId + "/images?include_image_language=en,null";
+        String url = buildUrl(endpoint);
+
+        // Check persistent logo cache first
+        if (context != null) {
+            String cached = context
+                .getSharedPreferences("tmdb_logo_cache", Context.MODE_PRIVATE)
+                .getString("title_logo_" + mediaType + "_" + tmdbId, null);
+            if (cached != null) {
+                mainHandler.post(() -> callback.onSuccess(cached.isEmpty() ? null : cached));
+                return;
+            }
+        }
+
+        executor.execute(() -> {
+            try {
+                String body = fetchUrl(url);
+                if (body == null || body.isEmpty()) {
+                    mainHandler.post(() -> callback.onError("Empty response"));
+                    return;
+                }
+
+                org.json.JSONObject json = new org.json.JSONObject(body);
+                org.json.JSONArray logos = json.optJSONArray("logos");
+
+                String bestLogo = null;
+                double bestVote = -1;
+
+                if (logos != null) {
+                    // Priority: English PNG > any PNG > English SVG > any SVG
+                    String bestPngEn  = null, bestPngAny = null;
+                    String bestSvgEn  = null;
+                    double bestPngEnV = -1, bestPngAnyV = -1, bestSvgEnV = -1;
+
+                    for (int i = 0; i < logos.length(); i++) {
+                        org.json.JSONObject logo = logos.getJSONObject(i);
+                        String filePath = logo.optString("file_path", "");
+                        String lang     = logo.optString("iso_639_1", "");
+                        double vote     = logo.optDouble("vote_average", 0);
+                        boolean isPng   = filePath.endsWith(".png");
+                        boolean isSvg   = filePath.endsWith(".svg");
+                        boolean isEn    = "en".equals(lang) || lang.isEmpty();
+
+                        if (isPng && isEn && vote > bestPngEnV) {
+                            bestPngEn = filePath; bestPngEnV = vote;
+                        } else if (isPng && vote > bestPngAnyV) {
+                            bestPngAny = filePath; bestPngAnyV = vote;
+                        } else if (isSvg && isEn && vote > bestSvgEnV) {
+                            bestSvgEn = filePath; bestSvgEnV = vote;
+                        }
+                    }
+
+                    if (bestPngEn  != null) bestLogo = bestPngEn;
+                    else if (bestPngAny != null) bestLogo = bestPngAny;
+                    else if (bestSvgEn  != null) bestLogo = bestSvgEn;
+                }
+
+                String logoUrl = bestLogo != null
+                    ? "https://image.tmdb.org/t/p/w500" + bestLogo
+                    : null;
+
+                // Cache result (empty string = no logo available, don't retry)
+                if (context != null) {
+                    context.getSharedPreferences("tmdb_logo_cache", Context.MODE_PRIVATE)
+                        .edit().putString("title_logo_" + mediaType + "_" + tmdbId,
+                            logoUrl != null ? logoUrl : "").apply();
+                }
+
+                final String finalUrl = logoUrl;
+                mainHandler.post(() -> {
+                    if (finalUrl != null) callback.onSuccess(finalUrl);
+                    else callback.onError("No logo available");
+                });
+            } catch (Exception e) {
+                mainHandler.post(() -> callback.onError(e.getMessage()));
+            }
+        });
+    }
+
     public interface NetworkCallback {
         void onSuccess(String logoPath);
         void onError(String error);

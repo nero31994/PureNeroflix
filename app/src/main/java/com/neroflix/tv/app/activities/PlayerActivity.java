@@ -570,21 +570,43 @@ public class PlayerActivity extends BaseTvActivity {
 
     private void loadLoadingArtwork() {
         android.widget.ImageView backdrop = findViewById(R.id.player_loading_backdrop);
-        android.widget.ImageView poster   = findViewById(R.id.player_loading_poster);
-        if (backdrop == null || poster == null) return;
+        android.widget.ImageView logoView = findViewById(R.id.player_loading_poster);
+        if (backdrop == null || logoView == null) return;
         String tmdbBase = "https://image.tmdb.org/t/p/";
+
+        // Load backdrop (dim background)
         if (!movieBackdropPath.isEmpty()) {
-            com.bumptech.glide.Glide.with(this).load(tmdbBase + "w780" + movieBackdropPath)
+            com.bumptech.glide.Glide.with(this)
+                .load(tmdbBase + "w780" + movieBackdropPath)
                 .placeholder(android.R.color.black).into(backdrop);
         } else if (!moviePosterPath.isEmpty()) {
-            com.bumptech.glide.Glide.with(this).load(tmdbBase + "w500" + moviePosterPath)
+            com.bumptech.glide.Glide.with(this)
+                .load(tmdbBase + "w500" + moviePosterPath)
                 .placeholder(android.R.color.black).into(backdrop);
         }
-        if (!moviePosterPath.isEmpty()) {
-            com.bumptech.glide.Glide.with(this).load(tmdbBase + "w342" + moviePosterPath)
-                .placeholder(R.drawable.ic_launcher_foreground).into(poster);
+
+        // Fetch TMDB PNG title logo — transparent background, like Netflix/Disney+
+        // Falls back to app icon if no logo available for this title.
+        if (movieId > 0) {
+            com.neroflix.tv.app.network.TmdbClient.getInstance(this)
+                .fetchTitleLogo(movieId, mediaType,
+                    new com.neroflix.tv.app.network.TmdbClient.TitleLogoCallback() {
+                        @Override
+                        public void onSuccess(String logoUrl) {
+                            if (isFinishing() || isDestroyed()) return;
+                            com.bumptech.glide.Glide.with(PlayerActivity.this)
+                                .load(logoUrl)
+                                .placeholder(R.drawable.ic_launcher_foreground)
+                                .error(R.drawable.ic_launcher_foreground)
+                                .into(logoView);
+                        }
+                        @Override
+                        public void onError(String error) {
+                            // No logo — keep showing app icon (already default)
+                        }
+                    });
         } else {
-            poster.setImageResource(R.drawable.ic_launcher_foreground);
+            logoView.setImageResource(R.drawable.ic_launcher_foreground);
         }
     }
 
