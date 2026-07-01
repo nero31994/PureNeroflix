@@ -73,7 +73,7 @@
                 android:id="@+id/player_loading_status"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="Extracting stream URL..."
+                android:text="Fetching stream URL..."
                 android:textColor="#666666"
                 android:textSize="11sp"
                 android:gravity="center" />
