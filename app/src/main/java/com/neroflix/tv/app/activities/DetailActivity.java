@@ -388,6 +388,10 @@ public class DetailActivity extends BaseTvActivity {
         intent.putExtra("server_index",      serverIndex);
         intent.putExtra("server_url",        serverUrl);
         intent.putExtra("server_url_tv",     serverUrlTv != null ? serverUrlTv : serverUrl);
+        // Pass movie art for the loading screen
+        intent.putExtra("movie_poster",   getIntent().getStringExtra("movie_poster"));
+        intent.putExtra("movie_backdrop", getIntent().getStringExtra("movie_backdrop"));
+        intent.putExtra("movie_title",    title);
         intent.putExtra("server_url_format", serverUrlFormat != null ? serverUrlFormat : "standard");
         String title = (movie != null) ? movie.getTitle()
                 : getIntent().getStringExtra("movie_title");
