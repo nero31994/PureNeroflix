@@ -136,9 +136,13 @@ public class PlayerActivity extends BaseTvActivity {
                     streamHandedOff = true;
                     final String streamUrl = url;
                     android.util.Log.d("StreamSniff", "Captured stream: " + streamUrl);
-                    android.widget.TextView statusView = findViewById(R.id.player_loading_status);
-                    if (statusView != null) statusView.setText("Stream found! Starting player...");
-                    stopPulseAnimation();
+                    // UI updates must run on main thread — shouldInterceptRequest
+                    // fires on a background thread
+                    new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
+                        android.widget.TextView statusView = findViewById(R.id.player_loading_status);
+                        if (statusView != null) statusView.setText("Stream found! Starting player...");
+                        stopPulseAnimation();
+                    });
 
                     // Must launch ExoPlayer on the main thread
                     new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
