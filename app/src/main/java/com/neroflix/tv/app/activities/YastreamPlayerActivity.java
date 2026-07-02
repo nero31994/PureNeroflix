@@ -528,12 +528,16 @@ if (!activityDestroyed) runOnUiThread(() -> {
                                 androidx.media3.common.C.SELECTION_FLAG_DEFAULT)
                             .build());
                 } else {
-                    // Enable selected subtitle track
-                    exoPlayer.setTrackSelectionParameters(
-                        currentParams.buildUpon()
-                            .setPreferredTextLanguage(
-                                labels.get(which).toLowerCase())
-                            .build());
+                } else {
+                    // Enable selected subtitle track via direct track group override
+                    androidx.media3.common.TrackGroup selectedGroup = subGroups.get(which);
+                    if (selectedGroup != null) {
+                        exoPlayer.setTrackSelectionParameters(
+                            currentParams.buildUpon()
+                                .setOverrideForType(new androidx.media3.common.TrackSelectionOverride(selectedGroup, 0))
+                                .setIgnoredTextSelectionFlags(0)
+                                .build());
+                    }
                 }
             })
             .setNegativeButton("Cancel", null)
