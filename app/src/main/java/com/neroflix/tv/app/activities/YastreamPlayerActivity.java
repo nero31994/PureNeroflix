@@ -272,7 +272,7 @@ public class YastreamPlayerActivity extends BaseTvActivity {
                     try {
                         String stremioId = "tmdb:" + tmdbId;
                         if ("series".equals(mediaType) || "tv".equals(mediaType)) {
-                            stremioId += ":" + season + ":" + episode;
+                            stremioSubId += ":" + season + ":" + episode;
                         }
                         String subsUrl = NEROTIVI + "/subtitles?type="
                             + ("tv".equals(mediaType) ? "series" : mediaType)
@@ -406,12 +406,12 @@ public class YastreamPlayerActivity extends BaseTvActivity {
                         if (!imdbId.isEmpty()) {
                             // Step 2: fetch subtitles from Stremio OpenSubtitles
                             String stremioType = "movie".equals(mediaType) ? "movie" : "series";
-                            String stremioId = imdbId;
+                            String stremioSubId = imdbId;
                             if (!"movie".equals(mediaType) && season > 0 && episode > 0) {
-                                stremioId += ":" + season + ":" + episode;
+                                stremioSubId += ":" + season + ":" + episode;
                             }
                             String subsUrl = "https://opensubtitles-v3.strem.io/subtitles/"
-                                + stremioType + "/" + stremioId + ".json";
+                                + stremioType + "/" + stremioSubId + ".json";
                             android.util.Log.d("Yastream", "OpenSubs fallback URL: " + subsUrl);
                             String subsResp = fetchUrl(subsUrl);
                             org.json.JSONObject subsJson = new org.json.JSONObject(subsResp);
