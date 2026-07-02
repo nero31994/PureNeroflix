@@ -148,11 +148,6 @@
     </LinearLayout>
 
 
-
-        </LinearLayout>
-
-    </LinearLayout>
-
     <!-- Status text (buffering) -->
     <TextView
         android:id="@+id/yastream_status"
