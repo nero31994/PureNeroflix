@@ -528,7 +528,6 @@ if (!activityDestroyed) runOnUiThread(() -> {
                                 androidx.media3.common.C.SELECTION_FLAG_DEFAULT)
                             .build());
                 } else {
-                } else {
                     // Enable selected subtitle track via direct track group override
                     androidx.media3.common.TrackGroup selectedGroup = subGroups.get(which);
                     if (selectedGroup != null) {
