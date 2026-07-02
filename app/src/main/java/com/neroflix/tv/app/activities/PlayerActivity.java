@@ -436,8 +436,6 @@ public class PlayerActivity extends BaseTvActivity {
     }
 
     /** Called with both stream URL and (optionally) a subtitle URL */
-    /** Called with both stream URL and (optionally) a subtitle URL */
-    }
     private void launchExoPlayer(String streamUrl, String vttUrl) {
         android.util.Log.d("StreamSniff", "Handing off: stream=" + streamUrl
             + " subtitle=" + (vttUrl != null ? vttUrl : "none"));
