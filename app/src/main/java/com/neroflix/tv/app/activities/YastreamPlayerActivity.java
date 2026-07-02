@@ -625,7 +625,7 @@ if (!activityDestroyed) runOnUiThread(() -> {
         if (externalSubUrl != null && !externalSubUrl.isEmpty()) {
             MediaItem.SubtitleConfiguration subConfig =
                 new MediaItem.SubtitleConfiguration.Builder(android.net.Uri.parse(externalSubUrl))
-                    .setMimeType(androidx.media3.common.MimeTypes.TEXT_VTT)
+                    .setMimeType(androidx.media3.common.MimeTypes.APPLICATION_SUBRIP)
                     .setLanguage("en")
                     .setLabel("English")
                     .setSelectionFlags(androidx.media3.common.C.SELECTION_FLAG_DEFAULT)
