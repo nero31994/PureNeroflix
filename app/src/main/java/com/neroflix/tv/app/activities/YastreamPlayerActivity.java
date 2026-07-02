@@ -617,93 +617,30 @@ if (!activityDestroyed) runOnUiThread(() -> {
             dataSourceFactory.setDefaultRequestProperties(headers);
         }
 
-        // ── Apply pre-fetched subtitle ────────────────────────────────────
-        MediaItem.Builder mediaItemBuilder = new MediaItem.Builder()
-            .setUri(m3u8Url)
-            .setMimeType(androidx.media3.common.MimeTypes.APPLICATION_M3U8);
+        // ── Build media source with MergingMediaSource (Stremio-style) ─────
+        HlsMediaSource hlsSource = new HlsMediaSource.Factory(dataSourceFactory)
+            .createMediaSource(MediaItem.fromUri(android.net.Uri.parse(m3u8Url)));
+
+        androidx.media3.exoplayer.source.MediaSource finalSource;
         if (externalSubUrl != null && !externalSubUrl.isEmpty()) {
-            mediaItemBuilder.setSubtitleConfigurations(java.util.Collections.singletonList(
+            MediaItem.SubtitleConfiguration subConfig =
                 new MediaItem.SubtitleConfiguration.Builder(android.net.Uri.parse(externalSubUrl))
                     .setMimeType(androidx.media3.common.MimeTypes.TEXT_VTT)
                     .setLanguage("en")
                     .setLabel("English")
                     .setSelectionFlags(androidx.media3.common.C.SELECTION_FLAG_DEFAULT)
-                    .build()));
-            android.util.Log.d("Yastream", "Subtitle applied: " + externalSubUrl);
-            runOnUiThread(() -> android.widget.Toast.makeText(YastreamPlayerActivity.this, "APPLIED: " + externalSubUrl, android.widget.Toast.LENGTH_LONG).show());
+                    .build();
+            androidx.media3.exoplayer.source.SingleSampleMediaSource subSource =
+                new androidx.media3.exoplayer.source.SingleSampleMediaSource.Factory(dataSourceFactory)
+                    .createMediaSource(subConfig, androidx.media3.common.C.TIME_UNSET);
+            finalSource = new androidx.media3.exoplayer.source.MergingMediaSource(hlsSource, subSource);
+            android.util.Log.d("Yastream", "MergingMediaSource with sub: " + externalSubUrl);
+        } else {
+            finalSource = hlsSource;
+            android.util.Log.d("Yastream", "No subtitle — HLS only");
         }
 
-        HlsMediaSource mediaSource = new HlsMediaSource.Factory(dataSourceFactory)
-            .createMediaSource(mediaItemBuilder.build());
-
-        exoPlayer = new ExoPlayer.Builder(this).build();
-
-        // Auto-select Tagalog subtitles, fall back to English
-        exoPlayer.setTrackSelectionParameters(
-            exoPlayer.getTrackSelectionParameters().buildUpon()
-                .setPreferredTextLanguages("tgl", "eng")
-                .setPreferredTextRoleFlags(androidx.media3.common.C.ROLE_FLAG_SUBTITLE)
-                .build());
-
-        if (playerView == null) {
-            android.util.Log.e("YastreamPlayer", "initExoPlayer: playerView is null — cannot set player");
-            showError("Player initialization failed. Please try again.");
-            return;
-        }
-        playerView.setPlayer(exoPlayer);
-        playerView.setUseController(true);
-        playerView.setControllerAutoShow(true);
-        playerView.setControllerHideOnTouch(true);
-
-        // ── TV subtitle styling ──────────────────────────────────────────
-        androidx.media3.ui.SubtitleView subView = playerView.getSubtitleView();
-        if (subView != null) {
-            subView.setVisibility(android.view.View.VISIBLE);
-            // Apply TV-friendly style: large text, black outline, bottom position
-            subView.setUserDefaultStyle();
-            subView.setUserDefaultTextSize();
-            // Override with TV-sized text (1.4x default = ~22sp equivalent on TV)
-            subView.setFixedTextSize(
-                android.util.TypedValue.COMPLEX_UNIT_SP, 22);
-            // Bottom padding so subs don't overlap the control bar
-            subView.setPadding(0, 0, 0,
-                (int)(16 * getResources().getDisplayMetrics().density));
-        }
-
-        exoPlayer.addListener(new Player.Listener() {
-            @Override
-            public void onPlaybackStateChanged(int state) {
-                switch (state) {
-                    case Player.STATE_BUFFERING: showLoading(true);  break;
-                    case Player.STATE_READY:
-                        showLoading(false);
-                        setStatus("");
-                        break;
-                    case Player.STATE_ENDED:
-                        showLoading(false);
-                        setStatus("Playback ended");
-                        break;
-                    case Player.STATE_IDLE:
-                        showLoading(false);
-                        break;
-                }
-            }
-
-            @Override
-            public void onPlayerError(PlaybackException error) {
-                showLoading(false);
-                if (streamList != null && currentStreamIndex < streamList.length() - 1) {
-                    // Silently try next stream
-                    setStatus("Trying next source...");
-                    playStream(currentStreamIndex + 1);
-                } else {
-                    // All streams failed — now show picker
-                    showError("Playback failed.\nTap \"Change Source\" to try another server.");
-                }
-            }
-        });
-
-        exoPlayer.setMediaSource(mediaSource);
+        exoPlayer.setMediaSource(finalSource);
         exoPlayer.prepare();
         exoPlayer.setPlayWhenReady(true);
     }
