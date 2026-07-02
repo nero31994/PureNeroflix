@@ -203,6 +203,7 @@ public class YastreamPlayerActivity extends BaseTvActivity {
         View changeSourceBtn = findViewById(R.id.yastream_change_source);
         if (changeSourceBtn != null)
             changeSourceBtn.setOnClickListener(v -> showStreamPicker());
+        findViewById(R.id.yastream_cc_btn).setOnClickListener(v -> showSubtitlePicker());
 
         View backBtn = findViewById(R.id.yastream_back_btn);
         if (backBtn != null)
@@ -260,6 +261,39 @@ public class YastreamPlayerActivity extends BaseTvActivity {
                 }
                 streamList = streams;
 
+                // Fetch subtitles in PARALLEL with stream preparation
+                // instead of sequentially — saves 1-3 seconds on startup.
+                // Both complete before we call playStream(0).
+                java.util.concurrent.CountDownLatch latch =
+                    new java.util.concurrent.CountDownLatch(1);
+                final org.json.JSONArray[] subtitleHolder = {null};
+
+                new Thread(() -> {
+                    try {
+                        String stremioId = "tmdb:" + tmdbId;
+                        if ("series".equals(mediaType) || "tv".equals(mediaType)) {
+                            stremioId += ":" + season + ":" + episode;
+                        }
+                        String subsUrl = NEROTIVI + "/subtitles?type="
+                            + ("tv".equals(mediaType) ? "series" : mediaType)
+                            + "&id=" + stremioId;
+                        if (season > 0 && episode > 0) {
+                            subsUrl += "&season=" + season + "&episode=" + episode;
+                        }
+                        org.json.JSONObject subsJson =
+                            new org.json.JSONObject(fetchUrl(subsUrl));
+                        subtitleHolder[0] = subsJson.optJSONArray("subtitles");
+                    } catch (Exception ignored) {}
+                    finally { latch.countDown(); }
+                }).start();
+
+                // Wait max 4 seconds for subtitles — don't block playback longer
+                new Thread(() -> {
+                    try { latch.await(4, java.util.concurrent.TimeUnit.SECONDS); }
+                    catch (InterruptedException ignored) {}
+                    try {
+                        if (subtitleHolder[0] != null && subtitleHolder[0].length() > 0) {
+                            for (int i = 0; i < streams.length(); i++) {
                                 streams.getJSONObject(i).put("subtitles", subtitleHolder[0]);
                             }
                         }
@@ -325,6 +359,94 @@ public class YastreamPlayerActivity extends BaseTvActivity {
                     return;
                 }
 
+                // 2. Fetch subtitles directly from yastream
+                // Subtitles are returned separately by yastream using tbKey
+                org.json.JSONArray subtitles = null;
+                try {
+                    String subsUrl = yastreamUrl("/subtitles/series/"
+                        + java.net.URLEncoder.encode(stremioId, "UTF-8") + ".json");
+                    android.util.Log.d("Yastream", "Direct subtitle URL: " + subsUrl);
+                    org.json.JSONObject subsJson =
+                        new org.json.JSONObject(fetchUrl(subsUrl));
+                    subtitles = subsJson.optJSONArray("subtitles");
+                    android.util.Log.d("Yastream", "Subtitles from yastream: "
+                        + (subtitles != null ? subtitles.length() : 0));
+                } catch (Exception subErr) {
+                    android.util.Log.w("Yastream", "Subtitle fetch failed: " + subErr.getMessage());
+                }
+
+                // 3. Also check if subtitles are embedded in each stream object
+                // yastream sometimes includes subtitles[] inside the stream response
+                if (subtitles == null || subtitles.length() == 0) {
+                    for (int i = 0; i < streams.length(); i++) {
+                        org.json.JSONArray embeddedSubs =
+                            streams.getJSONObject(i).optJSONArray("subtitles");
+                        if (embeddedSubs != null && embeddedSubs.length() > 0) {
+                            subtitles = embeddedSubs;
+                            android.util.Log.d("Yastream", "Using embedded subs from stream: "
+                                + subtitles.length());
+                            break;
+                        }
+                    }
+                }
+
+
+                // 3b. Fallback: fetch English subtitles from OpenSubtitles via Stremio
+                if (subtitles == null || subtitles.length() == 0) {
+                    try {
+                        // Step 1: get IMDB ID from TMDB
+                        String extType = "movie".equals(mediaType) ? "movie" : "tv";
+                        String extUrl = "https://api.themoviedb.org/3/" + extType + "/" + tmdbId
+                            + "/external_ids?api_key=" + com.neroflix.tv.app.BuildConfig.TMDB_API_KEY;
+                        String extResp = fetchUrl(extUrl);
+                        org.json.JSONObject extJson = new org.json.JSONObject(extResp);
+                        String imdbId = extJson.optString("imdb_id", "");
+                        android.util.Log.d("Yastream", "IMDB ID for fallback subs: " + imdbId);
+
+                        if (!imdbId.isEmpty()) {
+                            // Step 2: fetch subtitles from Stremio OpenSubtitles
+                            String stremioType = "movie".equals(mediaType) ? "movie" : "series";
+                            String stremioSubId = imdbId;
+                            if (!"movie".equals(mediaType) && season > 0 && episode > 0) {
+                                stremioSubId += ":" + season + ":" + episode;
+                            }
+                            String subsUrl = "https://opensubtitles-v3.strem.io/subtitles/"
+                                + stremioType + "/" + stremioSubId + ".json";
+                            android.util.Log.d("Yastream", "OpenSubs fallback URL: " + subsUrl);
+                            String subsResp = fetchUrl(subsUrl);
+                            org.json.JSONObject subsJson = new org.json.JSONObject(subsResp);
+                            org.json.JSONArray subsArr = subsJson.optJSONArray("subtitles");
+                            if (subsArr != null && subsArr.length() > 0) {
+                                subtitles = new org.json.JSONArray();
+                                // Pick first English subtitle
+                                for (int si = 0; si < subsArr.length(); si++) {
+                                    org.json.JSONObject s = subsArr.getJSONObject(si);
+                                    if ("eng".equals(s.optString("lang", ""))) {
+                                        org.json.JSONObject entry = new org.json.JSONObject();
+                                        entry.put("url", s.optString("url", ""));
+                                        entry.put("lang", "eng");
+                                        subtitles.put(entry);
+                                        android.util.Log.d("Yastream", "OpenSubs fallback found: " + entry.optString("url"));
+                                        break;
+                                    }
+                                }
+                                if (subtitles.length() == 0) subtitles = null;
+                            }
+                        }
+                    } catch (Exception subFallbackErr) {
+                        android.util.Log.w("Yastream", "OpenSubs fallback failed: " + subFallbackErr.getMessage());
+                    }
+                }
+
+                // 4. Inject subtitles into all stream objects for the player
+                if (subtitles != null && subtitles.length() > 0) {
+                    for (int i = 0; i < streams.length(); i++) {
+                        streams.getJSONObject(i).put("subtitles", subtitles);
+                    }
+                }
+
+                streamList = streams;
+
                 // 5. Find best stream (prefer kisskh provider)
                 int bestIndex = 0;
                 for (int i = 0; i < streams.length(); i++) {
@@ -351,6 +473,80 @@ if (!activityDestroyed) runOnUiThread(() -> {
             }
         }).start();
     }
+
+    // ── Subtitle picker ───────────────────────────────────────────────────────
+
+    private void showSubtitlePicker() {
+        if (exoPlayer == null) return;
+
+        androidx.media3.common.TrackSelectionParameters currentParams =
+            exoPlayer.getTrackSelectionParameters();
+
+        // Build list of available subtitle tracks
+        androidx.media3.common.Tracks tracks = exoPlayer.getCurrentTracks();
+        java.util.List<String> labels = new ArrayList<>();
+        java.util.List<androidx.media3.common.Tracks.Group> subGroups = new ArrayList<>();
+
+        labels.add("Off");
+        subGroups.add(null);
+
+        for (androidx.media3.common.Tracks.Group group : tracks.getGroups()) {
+            if (group.getType() == androidx.media3.common.C.TRACK_TYPE_TEXT) {
+                for (int i = 0; i < group.length; i++) {
+                    androidx.media3.common.Format fmt = group.getTrackFormat(i);
+                    String lang = fmt.language != null ? fmt.language.toLowerCase() : "und";
+                    String label;
+                    if (fmt.label != null && !fmt.label.isEmpty() && !fmt.label.equals("und") && !fmt.label.equals("Unknown")) {
+                        label = fmt.label;
+                    } else if (LANG_NAMES.containsKey(lang) && !"und".equals(lang)) {
+                        label = LANG_NAMES.get(lang);
+                    } else {
+                        label = "English"; // fallback — no language metadata
+                    
+                        
+                    }
+                    labels.add(label);
+                    subGroups.add(group);
+                }
+            }
+        }
+
+        if (labels.size() <= 1) {
+            android.widget.Toast.makeText(this,
+                "No subtitles available for this stream", android.widget.Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        new android.app.AlertDialog.Builder(this)
+            .setTitle("Subtitles")
+            .setItems(labels.toArray(new String[0]), (d, which) -> {
+                if (which == 0) {
+                    // Turn off subtitles
+                    exoPlayer.setTrackSelectionParameters(
+                        currentParams.buildUpon()
+                            .setIgnoredTextSelectionFlags(
+                                androidx.media3.common.C.SELECTION_FLAG_DEFAULT)
+                            .build());
+                } else {
+                    // Enable selected subtitle track via Tracks.Group override
+                    androidx.media3.common.Tracks.Group selectedGroup = subGroups.get(which);
+                    if (selectedGroup != null) {
+                        exoPlayer.setTrackSelectionParameters(
+                            currentParams.buildUpon()
+                                .clearOverridesOfType(androidx.media3.common.C.TRACK_TYPE_TEXT)
+                                .addOverride(new androidx.media3.common.TrackSelectionOverride(
+                                    selectedGroup.getMediaTrackGroup(),
+                                    java.util.Collections.singletonList(0)))
+                                .setIgnoredTextSelectionFlags(0)
+                                .build());
+                    }
+                }
+            })
+            .setNegativeButton("Cancel", null)
+            .show();
+    }
+
+    // ── Stream picker dialog ──────────────────────────────────────────────────
 
     private void showStreamPicker() {
         if (streamList == null || streamList.length() == 0) {
@@ -427,60 +623,78 @@ if (!activityDestroyed) runOnUiThread(() -> {
             .setUri(m3u8Url)
             .setMimeType(androidx.media3.common.MimeTypes.APPLICATION_M3U8);
 
-
-        HlsMediaSource mediaSource = new HlsMediaSource.Factory(dataSourceFactory)
-            .createMediaSource(mediaItemBuilder.build());
-
-        // ── Fetch subtitles from OpenSubtitles via Stremio ──────────────────
-        MediaItem.Builder mediaItemBuilder = new MediaItem.Builder()
-            .setUri(m3u8Url)
-            .setMimeType(androidx.media3.common.MimeTypes.APPLICATION_M3U8);
-
-        try {
-            String extType = "movie".equals(mediaType) ? "movie" : "tv";
-            String extUrl = "https://api.themoviedb.org/3/" + extType + "/" + tmdbId
-                + "/external_ids?api_key=" + com.neroflix.tv.app.BuildConfig.TMDB_API_KEY;
-            String extResp = fetchUrl(extUrl);
-            String imdbId = new org.json.JSONObject(extResp).optString("imdb_id", "");
-            if (!imdbId.isEmpty()) {
-                String stremioType = "movie".equals(mediaType) ? "movie" : "series";
-                String stremioSubId = imdbId;
-                if (!"movie".equals(mediaType) && season > 0 && episode > 0) {
-                    stremioSubId += ":" + season + ":" + episode;
-                }
-                String subsUrl = "https://opensubtitles-v3.strem.io/subtitles/"
-                    + stremioType + "/" + stremioSubId + ".json";
-                String subsResp = fetchUrl(subsUrl);
-                org.json.JSONArray subsArr = new org.json.JSONObject(subsResp).optJSONArray("subtitles");
-                if (subsArr != null) {
+        // Add subtitles from current stream if available
+        if (streamList != null && currentStreamIndex < streamList.length()) {
+            try {
+                org.json.JSONArray subs = streamList
+                    .getJSONObject(currentStreamIndex)
+                    .optJSONArray("subtitles");
+                if (subs != null && subs.length() > 0) {
                     java.util.List<MediaItem.SubtitleConfiguration> subConfigs = new java.util.ArrayList<>();
-                    // Add first English subtitle with DEFAULT flag (auto-shows)
-                    for (int si = 0; si < subsArr.length(); si++) {
-                        org.json.JSONObject s = subsArr.getJSONObject(si);
-                        if ("eng".equals(s.optString("lang", ""))) {
+
+                    // Find preferred subtitle index: tgl > eng > 0
+                    int tglIdx = -1, engIdx = -1;
+                    for (int i = 0; i < subs.length(); i++) {
+                        String l = subs.getJSONObject(i).optString("lang","");
+                        if ("tgl".equals(l) && tglIdx == -1) tglIdx = i;
+                        if ("eng".equals(l) && engIdx == -1) engIdx = i;
+                    }
+                    // If no tgl, use eng. If no eng, don't set any default (let user pick)
+                    int defIdx = tglIdx != -1 ? tglIdx : engIdx != -1 ? engIdx : -1;
+
+                    for (int i = 0; i < subs.length(); i++) {
+                        org.json.JSONObject sub = subs.getJSONObject(i);
+                        String subUrl   = sub.optString("url", "");
+                        String subLang  = sub.optString("lang", "und");
+                        // Build human-readable label from lang code
+                        String subLabel = LANG_NAMES.containsKey(subLang)
+                            ? LANG_NAMES.get(subLang) : subLang.toUpperCase();
+                        if (!subUrl.isEmpty()) {
+                            // Detect subtitle format from URL extension
+                            String mime;
+                            String subUrlLower = subUrl.toLowerCase();
+                            if (subUrlLower.contains(".srt") || subUrlLower.contains("format=srt")) {
+                                mime = androidx.media3.common.MimeTypes.APPLICATION_SUBRIP;
+                            } else if (subUrlLower.contains(".ass") || subUrlLower.contains(".ssa")) {
+                                mime = "text/x-ssa";
+                            } else if (subUrlLower.contains(".vtt") || subUrlLower.contains("format=vtt")) {
+                                mime = androidx.media3.common.MimeTypes.TEXT_VTT;
+                            } else {
+                                // Unknown extension — try VTT first (most common from SubDL/OpenSubs)
+                                mime = androidx.media3.common.MimeTypes.TEXT_VTT;
+                            }
+                            // Only set DEFAULT flag on preferred language
+                            int flags = (defIdx >= 0 && i == defIdx)
+                                ? androidx.media3.common.C.SELECTION_FLAG_DEFAULT : 0;
                             subConfigs.add(new MediaItem.SubtitleConfiguration.Builder(
-                                android.net.Uri.parse(s.optString("url", "")))
-                                .setMimeType(androidx.media3.common.MimeTypes.TEXT_VTT)
-                                .setLanguage("en")
-                                .setLabel("English")
-                                .setSelectionFlags(androidx.media3.common.C.SELECTION_FLAG_DEFAULT)
+                                android.net.Uri.parse(subUrl))
+                                .setMimeType(mime)
+                                .setLanguage(subLang)
+                                .setLabel(subLabel)
+                                .setSelectionFlags(flags)
                                 .build());
-                            break;
                         }
                     }
                     if (!subConfigs.isEmpty()) {
                         mediaItemBuilder.setSubtitleConfigurations(subConfigs);
-                        android.util.Log.d("Yastream", "OpenSubs loaded: " + subsArr.getJSONObject(0).optString("url"));
                     }
                 }
+            } catch (Exception e) {
+                android.util.Log.w("YastreamPlayer", "Subtitle parse error: " + e.getMessage());
             }
-        } catch (Exception subEx) {
-            android.util.Log.w("Yastream", "OpenSubs fetch failed: " + subEx.getMessage());
         }
 
+        HlsMediaSource mediaSource = new HlsMediaSource.Factory(dataSourceFactory)
+            .createMediaSource(mediaItemBuilder.build());
 
         exoPlayer = new ExoPlayer.Builder(this).build();
 
+        // Auto-select Tagalog subtitles, fall back to English
+        exoPlayer.setTrackSelectionParameters(
+            exoPlayer.getTrackSelectionParameters().buildUpon()
+                .setPreferredTextLanguages("tgl", "eng")
+                .setPreferredTextRoleFlags(androidx.media3.common.C.ROLE_FLAG_SUBTITLE)
+                .build());
 
         if (playerView == null) {
             android.util.Log.e("YastreamPlayer", "initExoPlayer: playerView is null — cannot set player");
