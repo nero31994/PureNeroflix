@@ -879,4 +879,52 @@ if (!activityDestroyed) runOnUiThread(() -> {
             | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
             | View.SYSTEM_UI_FLAG_FULLSCREEN);
     }
+
+    private void seekRelative(long offsetMs) {
+        if (exoPlayer == null) return;
+        exoPlayer.seekTo(Math.max(0, exoPlayer.getCurrentPosition() + offsetMs));
+    }
+
+    private void updatePlayPauseIcon() {
+        if (playPauseBtn == null || exoPlayer == null) return;
+        playPauseBtn.setText(exoPlayer.isPlaying() ? "⏸" : "▶");
+    }
+
+    private void showTopBar() {
+        if (topBar != null) {
+            topBar.setVisibility(View.VISIBLE);
+            topBar.animate().alpha(1f).setDuration(200).start();
+            topBarVisible = true;
+        }
+        View b = findViewById(R.id.yastream_bottom_bar);
+        if (b != null) { b.setVisibility(View.VISIBLE); b.animate().alpha(1f).setDuration(200).start(); }
+        scheduleHideTopBar();
+    }
+
+    private static String formatTime(long ms) {
+        long s = ms/1000, h = s/3600, m = (s%3600)/60; s = s%60;
+        return h > 0 ? String.format(java.util.Locale.US,"%d:%02d:%02d",h,m,s)
+                     : String.format(java.util.Locale.US,"%d:%02d",m,s);
+    }
+
+    private final Runnable progressRunnable = new Runnable() {
+        @Override public void run() {
+            if (exoPlayer != null && !seekBarTracking) {
+                long pos = exoPlayer.getCurrentPosition(), dur = exoPlayer.getDuration();
+                if (dur > 0) {
+                    if (seekBar     != null) seekBar.setProgress((int)(pos*1000/dur));
+                    if (timeCurrent != null) timeCurrent.setText(formatTime(pos));
+                    if (timeTotal   != null) timeTotal.setText(formatTime(dur));
+                }
+                updatePlayPauseIcon();
+            }
+            progressHandler.postDelayed(this, 500);
+        }
+    };
+
+    private void startProgressUpdater() {
+        progressHandler.removeCallbacks(progressRunnable);
+        progressHandler.post(progressRunnable);
+    }
+
 }
