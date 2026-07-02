@@ -466,12 +466,14 @@ public class PlayerActivity extends BaseTvActivity {
                         while ((ln = br2.readLine()) != null) sb2.append(ln);
                         org.json.JSONArray arr = new org.json.JSONObject(sb2.toString()).optJSONArray("subtitles");
                         if (arr != null) {
+                            // Pick English subtitle with highest "g" (rating) score
+                            int bestG = -1;
                             for (int si = 0; si < arr.length(); si++) {
                                 org.json.JSONObject s = arr.getJSONObject(si);
                                 if ("eng".equals(s.optString("lang", ""))) {
-                                    subUrl = s.optString("url", "");
-                                    android.util.Log.d("StreamSniff", "OpenSubs found: " + subUrl);
-                                    break;
+                                    int g = 0;
+                                    try { g = Integer.parseInt(s.optString("g", "0")); } catch (Exception ignored) {}
+                                    if (g > bestG) { bestG = g; subUrl = s.optString("url", ""); }
                                 }
                             }
                         }

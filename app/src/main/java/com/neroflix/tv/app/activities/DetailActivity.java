@@ -399,11 +399,14 @@ public class DetailActivity extends BaseTvActivity {
                         while ((ln = br2.readLine()) != null) sb2.append(ln);
                         org.json.JSONArray arr = new org.json.JSONObject(sb2.toString()).optJSONArray("subtitles");
                         if (arr != null) {
+                            // Pick English subtitle with highest "g" (rating) score
+                            int bestG = -1;
                             for (int si = 0; si < arr.length(); si++) {
                                 org.json.JSONObject s = arr.getJSONObject(si);
                                 if ("eng".equals(s.optString("lang", ""))) {
-                                    subtitleUrl = s.optString("url", "");
-                                    break;
+                                    int g = 0;
+                                    try { g = Integer.parseInt(s.optString("g", "0")); } catch (Exception ignored) {}
+                                    if (g > bestG) { bestG = g; subtitleUrl = s.optString("url", ""); }
                                 }
                             }
                         }
