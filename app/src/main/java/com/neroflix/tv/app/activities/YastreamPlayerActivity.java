@@ -607,7 +607,7 @@ if (!activityDestroyed) runOnUiThread(() -> {
                                 if ("eng".equals(s.optString("lang", ""))) {
                                     subtitleUrl = s.optString("url", "");
                                     android.util.Log.d("Yastream", "Got subtitle: " + subtitleUrl);
-                                    runOnUiThread(() -> android.widget.Toast.makeText(YastreamPlayerActivity.this, "SUB: " + subtitleUrl, android.widget.Toast.LENGTH_LONG).show());
+                                    final String toastUrl = subtitleUrl; runOnUiThread(() -> android.widget.Toast.makeText(YastreamPlayerActivity.this, "SUB: " + toastUrl, android.widget.Toast.LENGTH_LONG).show());
                                     break;
                                 }
                             }
