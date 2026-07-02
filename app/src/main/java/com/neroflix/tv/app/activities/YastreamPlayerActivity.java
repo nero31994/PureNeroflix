@@ -640,6 +640,8 @@ if (!activityDestroyed) runOnUiThread(() -> {
             android.util.Log.d("Yastream", "No subtitle — HLS only");
         }
 
+        exoPlayer = new ExoPlayer.Builder(this).build();
+        playerView.setPlayer(exoPlayer);
         exoPlayer.setMediaSource(finalSource);
         exoPlayer.prepare();
         exoPlayer.setPlayWhenReady(true);
