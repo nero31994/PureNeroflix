@@ -391,39 +391,50 @@ public class YastreamPlayerActivity extends BaseTvActivity {
                 }
 
 
-                // 3b. Fallback: fetch English subtitles from SubDL using TMDB ID
+                // 3b. Fallback: fetch English subtitles from OpenSubtitles via Stremio
                 if (subtitles == null || subtitles.length() == 0) {
                     try {
-                        String subType = "movie".equals(mediaType) ? "movie" : "tv";
-                        String subDlUrl = "https://api.subdl.com/api/v1/subtitles"
-                            + "?tmdb_id=" + tmdbId
-                            + "&type=" + subType
-                            + "&languages=en"
-                            + "&subs_per_page=5";
-                        if (!"movie".equals(mediaType) && season > 0 && episode > 0) {
-                            subDlUrl += "&season_number=" + season + "&episode_number=" + episode;
-                        }
-                        android.util.Log.d("Yastream", "SubDL fallback URL: " + subDlUrl);
-                        String subDlResp = fetchUrl(subDlUrl);
-                        org.json.JSONObject subDlJson = new org.json.JSONObject(subDlResp);
-                        org.json.JSONArray subDlArr = subDlJson.optJSONArray("subtitles");
-                        if (subDlArr != null && subDlArr.length() > 0) {
-                            // Pick first result and build a subtitles array in our format
-                            org.json.JSONObject first = subDlArr.getJSONObject(0);
-                            String slugUrl = first.optString("url", "");
-                            if (!slugUrl.isEmpty()) {
-                                // SubDL download URL pattern
-                                String dlUrl = "https://dl.subdl.com" + slugUrl;
-                                org.json.JSONObject subEntry = new org.json.JSONObject();
-                                subEntry.put("url", dlUrl);
-                                subEntry.put("lang", "eng");
+                        // Step 1: get IMDB ID from TMDB
+                        String extType = "movie".equals(mediaType) ? "movie" : "tv";
+                        String extUrl = "https://api.themoviedb.org/3/" + extType + "/" + tmdbId
+                            + "/external_ids?api_key=" + com.neroflix.tv.app.BuildConfig.TMDB_API_KEY;
+                        String extResp = fetchUrl(extUrl);
+                        org.json.JSONObject extJson = new org.json.JSONObject(extResp);
+                        String imdbId = extJson.optString("imdb_id", "");
+                        android.util.Log.d("Yastream", "IMDB ID for fallback subs: " + imdbId);
+
+                        if (!imdbId.isEmpty()) {
+                            // Step 2: fetch subtitles from Stremio OpenSubtitles
+                            String stremioType = "movie".equals(mediaType) ? "movie" : "series";
+                            String stremioId = imdbId;
+                            if (!"movie".equals(mediaType) && season > 0 && episode > 0) {
+                                stremioId += ":" + season + ":" + episode;
+                            }
+                            String subsUrl = "https://opensubtitles-v3.strem.io/subtitles/"
+                                + stremioType + "/" + stremioId + ".json";
+                            android.util.Log.d("Yastream", "OpenSubs fallback URL: " + subsUrl);
+                            String subsResp = fetchUrl(subsUrl);
+                            org.json.JSONObject subsJson = new org.json.JSONObject(subsResp);
+                            org.json.JSONArray subsArr = subsJson.optJSONArray("subtitles");
+                            if (subsArr != null && subsArr.length() > 0) {
                                 subtitles = new org.json.JSONArray();
-                                subtitles.put(subEntry);
-                                android.util.Log.d("Yastream", "SubDL fallback found: " + dlUrl);
+                                // Pick first English subtitle
+                                for (int si = 0; si < subsArr.length(); si++) {
+                                    org.json.JSONObject s = subsArr.getJSONObject(si);
+                                    if ("eng".equals(s.optString("lang", ""))) {
+                                        org.json.JSONObject entry = new org.json.JSONObject();
+                                        entry.put("url", s.optString("url", ""));
+                                        entry.put("lang", "eng");
+                                        subtitles.put(entry);
+                                        android.util.Log.d("Yastream", "OpenSubs fallback found: " + entry.optString("url"));
+                                        break;
+                                    }
+                                }
+                                if (subtitles.length() == 0) subtitles = null;
                             }
                         }
-                    } catch (Exception subDlErr) {
-                        android.util.Log.w("Yastream", "SubDL fallback failed: " + subDlErr.getMessage());
+                    } catch (Exception subFallbackErr) {
+                        android.util.Log.w("Yastream", "OpenSubs fallback failed: " + subFallbackErr.getMessage());
                     }
                 }
 
