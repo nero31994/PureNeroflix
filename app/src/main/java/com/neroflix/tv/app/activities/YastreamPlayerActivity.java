@@ -48,19 +48,6 @@ import java.util.List;
 public class YastreamPlayerActivity extends BaseTvActivity {
 
     // Language code → display name
-    private static final java.util.Map<String, String> LANG_NAMES;
-    static {
-        LANG_NAMES = new java.util.HashMap<>();
-        LANG_NAMES.put("eng", "English");   LANG_NAMES.put("tgl", "Filipino");
-        LANG_NAMES.put("msa", "Malay");     LANG_NAMES.put("ind", "Indonesian");
-        LANG_NAMES.put("tha", "Thai");      LANG_NAMES.put("khm", "Khmer");
-        LANG_NAMES.put("ara", "Arabic");    LANG_NAMES.put("deu", "German");
-        LANG_NAMES.put("fra", "French");    LANG_NAMES.put("spa", "Spanish");
-        LANG_NAMES.put("zho", "Chinese");   LANG_NAMES.put("jpn", "Japanese");
-        LANG_NAMES.put("kor", "Korean");    LANG_NAMES.put("por", "Portuguese");
-        LANG_NAMES.put("ita", "Italian");   LANG_NAMES.put("rus", "Russian");
-        LANG_NAMES.put("vie", "Vietnamese"); LANG_NAMES.put("und", "Unknown");
-    }
 
     private PlayerView  playerView;
     private ExoPlayer   exoPlayer;
@@ -475,75 +462,6 @@ if (!activityDestroyed) runOnUiThread(() -> {
 
     // ── Subtitle picker ───────────────────────────────────────────────────────
 
-    private void showSubtitlePicker() {
-        if (exoPlayer == null) return;
-
-        androidx.media3.common.TrackSelectionParameters currentParams =
-            exoPlayer.getTrackSelectionParameters();
-
-        // Build list of available subtitle tracks
-        androidx.media3.common.Tracks tracks = exoPlayer.getCurrentTracks();
-        java.util.List<String> labels = new ArrayList<>();
-        java.util.List<androidx.media3.common.Tracks.Group> subGroups = new ArrayList<>();
-
-        labels.add("Off");
-        subGroups.add(null);
-
-        for (androidx.media3.common.Tracks.Group group : tracks.getGroups()) {
-            if (group.getType() == androidx.media3.common.C.TRACK_TYPE_TEXT) {
-                for (int i = 0; i < group.length; i++) {
-                    androidx.media3.common.Format fmt = group.getTrackFormat(i);
-                    String lang = fmt.language != null ? fmt.language.toLowerCase() : "und";
-                    String label;
-                    if (fmt.label != null && !fmt.label.isEmpty() && !fmt.label.equals("und") && !fmt.label.equals("Unknown")) {
-                        label = fmt.label;
-                    } else if (LANG_NAMES.containsKey(lang) && !"und".equals(lang)) {
-                        label = LANG_NAMES.get(lang);
-                    } else {
-                        label = "English"; // fallback — no language metadata
-                    
-                        
-                    }
-                    labels.add(label);
-                    subGroups.add(group);
-                }
-            }
-        }
-
-        if (labels.size() <= 1) {
-            android.widget.Toast.makeText(this,
-                "No subtitles available for this stream", android.widget.Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        new android.app.AlertDialog.Builder(this)
-            .setTitle("Subtitles")
-            .setItems(labels.toArray(new String[0]), (d, which) -> {
-                if (which == 0) {
-                    // Turn off subtitles
-                    exoPlayer.setTrackSelectionParameters(
-                        currentParams.buildUpon()
-                            .setIgnoredTextSelectionFlags(
-                                androidx.media3.common.C.SELECTION_FLAG_DEFAULT)
-                            .build());
-                } else {
-                    // Enable selected subtitle track via Tracks.Group override
-                    androidx.media3.common.Tracks.Group selectedGroup = subGroups.get(which);
-                    if (selectedGroup != null) {
-                        exoPlayer.setTrackSelectionParameters(
-                            currentParams.buildUpon()
-                                .clearOverridesOfType(androidx.media3.common.C.TRACK_TYPE_TEXT)
-                                .addOverride(new androidx.media3.common.TrackSelectionOverride(
-                                    selectedGroup.getMediaTrackGroup(),
-                                    java.util.Collections.singletonList(0)))
-                                .setIgnoredTextSelectionFlags(0)
-                                .build());
-                    }
-                }
-            })
-            .setNegativeButton("Cancel", null)
-            .show();
-    }
 
     // ── Stream picker dialog ──────────────────────────────────────────────────
 
