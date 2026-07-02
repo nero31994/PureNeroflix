@@ -272,7 +272,7 @@ public class YastreamPlayerActivity extends BaseTvActivity {
                     try {
                         String stremioId = "tmdb:" + tmdbId;
                         if ("series".equals(mediaType) || "tv".equals(mediaType)) {
-                            stremioSubId += ":" + season + ":" + episode;
+                            stremioId += ":" + season + ":" + episode;
                         }
                         String subsUrl = NEROTIVI + "/subtitles?type="
                             + ("tv".equals(mediaType) ? "series" : mediaType)
