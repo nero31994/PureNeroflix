@@ -589,6 +589,7 @@ if (!activityDestroyed) runOnUiThread(() -> {
             final String finalM3u8 = m3u8Url;
             new Thread(() -> {
                 String subtitleUrl = null;
+                runOnUiThread(() -> android.widget.Toast.makeText(YastreamPlayerActivity.this, "SUB THREAD START tmdbId=" + tmdbId, android.widget.Toast.LENGTH_SHORT).show());
                 try {
                     String extType2 = "movie".equals(mediaType) ? "movie" : "tv";
                     String extUrl2 = "https://api.themoviedb.org/3/" + extType2 + "/" + tmdbId
