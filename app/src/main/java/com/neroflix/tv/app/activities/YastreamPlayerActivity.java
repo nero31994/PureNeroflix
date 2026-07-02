@@ -645,6 +645,39 @@ if (!activityDestroyed) runOnUiThread(() -> {
         exoPlayer.setMediaSource(finalSource);
         exoPlayer.prepare();
         exoPlayer.setPlayWhenReady(true);
+        playerView.setUseController(true);
+        playerView.setControllerAutoShow(true);
+        playerView.setControllerHideOnTouch(true);
+
+        // SubtitleView styling
+        androidx.media3.ui.SubtitleView subView = playerView.getSubtitleView();
+        if (subView != null) {
+            subView.setVisibility(android.view.View.VISIBLE);
+            subView.setUserDefaultStyle();
+            subView.setUserDefaultTextSize();
+            subView.setFixedTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 22);
+            subView.setPadding(0, 0, 0, (int)(16 * getResources().getDisplayMetrics().density));
+        }
+
+        exoPlayer.addListener(new Player.Listener() {
+            @Override public void onPlaybackStateChanged(int state) {
+                switch (state) {
+                    case Player.STATE_BUFFERING: showLoading(true); break;
+                    case Player.STATE_READY: showLoading(false); setStatus(""); break;
+                    case Player.STATE_ENDED: showLoading(false); setStatus("Playback ended"); break;
+                    case Player.STATE_IDLE: showLoading(false); break;
+                }
+            }
+            @Override public void onPlayerError(PlaybackException error) {
+                showLoading(false);
+                if (streamList != null && currentStreamIndex < streamList.length() - 1) {
+                    setStatus("Trying next source...");
+                    playStream(currentStreamIndex + 1);
+                } else {
+                    showError("Playback error: " + error.getMessage());
+                }
+            }
+        });
     }
 
     // ── D-pad ─────────────────────────────────────────────────────────────────
