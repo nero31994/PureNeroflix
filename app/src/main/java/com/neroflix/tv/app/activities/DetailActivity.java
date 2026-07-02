@@ -368,14 +368,64 @@ public class DetailActivity extends BaseTvActivity {
         if ("yastream".equals(serverUrlFormat) || "yastream_onetouchtv".equals(serverUrlFormat)) {
             String title = (movie != null) ? movie.getTitle()
                     : getIntent().getStringExtra("movie_title");
-            Intent intent = new Intent(this, YastreamPlayerActivity.class);
-            intent.putExtra("movie_id",    movieId);
-            intent.putExtra("media_type",  mediaType);
-            intent.putExtra("movie_title", title);
-            intent.putExtra("season",      season);
-            intent.putExtra("episode",     episode);
-            startActivity(intent);
-            overridePendingTransition(R.anim.fade_in, R.anim.fade_out);
+            final String subMediaType = mediaType;
+            final int subTmdbId = movieId;
+            final int subSeason = season;
+            final int subEpisode = episode;
+            final String subTitle = (movie != null) ? movie.getTitle() : getIntent().getStringExtra("movie_title");
+            // Fetch subtitle on background, then launch player
+            new Thread(() -> {
+                String subtitleUrl = null;
+                try {
+                    String extType = "movie".equals(subMediaType) ? "movie" : "tv";
+                    String extUrl = "https://api.themoviedb.org/3/" + extType + "/" + subTmdbId
+                        + "/external_ids?api_key=" + com.neroflix.tv.app.BuildConfig.TMDB_API_KEY;
+                    java.net.HttpURLConnection conn = (java.net.HttpURLConnection) new java.net.URL(extUrl).openConnection();
+                    conn.setConnectTimeout(5000); conn.setReadTimeout(5000);
+                    java.io.BufferedReader br = new java.io.BufferedReader(new java.io.InputStreamReader(conn.getInputStream()));
+                    StringBuilder sb = new StringBuilder(); String ln;
+                    while ((ln = br.readLine()) != null) sb.append(ln);
+                    String imdbId = new org.json.JSONObject(sb.toString()).optString("imdb_id", "");
+                    if (!imdbId.isEmpty()) {
+                        String stType = "movie".equals(subMediaType) ? "movie" : "series";
+                        String stId = imdbId;
+                        if (!"movie".equals(subMediaType) && subSeason > 0 && subEpisode > 0)
+                            stId += ":" + subSeason + ":" + subEpisode;
+                        String stUrl = "https://opensubtitles-v3.strem.io/subtitles/" + stType + "/" + stId + ".json";
+                        java.net.HttpURLConnection c2 = (java.net.HttpURLConnection) new java.net.URL(stUrl).openConnection();
+                        c2.setConnectTimeout(5000); c2.setReadTimeout(5000);
+                        java.io.BufferedReader br2 = new java.io.BufferedReader(new java.io.InputStreamReader(c2.getInputStream()));
+                        StringBuilder sb2 = new StringBuilder();
+                        while ((ln = br2.readLine()) != null) sb2.append(ln);
+                        org.json.JSONArray arr = new org.json.JSONObject(sb2.toString()).optJSONArray("subtitles");
+                        if (arr != null) {
+                            for (int si = 0; si < arr.length(); si++) {
+                                org.json.JSONObject s = arr.getJSONObject(si);
+                                if ("eng".equals(s.optString("lang", ""))) {
+                                    subtitleUrl = s.optString("url", "");
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    android.util.Log.w("Detail", "Subtitle fetch failed: " + e.getMessage());
+                }
+                final String finalSubUrl = subtitleUrl;
+                runOnUiThread(() -> {
+                    Intent intent = new Intent(DetailActivity.this, com.neroflix.tv.app.activities.YastreamPlayerActivity.class);
+                    intent.putExtra("movie_id",       subTmdbId);
+                    intent.putExtra("media_type",     subMediaType);
+                    intent.putExtra("movie_title",    subTitle);
+                    intent.putExtra("season",         subSeason);
+                    intent.putExtra("episode",        subEpisode);
+                    if (finalSubUrl != null && !finalSubUrl.isEmpty())
+                        intent.putExtra("direct_subtitle_url", finalSubUrl);
+                    startActivity(intent);
+                    overridePendingTransition(R.anim.fade_in, R.anim.fade_out);
+                });
+            }).start();
+            return;
             return;
         }
 
