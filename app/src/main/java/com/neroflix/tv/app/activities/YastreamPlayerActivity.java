@@ -485,7 +485,7 @@ if (!activityDestroyed) runOnUiThread(() -> {
         // Build list of available subtitle tracks
         androidx.media3.common.Tracks tracks = exoPlayer.getCurrentTracks();
         java.util.List<String> labels = new ArrayList<>();
-        java.util.List<androidx.media3.common.TrackGroup> subGroups = new ArrayList<>();
+        java.util.List<androidx.media3.common.Tracks.Group> subGroups = new ArrayList<>();
 
         labels.add("Off");
         subGroups.add(null);
@@ -506,7 +506,7 @@ if (!activityDestroyed) runOnUiThread(() -> {
                         
                     }
                     labels.add(label);
-                    subGroups.add(group.getMediaTrackGroup());
+                    subGroups.add(group);
                 }
             }
         }
@@ -528,19 +528,19 @@ if (!activityDestroyed) runOnUiThread(() -> {
                                 androidx.media3.common.C.SELECTION_FLAG_DEFAULT)
                             .build());
                 } else {
-                    // Enable selected subtitle track via direct track group override
-                    androidx.media3.common.TrackGroup selectedGroup = subGroups.get(which);
+                    // Enable selected subtitle track via Tracks.Group override
+                    androidx.media3.common.Tracks.Group selectedGroup = subGroups.get(which);
                     if (selectedGroup != null) {
-                        // Build list of all track indices in this group
-                        java.util.List<Integer> trackIndices = new java.util.ArrayList<>();
-                        for (int ti = 0; ti < selectedGroup.length; ti++) trackIndices.add(ti);
                         exoPlayer.setTrackSelectionParameters(
                             currentParams.buildUpon()
                                 .clearOverridesOfType(androidx.media3.common.C.TRACK_TYPE_TEXT)
-                                .setOverrideForType(new androidx.media3.common.TrackSelectionOverride(selectedGroup, trackIndices))
+                                .addOverride(new androidx.media3.common.TrackSelectionOverride(
+                                    selectedGroup.getMediaTrackGroup(),
+                                    java.util.Collections.singletonList(0)))
                                 .setIgnoredTextSelectionFlags(0)
                                 .build());
                     }
+                }
                 }
             })
             .setNegativeButton("Cancel", null)
