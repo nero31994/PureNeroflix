@@ -85,6 +85,7 @@ public class YastreamPlayerActivity extends BaseTvActivity {
     // Direct play mode — set when launched from PlayerActivity stream sniff
     private boolean directPlayMode       = false;
     private String  directStreamReferrer = "";
+    private String  directSubtitleUrl    = null;
     // Custom controls
     private android.widget.SeekBar  seekBar;
     private android.widget.TextView timeCurrent;

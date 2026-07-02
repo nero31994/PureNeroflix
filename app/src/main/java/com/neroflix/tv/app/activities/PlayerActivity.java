@@ -45,6 +45,8 @@ public class PlayerActivity extends BaseTvActivity {
     // Stream sniffing: set to true once we hand off to ExoPlayer so we
     // don't launch it twice if multiple .m3u8 requests fire together.
     private volatile boolean streamHandedOff = false;
+    private String capturedM3u8Url = null;
+    private String capturedVttUrl  = null;
     // Referrer of the current embed — passed to ExoPlayer so it can send
     // the correct Referer header when fetching the sniffed HLS stream.
     private String currentEmbedReferrer = "";
