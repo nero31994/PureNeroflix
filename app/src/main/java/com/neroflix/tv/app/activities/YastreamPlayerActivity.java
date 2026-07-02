@@ -85,6 +85,14 @@ public class YastreamPlayerActivity extends BaseTvActivity {
     // Direct play mode — set when launched from PlayerActivity stream sniff
     private boolean directPlayMode       = false;
     private String  directStreamReferrer = "";
+    // Custom controls
+    private android.widget.SeekBar  seekBar;
+    private android.widget.TextView timeCurrent;
+    private android.widget.TextView timeTotal;
+    private android.widget.TextView playPauseBtn;
+    private android.widget.TextView bottomBar;
+    private android.os.Handler      progressHandler = new android.os.Handler(android.os.Looper.getMainLooper());
+    private boolean seekBarTracking = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -220,6 +228,48 @@ public class YastreamPlayerActivity extends BaseTvActivity {
         } else {
             android.util.Log.e("YastreamPlayer", "playerView is NULL after setupViews() — layout may not have inflated correctly");
         }
+
+        // Custom controls
+        seekBar     = findViewById(R.id.yastream_seekbar);
+        timeCurrent = findViewById(R.id.yastream_time_current);
+        timeTotal   = findViewById(R.id.yastream_time_total);
+        playPauseBtn = findViewById(R.id.yastream_play_pause);
+
+        if (playPauseBtn != null) {
+            playPauseBtn.setOnClickListener(v -> {
+                if (exoPlayer == null) return;
+                if (exoPlayer.isPlaying()) exoPlayer.pause();
+                else exoPlayer.play();
+                updatePlayPauseIcon();
+            });
+        }
+
+        android.widget.TextView rewindBtn = findViewById(R.id.yastream_rewind);
+        if (rewindBtn != null) rewindBtn.setOnClickListener(v -> seekRelative(-5000));
+
+        android.widget.TextView forwardBtn = findViewById(R.id.yastream_forward);
+        if (forwardBtn != null) forwardBtn.setOnClickListener(v -> seekRelative(5000));
+
+        android.widget.TextView skipBackBtn = findViewById(R.id.yastream_skip_back);
+        if (skipBackBtn != null) skipBackBtn.setOnClickListener(v -> seekRelative(-10000));
+
+        android.widget.TextView skipFwdBtn = findViewById(R.id.yastream_skip_forward);
+        if (skipFwdBtn != null) skipFwdBtn.setOnClickListener(v -> seekRelative(10000));
+
+        if (seekBar != null) {
+            seekBar.setOnSeekBarChangeListener(new android.widget.SeekBar.OnSeekBarChangeListener() {
+                @Override public void onProgressChanged(android.widget.SeekBar sb, int p, boolean fromUser) {
+                    if (fromUser && exoPlayer != null) {
+                        long duration = exoPlayer.getDuration();
+                        if (duration > 0) exoPlayer.seekTo((long)(p / 1000.0 * duration));
+                    }
+                }
+                @Override public void onStartTrackingTouch(android.widget.SeekBar sb) { seekBarTracking = true; }
+                @Override public void onStopTrackingTouch(android.widget.SeekBar sb) { seekBarTracking = false; }
+            });
+        }
+
+        startProgressUpdater();
 
         // Auto-hide after 3 seconds on start
         scheduleHideTopBar();
@@ -788,6 +838,7 @@ if (!activityDestroyed) runOnUiThread(() -> {
     @Override protected void onPause()   { super.onPause();   if (exoPlayer != null) exoPlayer.pause(); }
     @Override protected void onDestroy() {
         activityDestroyed = true;
+        progressHandler.removeCallbacks(progressRunnable);
         super.onDestroy();
         releasePlayer();
         hideHandler.removeCallbacks(hideTopBar);
