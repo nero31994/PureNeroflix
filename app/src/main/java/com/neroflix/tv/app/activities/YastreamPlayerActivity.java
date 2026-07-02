@@ -585,7 +585,7 @@ if (!activityDestroyed) runOnUiThread(() -> {
             if (m3u8Url.isEmpty()) { showError("Invalid stream URL."); return; }
 
             // Use subtitle pre-fetched by DetailActivity
-            if (!activityDestroyed) runOnUiThread(() -> initExoPlayer(finalM3u8, directSubtitleUrl));
+            if (!activityDestroyed) runOnUiThread(() -> initExoPlayer(m3u8Url, directSubtitleUrl));
         } catch (Exception e) {
             showError("Failed to load stream: " + e.getMessage());
         }
