@@ -198,7 +198,7 @@ public class YastreamPlayerActivity extends BaseTvActivity {
         errorMsg    = findViewById(R.id.yastream_error_msg);
         topBar      = findViewById(R.id.yastream_top_bar);
 
-        titleText.setText(movieTitle);
+        if (titleText != null) titleText.setText(movieTitle);
 
         View changeSourceBtn = findViewById(R.id.yastream_change_source);
         if (changeSourceBtn != null)
