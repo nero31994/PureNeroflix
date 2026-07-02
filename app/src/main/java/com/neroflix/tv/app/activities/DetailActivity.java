@@ -410,6 +410,7 @@ public class DetailActivity extends BaseTvActivity {
                     }
                 } catch (Exception e) {
                     android.util.Log.w("Detail", "Subtitle fetch failed: " + e.getMessage());
+                final String errMsg = e.getMessage(); runOnUiThread(() -> android.widget.Toast.makeText(DetailActivity.this, "SUB FAIL: " + errMsg, android.widget.Toast.LENGTH_LONG).show());
                 }
                 final String finalSubUrl = subtitleUrl;
                 runOnUiThread(() -> {
@@ -419,6 +420,7 @@ public class DetailActivity extends BaseTvActivity {
                     intent.putExtra("movie_title",    subTitle);
                     intent.putExtra("season",         subSeason);
                     intent.putExtra("episode",        subEpisode);
+                    runOnUiThread(() -> android.widget.Toast.makeText(DetailActivity.this, "SUB URL: " + finalSubUrl, android.widget.Toast.LENGTH_LONG).show());
                     if (finalSubUrl != null && !finalSubUrl.isEmpty())
                         intent.putExtra("direct_subtitle_url", finalSubUrl);
                     startActivity(intent);
