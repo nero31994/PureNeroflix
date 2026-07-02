@@ -497,9 +497,6 @@ public class PlayerActivity extends BaseTvActivity {
             });
         }).start();
     }
-        startActivity(intent);
-        finish();
-    }
 
     @Override
     protected boolean onTvKeyDown(int keyCode, KeyEvent event) {
