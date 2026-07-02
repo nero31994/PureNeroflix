@@ -541,7 +541,6 @@ if (!activityDestroyed) runOnUiThread(() -> {
                                 .build());
                     }
                 }
-                }
             })
             .setNegativeButton("Cancel", null)
             .show();
