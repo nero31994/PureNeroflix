@@ -607,6 +607,7 @@ if (!activityDestroyed) runOnUiThread(() -> {
                                 if ("eng".equals(s.optString("lang", ""))) {
                                     subtitleUrl = s.optString("url", "");
                                     android.util.Log.d("Yastream", "Got subtitle: " + subtitleUrl);
+                                    runOnUiThread(() -> android.widget.Toast.makeText(YastreamPlayerActivity.this, "SUB: " + subtitleUrl, android.widget.Toast.LENGTH_LONG).show());
                                     break;
                                 }
                             }
@@ -614,6 +615,7 @@ if (!activityDestroyed) runOnUiThread(() -> {
                     }
                 } catch (Exception e) {
                     android.util.Log.w("Yastream", "Subtitle pre-fetch failed: " + e.getMessage());
+                    runOnUiThread(() -> android.widget.Toast.makeText(YastreamPlayerActivity.this, "SUB FAIL: " + e.getMessage(), android.widget.Toast.LENGTH_LONG).show());
                 }
                 final String finalSubUrl = subtitleUrl;
                 if (!activityDestroyed) runOnUiThread(() -> initExoPlayer(finalM3u8, finalSubUrl));
@@ -662,6 +664,7 @@ if (!activityDestroyed) runOnUiThread(() -> {
                     .setSelectionFlags(androidx.media3.common.C.SELECTION_FLAG_DEFAULT)
                     .build()));
             android.util.Log.d("Yastream", "Subtitle applied: " + externalSubUrl);
+            runOnUiThread(() -> android.widget.Toast.makeText(YastreamPlayerActivity.this, "APPLIED: " + externalSubUrl, android.widget.Toast.LENGTH_LONG).show());
         }
 
         HlsMediaSource mediaSource = new HlsMediaSource.Factory(dataSourceFactory)
