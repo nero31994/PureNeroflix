@@ -387,26 +387,32 @@ public class DetailActivity extends BaseTvActivity {
                     while ((ln = br.readLine()) != null) sb.append(ln);
                     String imdbId = new org.json.JSONObject(sb.toString()).optString("imdb_id", "");
                     if (!imdbId.isEmpty()) {
-                        String stType = "movie".equals(subMediaType) ? "movie" : "series";
-                        String stId = imdbId;
+                        String yasType = "movie".equals(subMediaType) ? "movie" : "series";
+                        String yasId = imdbId;
                         if (!"movie".equals(subMediaType) && subSeason > 0 && subEpisode > 0)
-                            stId += ":" + subSeason + ":" + subEpisode;
-                        String stUrl = "https://opensubtitles-v3.strem.io/subtitles/" + stType + "/" + stId + ".json";
-                        java.net.HttpURLConnection c2 = (java.net.HttpURLConnection) new java.net.URL(stUrl).openConnection();
-                        c2.setConnectTimeout(5000); c2.setReadTimeout(5000);
+                            yasId += ":" + subSeason + ":" + subEpisode;
+                        String yasConfig = "eyJjYXRhbG9ncyI6WyJraXNza2guc2VyaWVzLktvcmVhbiIsImtpc3NraC5tb3ZpZS5Lb3JlYW4iXSwiY2F0YWxvZyI6WyJraXNza2giXSwic3RyZWFtIjpbImtpc3NraCJdLCJuc2Z3IjpmYWxzZSwiaW5mbyI6ZmFsc2UsInBvc3RlciI6ImVyZGIiLCJtZnBVcmwiOiIiLCJ0YktleSI6IiIsIm1mcFBhc3MiOiIifQ==";
+                        String yasUrl = "https://yastream.tamthai.de/subtitles/" + yasType + "/" + yasId + ".json?config=" + yasConfig;
+                        java.net.HttpURLConnection c2 = (java.net.HttpURLConnection) new java.net.URL(yasUrl).openConnection();
+                        c2.setConnectTimeout(8000); c2.setReadTimeout(8000);
                         java.io.BufferedReader br2 = new java.io.BufferedReader(new java.io.InputStreamReader(c2.getInputStream()));
                         StringBuilder sb2 = new StringBuilder();
                         while ((ln = br2.readLine()) != null) sb2.append(ln);
                         org.json.JSONArray arr = new org.json.JSONObject(sb2.toString()).optJSONArray("subtitles");
                         if (arr != null) {
-                            // Pick English subtitle with highest "g" (rating) score
-                            int bestG = -1;
+                            // Prefer tgl (Filipino), fallback to eng
                             for (int si = 0; si < arr.length(); si++) {
                                 org.json.JSONObject s = arr.getJSONObject(si);
-                                if ("eng".equals(s.optString("lang", ""))) {
-                                    int g = 0;
-                                    try { g = Integer.parseInt(s.optString("g", "0")); } catch (Exception ignored) {}
-                                    if (g > bestG) { bestG = g; subtitleUrl = s.optString("url", ""); }
+                                if ("tgl".equals(s.optString("lang", ""))) {
+                                    subtitleUrl = s.optString("url", ""); break;
+                                }
+                            }
+                            if (subtitleUrl == null || subtitleUrl.isEmpty()) {
+                                for (int si = 0; si < arr.length(); si++) {
+                                    org.json.JSONObject s = arr.getJSONObject(si);
+                                    if ("eng".equals(s.optString("lang", ""))) {
+                                        subtitleUrl = s.optString("url", ""); break;
+                                    }
                                 }
                             }
                         }
