@@ -426,7 +426,6 @@ public class DetailActivity extends BaseTvActivity {
                 });
             }).start();
             return;
-            return;
         }
 
         // ── Standard / AnyEmbed servers: WebView PlayerActivity ──────────────
