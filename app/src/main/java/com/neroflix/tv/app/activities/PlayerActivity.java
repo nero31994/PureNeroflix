@@ -437,68 +437,6 @@ public class PlayerActivity extends BaseTvActivity {
 
     /** Called with both stream URL and (optionally) a subtitle URL */
     /** Called with both stream URL and (optionally) a subtitle URL */
-    private void launchExoPlayer(String streamUrl, String vttUrl) {
-        android.util.Log.d("StreamSniff", "Handing off: stream=" + streamUrl
-                + " subtitle=" + (vttUrl != null ? vttUrl : "none"));
-        if (webView != null) webView.stopLoading();
-        final String finalStream = streamUrl;
-        final String finalVtt = vttUrl;
-        // Fetch subtitle from OpenSubtitles if none captured from embed
-        new Thread(() -> {
-            String subUrl = finalVtt;
-            if (subUrl == null || subUrl.isEmpty()) {
-                try {
-                    String extType = "movie".equals(mediaType) ? "movie" : "tv";
-                    String extUrl = "https://api.themoviedb.org/3/" + extType + "/" + movieId
-                        + "/external_ids?api_key=" + com.neroflix.tv.app.BuildConfig.TMDB_API_KEY;
-                    java.net.HttpURLConnection c1 = (java.net.HttpURLConnection) new java.net.URL(extUrl).openConnection();
-                    c1.setConnectTimeout(5000); c1.setReadTimeout(5000);
-                    java.io.BufferedReader br1 = new java.io.BufferedReader(new java.io.InputStreamReader(c1.getInputStream()));
-                    StringBuilder sb1 = new StringBuilder(); String ln;
-                    while ((ln = br1.readLine()) != null) sb1.append(ln);
-                    String imdbId = new org.json.JSONObject(sb1.toString()).optString("imdb_id", "");
-                    if (!imdbId.isEmpty()) {
-                        String stType = "movie".equals(mediaType) ? "movie" : "series";
-                        String stId = imdbId;
-                        if (!"movie".equals(mediaType) && season > 0 && episode > 0)
-                            stId += ":" + season + ":" + episode;
-                        String stUrl = "https://opensubtitles-v3.strem.io/subtitles/" + stType + "/" + stId + ".json";
-                        java.net.HttpURLConnection c2 = (java.net.HttpURLConnection) new java.net.URL(stUrl).openConnection();
-                        c2.setConnectTimeout(5000); c2.setReadTimeout(5000);
-                        java.io.BufferedReader br2 = new java.io.BufferedReader(new java.io.InputStreamReader(c2.getInputStream()));
-                        StringBuilder sb2 = new StringBuilder();
-                        while ((ln = br2.readLine()) != null) sb2.append(ln);
-                        org.json.JSONArray arr = new org.json.JSONObject(sb2.toString()).optJSONArray("subtitles");
-                        if (arr != null) {
-                            for (int si = 0; si < arr.length(); si++) {
-                                org.json.JSONObject s = arr.getJSONObject(si);
-                                if ("eng".equals(s.optString("lang", ""))) {
-                                    subUrl = s.optString("url", "");
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                } catch (Exception e) {
-                    android.util.Log.w("StreamSniff", "Subtitle fetch failed: " + e.getMessage());
-                }
-            }
-            final String finalSubUrl = subUrl;
-            runOnUiThread(() -> {
-                Intent intent = new Intent(PlayerActivity.this, YastreamPlayerActivity.class);
-                intent.putExtra("movie_id",               movieId);
-                intent.putExtra("media_type",             mediaType);
-                intent.putExtra("movie_title",            movieTitle);
-                intent.putExtra("season",                 season);
-                intent.putExtra("episode",                episode);
-                intent.putExtra("direct_stream_url",      finalStream);
-                intent.putExtra("direct_stream_referrer", currentEmbedReferrer);
-                if (finalSubUrl != null && !finalSubUrl.isEmpty())
-                    intent.putExtra("direct_subtitle_url", finalSubUrl);
-                startActivity(intent);
-                finish();
-            });
-        }).start();
     }
     private void launchExoPlayer(String streamUrl, String vttUrl) {
         android.util.Log.d("StreamSniff", "Handing off: stream=" + streamUrl
