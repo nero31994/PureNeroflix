@@ -697,9 +697,7 @@ if (!activityDestroyed) runOnUiThread(() -> {
             return;
         }
         playerView.setPlayer(exoPlayer);
-        playerView.setUseController(true);
-        playerView.setControllerAutoShow(true);
-        playerView.setControllerHideOnTouch(true);
+        playerView.setUseController(false);
 
         // ── TV subtitle styling ──────────────────────────────────────────
         androidx.media3.ui.SubtitleView subView = playerView.getSubtitleView();
