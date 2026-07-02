@@ -390,6 +390,43 @@ public class YastreamPlayerActivity extends BaseTvActivity {
                     }
                 }
 
+
+                // 3b. Fallback: fetch English subtitles from SubDL using TMDB ID
+                if (subtitles == null || subtitles.length() == 0) {
+                    try {
+                        String subType = "movie".equals(mediaType) ? "movie" : "tv";
+                        String subDlUrl = "https://api.subdl.com/api/v1/subtitles"
+                            + "?tmdb_id=" + tmdbId
+                            + "&type=" + subType
+                            + "&languages=en"
+                            + "&subs_per_page=5";
+                        if (!"movie".equals(mediaType) && season > 0 && episode > 0) {
+                            subDlUrl += "&season_number=" + season + "&episode_number=" + episode;
+                        }
+                        android.util.Log.d("Yastream", "SubDL fallback URL: " + subDlUrl);
+                        String subDlResp = fetchUrl(subDlUrl);
+                        org.json.JSONObject subDlJson = new org.json.JSONObject(subDlResp);
+                        org.json.JSONArray subDlArr = subDlJson.optJSONArray("subtitles");
+                        if (subDlArr != null && subDlArr.length() > 0) {
+                            // Pick first result and build a subtitles array in our format
+                            org.json.JSONObject first = subDlArr.getJSONObject(0);
+                            String slugUrl = first.optString("url", "");
+                            if (!slugUrl.isEmpty()) {
+                                // SubDL download URL pattern
+                                String dlUrl = "https://dl.subdl.com" + slugUrl;
+                                org.json.JSONObject subEntry = new org.json.JSONObject();
+                                subEntry.put("url", dlUrl);
+                                subEntry.put("lang", "eng");
+                                subtitles = new org.json.JSONArray();
+                                subtitles.put(subEntry);
+                                android.util.Log.d("Yastream", "SubDL fallback found: " + dlUrl);
+                            }
+                        }
+                    } catch (Exception subDlErr) {
+                        android.util.Log.w("Yastream", "SubDL fallback failed: " + subDlErr.getMessage());
+                    }
+                }
+
                 // 4. Inject subtitles into all stream objects for the player
                 if (subtitles != null && subtitles.length() > 0) {
                     for (int i = 0; i < streams.length(); i++) {
