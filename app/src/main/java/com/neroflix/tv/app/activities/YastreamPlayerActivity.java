@@ -584,43 +584,8 @@ if (!activityDestroyed) runOnUiThread(() -> {
             String m3u8Url     = stream.optString("url", "");
             if (m3u8Url.isEmpty()) { showError("Invalid stream URL."); return; }
 
-            // subtitles are read inside initExoPlayer from currentStreamIndex
-            // Fetch subtitles on background thread, then init player
-            final String finalM3u8 = m3u8Url;
-            new Thread(() -> {
-                String subtitleUrl = null;
-                runOnUiThread(() -> android.widget.Toast.makeText(YastreamPlayerActivity.this, "SUB THREAD START tmdbId=" + tmdbId, android.widget.Toast.LENGTH_SHORT).show());
-                try {
-                    String extType2 = "movie".equals(mediaType) ? "movie" : "tv";
-                    String extUrl2 = "https://api.themoviedb.org/3/" + extType2 + "/" + tmdbId
-                        + "/external_ids?api_key=" + com.neroflix.tv.app.BuildConfig.TMDB_API_KEY;
-                    String imdbId2 = new org.json.JSONObject(fetchUrl(extUrl2)).optString("imdb_id", "");
-                    if (!imdbId2.isEmpty()) {
-                        String stType = "movie".equals(mediaType) ? "movie" : "series";
-                        String stId = imdbId2;
-                        if (!"movie".equals(mediaType) && season > 0 && episode > 0)
-                            stId += ":" + season + ":" + episode;
-                        String stUrl = "https://opensubtitles-v3.strem.io/subtitles/" + stType + "/" + stId + ".json";
-                        org.json.JSONArray arr = new org.json.JSONObject(fetchUrl(stUrl)).optJSONArray("subtitles");
-                        if (arr != null) {
-                            for (int si = 0; si < arr.length(); si++) {
-                                org.json.JSONObject s = arr.getJSONObject(si);
-                                if ("eng".equals(s.optString("lang", ""))) {
-                                    subtitleUrl = s.optString("url", "");
-                                    android.util.Log.d("Yastream", "Got subtitle: " + subtitleUrl);
-                                    final String toastUrl = subtitleUrl; runOnUiThread(() -> android.widget.Toast.makeText(YastreamPlayerActivity.this, "SUB: " + toastUrl, android.widget.Toast.LENGTH_LONG).show());
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                } catch (Exception e) {
-                    android.util.Log.w("Yastream", "Subtitle pre-fetch failed: " + e.getMessage());
-                    runOnUiThread(() -> android.widget.Toast.makeText(YastreamPlayerActivity.this, "SUB FAIL: " + e.getMessage(), android.widget.Toast.LENGTH_LONG).show());
-                }
-                final String finalSubUrl = subtitleUrl;
-                if (!activityDestroyed) runOnUiThread(() -> initExoPlayer(finalM3u8, finalSubUrl));
-            }).start();
+            // Use subtitle pre-fetched by DetailActivity
+            if (!activityDestroyed) runOnUiThread(() -> initExoPlayer(finalM3u8, directSubtitleUrl));
         } catch (Exception e) {
             showError("Failed to load stream: " + e.getMessage());
         }
