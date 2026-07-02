@@ -531,9 +531,13 @@ if (!activityDestroyed) runOnUiThread(() -> {
                     // Enable selected subtitle track via direct track group override
                     androidx.media3.common.TrackGroup selectedGroup = subGroups.get(which);
                     if (selectedGroup != null) {
+                        // Build list of all track indices in this group
+                        java.util.List<Integer> trackIndices = new java.util.ArrayList<>();
+                        for (int ti = 0; ti < selectedGroup.length; ti++) trackIndices.add(ti);
                         exoPlayer.setTrackSelectionParameters(
                             currentParams.buildUpon()
-                                .setOverrideForType(new androidx.media3.common.TrackSelectionOverride(selectedGroup, 0))
+                                .clearOverridesOfType(androidx.media3.common.C.TRACK_TYPE_TEXT)
+                                .setOverrideForType(new androidx.media3.common.TrackSelectionOverride(selectedGroup, trackIndices))
                                 .setIgnoredTextSelectionFlags(0)
                                 .build());
                     }
