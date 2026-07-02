@@ -496,14 +496,14 @@ if (!activityDestroyed) runOnUiThread(() -> {
                     androidx.media3.common.Format fmt = group.getTrackFormat(i);
                     String lang = fmt.language != null ? fmt.language.toLowerCase() : "und";
                     String label;
-                    if (fmt.label != null && !fmt.label.isEmpty() && !fmt.label.equals("und")) {
+                    if (fmt.label != null && !fmt.label.isEmpty() && !fmt.label.equals("und") && !fmt.label.equals("Unknown")) {
                         label = fmt.label;
-                    } else if (LANG_NAMES.containsKey(lang)) {
+                    } else if (LANG_NAMES.containsKey(lang) && !"und".equals(lang)) {
                         label = LANG_NAMES.get(lang);
-                    } else if ("und".equals(lang)) {
-                        label = "English"; // KissKH embedded track has no metadata, default to English
                     } else {
-                        label = lang.toUpperCase();
+                        label = "English"; // fallback — no language metadata
+                    
+                        
                     }
                     labels.add(label);
                     subGroups.add(group.getMediaTrackGroup());
