@@ -262,7 +262,9 @@ public class PlayerActivity extends BaseTvActivity {
             finish();
             return;
         }
-        streamHandedOff = false; // reset for each new server attempt
+        streamHandedOff  = false; // reset for each new server attempt
+        capturedM3u8Url  = null;
+        capturedVttUrl   = null;
         loadingOverlay.setVisibility(View.VISIBLE);
         boolean isTV = "tv".equals(mediaType);
         String embedUrl;
@@ -426,26 +428,31 @@ public class PlayerActivity extends BaseTvActivity {
      * with HLS support, subtitle handling, and proper TV UI — reusing
      * it avoids duplicating all that setup here.
      */
+    /** Called with just the stream URL (no subtitle captured within timeout) */
     private void launchExoPlayer(String streamUrl) {
-        android.util.Log.d("StreamSniff", "Handing off to ExoPlayer: " + streamUrl);
+        launchExoPlayer(streamUrl, null);
+    }
 
-        // Stop the WebView immediately — no point loading further
+    /** Called with both stream URL and (optionally) a subtitle URL */
+    private void launchExoPlayer(String streamUrl, String vttUrl) {
+        android.util.Log.d("StreamSniff", "Handing off: stream=" + streamUrl
+            + " subtitle=" + (vttUrl != null ? vttUrl : "none"));
+
         if (webView != null) webView.stopLoading();
 
         Intent intent = new Intent(this, YastreamPlayerActivity.class);
-        intent.putExtra("movie_id",       movieId);
-        intent.putExtra("media_type",     mediaType);
-        intent.putExtra("movie_title",    movieTitle);
-        intent.putExtra("season",         season);
-        intent.putExtra("episode",        episode);
-        // Pass the direct stream URL — YastreamPlayerActivity checks this
-        // extra and plays it directly, skipping the yastream API fetch.
-        intent.putExtra("direct_stream_url",  streamUrl);
+        intent.putExtra("movie_id",               movieId);
+        intent.putExtra("media_type",             mediaType);
+        intent.putExtra("movie_title",            movieTitle);
+        intent.putExtra("season",                 season);
+        intent.putExtra("episode",                episode);
+        intent.putExtra("direct_stream_url",      streamUrl);
         intent.putExtra("direct_stream_referrer", currentEmbedReferrer);
+        if (vttUrl != null && !vttUrl.isEmpty()) {
+            intent.putExtra("direct_subtitle_url", vttUrl);
+            android.util.Log.d("StreamSniff", "Subtitle URL passed to ExoPlayer");
+        }
         startActivity(intent);
-        // Finish PlayerActivity so the back stack is clean — pressing Back
-        // from YastreamPlayerActivity returns to DetailActivity (server picker)
-        // instead of briefly showing the black WebView behind it.
         finish();
     }
 

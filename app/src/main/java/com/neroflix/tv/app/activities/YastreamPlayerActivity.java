@@ -114,9 +114,13 @@ public class YastreamPlayerActivity extends BaseTvActivity {
         // setContentView + setupViews so playerView is not null.
         String directUrl      = getIntent().getStringExtra("direct_stream_url");
         String directReferrer = getIntent().getStringExtra("direct_stream_referrer");
+        String directSubtitle = getIntent().getStringExtra("direct_subtitle_url");
         if (directUrl != null && !directUrl.isEmpty()) {
             directPlayMode = true;
             directStreamReferrer = directReferrer != null ? directReferrer : "";
+            if (directSubtitle != null && !directSubtitle.isEmpty()) {
+                directSubtitleUrl = directSubtitle;
+            }
         }
 
         if (movieTitle == null) movieTitle = "Now Playing";
