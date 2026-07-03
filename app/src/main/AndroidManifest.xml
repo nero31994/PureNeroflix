@@ -179,6 +179,7 @@
             android:exported="false"
             android:configChanges="orientation|screenSize|keyboardHidden"
             android:screenOrientation="landscape" />
+        <activity android:name=".activities.DonateActivity" android:theme="@style/Theme.AppCompat.NoActionBar" />
     </application>
 
 </manifest>
