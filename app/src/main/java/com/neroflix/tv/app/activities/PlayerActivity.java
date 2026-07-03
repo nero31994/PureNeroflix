@@ -118,9 +118,7 @@ public class PlayerActivity extends BaseTvActivity {
         settings.setUseWideViewPort(true);
         settings.setCacheMode(WebSettings.LOAD_DEFAULT);
         trimWebViewCacheIfLarge();
-        settings.setUserAgentString(
-            "Mozilla/5.0 (Linux; Android 14; Haier TV) AppleWebKit/537.36 "
-            + "(KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36");
+        settings.setUserAgentString(android.webkit.WebSettings.getDefaultUserAgent(this));
 
         // Avoid forcing hardware layer — many budget Android TV GPUs
         // (Allwinner/Amlogic low-end SoCs) have broken WebView hardware
