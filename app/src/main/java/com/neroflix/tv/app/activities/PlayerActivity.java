@@ -128,6 +128,23 @@ public class PlayerActivity extends BaseTvActivity {
         webView.setScrollBarStyle(View.SCROLLBARS_INSIDE_OVERLAY);
         webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
 
+        // JS interface — receives stream URLs captured by injected JS hooks
+        webView.addJavascriptInterface(new Object() {
+            @android.webkit.JavascriptInterface
+            public void onStreamUrl(String url) {
+                if (streamHandedOff) return;
+                String lower = url.toLowerCase();
+                if (!lower.contains(".m3u8") && !lower.contains("playlist") && !lower.contains("master")) return;
+                streamHandedOff = true;
+                android.util.Log.d("StreamSniff", "JS hook captured: " + url);
+                new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
+                    if (!isFinishing() && !isDestroyed()) {
+                        launchExoPlayer(url);
+                    }
+                });
+            }
+        }, "Android");
+
         webView.setWebViewClient(new WebViewClient() {
 
             @Override
@@ -191,16 +208,50 @@ public class PlayerActivity extends BaseTvActivity {
                     "window.open=function(){return null;};" +
                     "window.alert=function(){};" +
                     "window.confirm=function(){return true;};" +
-                    // Force autoplay — clicks any play button immediately
+                    // ── JS injection: hook XHR + fetch + HLS.js to capture m3u8 ──
+                    "(function(){" +
+                    "  function capture(u){" +
+                    "    if(!u||typeof u!=='string')return;" +
+                    "    var l=u.toLowerCase();" +
+                    "    if((l.indexOf('.m3u8')>=0||l.indexOf('playlist')>=0||l.indexOf('master')>=0)&&l.indexOf('http')===0){" +
+                    "      Android.onStreamUrl(u);" +
+                    "    }" +
+                    "  }" +
+                    // Hook XMLHttpRequest
+                    "  var oxhr=window.XMLHttpRequest;" +
+                    "  window.XMLHttpRequest=function(){" +
+                    "    var x=new oxhr();" +
+                    "    var oopen=x.open.bind(x);" +
+                    "    x.open=function(m,u){capture(u);return oopen(m,u);};" +
+                    "    return x;" +
+                    "  };" +
+                    // Hook fetch
+                    "  var ofetch=window.fetch;" +
+                    "  window.fetch=function(u,o){" +
+                    "    capture(typeof u==='string'?u:(u&&u.url?u.url:''));" +
+                    "    return ofetch(u,o);" +
+                    "  };" +
+                    // Hook HLS.js loader
+                    "  var oint=setInterval(function(){" +
+                    "    if(window.Hls){" +
+                    "      var oh=window.Hls.DefaultConfig.loader;" +
+                    "      function PatchedLoader(c){oh.call(this,c);}" +
+                    "      PatchedLoader.prototype=Object.create(oh.prototype);" +
+                    "      PatchedLoader.prototype.load=function(ctx,cfg,cb){" +
+                    "        capture(ctx.url);" +
+                    "        oh.prototype.load.call(this,ctx,cfg,cb);" +
+                    "      };" +
+                    "      window.Hls.DefaultConfig.loader=PatchedLoader;" +
+                    "      clearInterval(oint);" +
+                    "    }" +
+                    "  },300);" +
+                    "})();" +
+                    // Force autoplay
                     "setTimeout(function(){" +
                     "  var btns=document.querySelectorAll('button,iframe,[role=button],[class*=play]');" +
-                    "  for(var i=0;i<btns.length;i++){" +
-                    "    try{btns[i].click();}catch(e){}" +
-                    "  }" +
+                    "  for(var i=0;i<btns.length;i++){try{btns[i].click();}catch(e){}}" +
                     "  var vids=document.querySelectorAll('video');" +
-                    "  for(var i=0;i<vids.length;i++){" +
-                    "    try{vids[i].play();}catch(e){}" +
-                    "  }" +
+                    "  for(var i=0;i<vids.length;i++){try{vids[i].play();}catch(e){}}" +
                     "},500);", null);
 
                 // Watchdog: on some budget Android TV GPUs, the embed page
