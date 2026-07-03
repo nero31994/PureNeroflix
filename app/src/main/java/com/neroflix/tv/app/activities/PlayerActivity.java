@@ -373,7 +373,11 @@ public class PlayerActivity extends BaseTvActivity {
             + "</script></body></html>";
 
         // Store embed URL as referrer for ExoPlayer stream sniff handoff
-        currentEmbedReferrer = embedUrl;
+        // Use embed domain as referrer so CDN accepts HLS segment requests
+        try {
+            java.net.URL eu = new java.net.URL(embedUrl);
+            currentEmbedReferrer = eu.getProtocol() + "://" + eu.getHost() + "/";
+        } catch (Exception e) { currentEmbedReferrer = embedUrl; }
         webView.loadDataWithBaseURL("https://neroflix.local/", html, "text/html", "UTF-8", null);
     }
     // Server switcher — re-contacts Worker to get fresh server list
