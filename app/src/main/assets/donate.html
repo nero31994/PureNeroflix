@@ -4,71 +4,70 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Donate via GCash</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@300;400;600;700&display=swap" rel="stylesheet">
   <style>
-    :root {
-      --blue: #0077FF;
-      --blue-deep: #0055CC;
-      --blue-light: #4DA3FF;
-      --blue-pale: #E8F3FF;
-      --white: #ffffff;
-      --gray: #8899AA;
-      --text: #1A2840;
-    }
+    :root { --blue: #0077FF; --blue-deep: #0055CC; --blue-pale: #E8F3FF; --gray: #8899AA; --text: #1A2840; }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: 'Sora', sans-serif;
-      background: var(--blue);
-      min-height: 100vh;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      overflow: hidden;
-      position: relative;
-    }
+    body { font-family: 'Sora', sans-serif; background: var(--blue); min-height: 100vh; display: flex; justify-content: center; align-items: center; overflow: hidden; }
     .bg-blob { position: fixed; border-radius: 50%; filter: blur(80px); opacity: 0.25; animation: drift 12s ease-in-out infinite; pointer-events: none; }
-    .bg-blob.b1 { width: 500px; height: 500px; background: #ffffff; top: -150px; left: -100px; animation-delay: 0s; }
-    .bg-blob.b2 { width: 400px; height: 400px; background: #0033AA; bottom: -100px; right: -80px; animation-delay: -4s; }
-    .bg-blob.b3 { width: 300px; height: 300px; background: #66BBFF; top: 50%; left: 50%; transform: translate(-50%, -50%); animation-delay: -8s; }
-    @keyframes drift { 0%, 100% { transform: translate(0, 0) scale(1); } 33% { transform: translate(30px, -20px) scale(1.05); } 66% { transform: translate(-20px, 25px) scale(0.97); } }
-    .card { position: relative; background: rgba(255,255,255,0.95); backdrop-filter: blur(20px); border-radius: 28px; padding: 36px 32px 28px; width: min(92vw, 380px); box-shadow: 0 2px 0 rgba(255,255,255,0.8) inset, 0 24px 60px rgba(0,40,120,0.35), 0 4px 16px rgba(0,80,200,0.2); animation: floatIn 0.6s cubic-bezier(.22,.68,0,1.2) forwards; opacity: 0; transform: translateY(30px); }
-    @keyframes floatIn { to { opacity: 1; transform: translateY(0); } }
-    .badge { display: inline-flex; align-items: center; gap: 6px; background: var(--blue-pale); color: var(--blue); font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 5px 12px; border-radius: 100px; margin-bottom: 16px; }
+    .bg-blob.b1 { width: 400px; height: 400px; background: #ffffff; top: -100px; left: -80px; }
+    .bg-blob.b2 { width: 300px; height: 300px; background: #0033AA; bottom: -80px; right: -60px; animation-delay: -4s; }
+    @keyframes drift { 0%,100%{transform:translate(0,0)} 50%{transform:translate(20px,-15px)} }
+    .card {
+      background: rgba(255,255,255,0.95);
+      border-radius: 24px;
+      padding: 28px;
+      display: flex;
+      flex-direction: row;
+      gap: 28px;
+      align-items: center;
+      width: min(96vw, 800px);
+      max-height: 95vh;
+      box-shadow: 0 24px 60px rgba(0,40,120,0.35);
+      animation: floatIn 0.6s cubic-bezier(.22,.68,0,1.2) forwards;
+      opacity: 0;
+    }
+    @keyframes floatIn { to { opacity: 1; } }
+    .qr-col { flex: 0 0 auto; width: 220px; }
+    .qr-wrap { background: var(--blue-pale); border-radius: 16px; padding: 12px; }
+    .qr-wrap img { display: block; width: 100%; border-radius: 8px; }
+    .scan-hint { text-align: center; font-size: 11px; color: var(--blue); font-weight: 600; margin-top: 8px; }
+    .info-col { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 12px; }
+    .badge { display: inline-flex; align-items: center; gap: 6px; background: var(--blue-pale); color: var(--blue); font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; padding: 5px 12px; border-radius: 100px; width: fit-content; }
     .badge::before { content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--blue); animation: pulse 1.8s ease-in-out infinite; }
-    @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.4; transform: scale(0.7); } }
-    h1 { font-size: 22px; font-weight: 700; color: var(--text); line-height: 1.2; margin-bottom: 4px; }
-    .subtitle { font-size: 13px; color: var(--gray); margin-bottom: 24px; }
-    .qr-wrap { position: relative; background: var(--blue-pale); border-radius: 18px; padding: 16px; margin-bottom: 20px; overflow: hidden; }
-    .qr-wrap img { display: block; width: 100%; border-radius: 10px; }
-    .scan-hint { text-align: center; font-size: 11.5px; color: var(--blue); font-weight: 600; letter-spacing: 0.04em; margin-top: 10px; }
-    .btn-group { display: flex; gap: 10px; margin-bottom: 16px; }
-    .btn { flex: 1; padding: 13px 10px; border: none; border-radius: 12px; font-family: 'Sora', sans-serif; font-size: 13.5px; font-weight: 600; cursor: pointer; transition: all 0.18s ease; display: flex; align-items: center; justify-content: center; gap: 7px; }
-    .btn-primary { background: linear-gradient(135deg, var(--blue) 0%, var(--blue-deep) 100%); color: white; box-shadow: 0 4px 14px rgba(0,100,255,0.35); }
+    @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.4;transform:scale(0.7)} }
+    h1 { font-size: 24px; font-weight: 700; color: var(--text); }
+    .subtitle { font-size: 13px; color: var(--gray); }
+    .btn-group { display: flex; gap: 10px; }
+    .btn { flex: 1; padding: 13px 10px; border: none; border-radius: 12px; font-family: 'Sora', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.18s ease; }
+    .btn-primary { background: linear-gradient(135deg, var(--blue), var(--blue-deep)); color: white; box-shadow: 0 4px 14px rgba(0,100,255,0.35); }
     .btn-secondary { background: var(--blue-pale); color: var(--blue); border: 1.5px solid rgba(0,119,255,0.2); }
     .btn-primary.success { background: linear-gradient(135deg, #00C26F, #009955); }
-    footer { text-align: center; font-size: 12.5px; color: var(--gray); border-top: 1px solid rgba(0,0,0,0.06); padding-top: 14px; }
-    .heart { display: inline-block; color: #FF4D8D; animation: heartbeat 1.4s ease-in-out infinite; }
-    @keyframes heartbeat { 0%,100% { transform: scale(1); } 14% { transform: scale(1.25); } 28% { transform: scale(1); } 42% { transform: scale(1.15); } }
+    footer { font-size: 12px; color: var(--gray); border-top: 1px solid rgba(0,0,0,0.06); padding-top: 12px; }
+    .heart { color: #FF4D8D; animation: heartbeat 1.4s ease-in-out infinite; display: inline-block; }
+    @keyframes heartbeat { 0%,100%{transform:scale(1)} 14%{transform:scale(1.25)} 42%{transform:scale(1.15)} }
   </style>
 </head>
 <body>
   <div class="bg-blob b1"></div>
   <div class="bg-blob b2"></div>
-  <div class="bg-blob b3"></div>
   <div class="card">
-    <div class="qr-wrap">
-      <img src="https://i.ibb.co/5frNcVj/IMG-20250825-233427.jpg" alt="GCash QR Code" id="qrImage">
-      <div class="scan-hint">Open GCash → Scan QR</div>
+    <div class="qr-col">
+      <div class="qr-wrap">
+        <img src="https://i.ibb.co/5frNcVj/IMG-20250825-233427.jpg" alt="GCash QR" id="qrImage">
+        <div class="scan-hint">📱 Open GCash → Scan QR</div>
+      </div>
     </div>
-    <div class="badge">GCash Donation</div>
-    <h1>Support this project</h1>
-    <p class="subtitle">Every peso helps keep things running. Thank you! 💙</p>
-    <div class="btn-group">
-      <button class="btn btn-primary" id="copyBtn">Copy Number</button>
-      <button class="btn btn-secondary" id="downloadBtn">Save QR</button>
+    <div class="info-col">
+      <div class="badge">GCash Donation</div>
+      <h1>Support this project</h1>
+      <p class="subtitle">Every peso helps keep things running. Thank you! 💙</p>
+      <div class="btn-group">
+        <button class="btn btn-primary" id="copyBtn">📋 Copy Number</button>
+        <button class="btn btn-secondary" id="downloadBtn">💾 Save QR</button>
+      </div>
+      <footer>Made with <span class="heart">♥</span> · Thank you for your generosity</footer>
     </div>
-    <footer>Made with <span class="heart">♥</span> · Thank you for your generosity</footer>
   </div>
   <script>
     const gcashNumber = "09916910850";
@@ -76,15 +75,15 @@
       try {
         await navigator.clipboard.writeText(gcashNumber);
         this.classList.add("success");
-        this.textContent = "Copied!";
-        setTimeout(() => { this.classList.remove("success"); this.textContent = "Copy Number"; }, 2200);
+        this.textContent = "✓ Copied!";
+        setTimeout(() => { this.classList.remove("success"); this.textContent = "📋 Copy Number"; }, 2200);
       } catch { alert("Number: " + gcashNumber); }
     });
     document.getElementById("downloadBtn").addEventListener("click", function () {
-      const link = document.createElement("a");
-      link.href = document.getElementById("qrImage").src;
-      link.download = "gcash-qr.png";
-      link.click();
+      const a = document.createElement("a");
+      a.href = document.getElementById("qrImage").src;
+      a.download = "gcash-qr.png";
+      a.click();
     });
   </script>
 </body>
