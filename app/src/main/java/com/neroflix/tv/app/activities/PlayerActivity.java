@@ -200,8 +200,14 @@ public class PlayerActivity extends BaseTvActivity {
                 return true;
             }
             @Override
+            public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
+                super.onPageStarted(view, url, favicon);
+                injectStreamHooks(view);
+            }
+
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
+                injectStreamHooks(view);
                 // Keep overlay visible — we never want the WebView visible
                 // to the user. Overlay stays up until stream is sniffed
                 // and we hand off to YastreamPlayerActivity.
@@ -480,6 +486,39 @@ public class PlayerActivity extends BaseTvActivity {
      * with HLS support, subtitle handling, and proper TV UI — reusing
      * it avoids duplicating all that setup here.
      */
+    private void injectStreamHooks(WebView view) {
+        view.evaluateJavascript(
+            "(function(){" +
+            "  if(window.__neroInjected)return;window.__neroInjected=true;" +
+            "  function capture(u){" +
+            "    if(!u||typeof u!=='string')return;" +
+            "    var l=u.toLowerCase();" +
+            "    if(l.indexOf('.m3u8')>=0&&l.indexOf('http')===0){" +
+            "      try{Android.onStreamUrl(u);}catch(e){}" +
+            "    }" +
+            "  }" +
+            "  var ox=window.XMLHttpRequest;" +
+            "  window.XMLHttpRequest=function(){" +
+            "    var x=new ox();" +
+            "    var oo=x.open.bind(x);" +
+            "    x.open=function(m,u){capture(u);return oo(m,u);};" +
+            "    return x;" +
+            "  };" +
+            "  var of=window.fetch;" +
+            "  window.fetch=function(u,o){" +
+            "    capture(typeof u==='string'?u:(u&&u.url?u.url:''));" +
+            "    return of(u,o);" +
+            "  };" +
+            "  setInterval(function(){" +
+            "    var vids=document.querySelectorAll('video');" +
+            "    for(var i=0;i<vids.length;i++){" +
+            "      var s=vids[i].src||vids[i].currentSrc||'';" +
+            "      if(s)capture(s);" +
+            "    }" +
+            "  },500);" +
+            "})()", null);
+    }
+
     /** Called with just the stream URL (no subtitle captured within timeout) */
     private void launchExoPlayer(String streamUrl) {
         launchExoPlayer(streamUrl, null);
