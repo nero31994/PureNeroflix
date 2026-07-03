@@ -128,6 +128,34 @@ public class PlayerActivity extends BaseTvActivity {
         webView.setScrollBarStyle(View.SCROLLBARS_INSIDE_OVERLAY);
         webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
 
+        // JavascriptInterface lets JS inside the WebView (including iframes)
+        // call back into Java with captured stream URLs — this works even
+        // when shouldInterceptRequest misses iframe sub-requests.
+        webView.addJavascriptInterface(new Object() {
+            @android.webkit.JavascriptInterface
+            public void onStreamUrl(String url) {
+                if (url == null || url.isEmpty()) return;
+                android.util.Log.d("StreamSniff", "JS captured: " + url);
+                if (!streamHandedOff && isStreamUrl(url)) {
+                    streamHandedOff = true;
+                    new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
+                        if (!isFinishing() && !isDestroyed()) {
+                            android.widget.TextView sv = findViewById(R.id.player_loading_status);
+                            if (sv != null) sv.setText("Stream found! Starting player...");
+                            stopPulseAnimation();
+                            launchExoPlayer(url, capturedVttUrl);
+                        }
+                    });
+                }
+            }
+            @android.webkit.JavascriptInterface
+            public void onSubtitleUrl(String url) {
+                if (url == null || url.isEmpty()) return;
+                android.util.Log.d("StreamSniff", "JS subtitle: " + url);
+                if (capturedVttUrl == null) capturedVttUrl = url;
+            }
+        }, "NeroflixBridge");
+
         webView.setWebViewClient(new WebViewClient() {
 
             @Override
@@ -184,9 +212,61 @@ public class PlayerActivity extends BaseTvActivity {
             @Override
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
+                // Re-inject hooks on every page/frame finish
+                // (iframes trigger onPageFinished separately)
+                String reHook =
+                    "function neroHook(w) {" +
+                    "  try {" +
+                    "    var origXHR = w.XMLHttpRequest.prototype.open;" +
+                    "    if(origXHR._nero) return;" + // already hooked
+                    "    w.XMLHttpRequest.prototype.open = function(m,u) {" +
+                    "      if(u&&(u.includes('.m3u8')||u.includes('.mpd'))) try{window.NeroflixBridge.onStreamUrl(u);}catch(e){}" +
+                    "      return origXHR.apply(this, arguments);" +
+                    "    };" +
+                    "    w.XMLHttpRequest.prototype.open._nero = true;" +
+                    "    var vids = w.document.querySelectorAll('video');" +
+                    "    for(var i=0;i<vids.length;i++){" +
+                    "      if(vids[i].src&&vids[i].src.includes('.m3u8')) try{window.NeroflixBridge.onStreamUrl(vids[i].src);}catch(e){}" +
+                    "    }" +
+                    "  } catch(e){}" +
+                    "}" +
+                    "neroHook(window);" +
+                    "var fr=document.querySelectorAll('iframe');" +
+                    "for(var i=0;i<fr.length;i++){try{neroHook(fr[i].contentWindow);}catch(e){}}";
+                view.evaluateJavascript(reHook, null);
                 // Keep overlay visible — we never want the WebView visible
                 // to the user. Overlay stays up until stream is sniffed
                 // and we hand off to YastreamPlayerActivity.
+                // Inject stream hooking JS into ALL frames
+                String hookJs =
+                    "function neroHook(w) {" +
+                    "  try {" +
+                    "    var origXHR = w.XMLHttpRequest.prototype.open;" +
+                    "    w.XMLHttpRequest.prototype.open = function(m,u) {" +
+                    "      if(u && (u.includes('.m3u8')||u.includes('.mpd'))) window.NeroflixBridge.onStreamUrl(u);" +
+                    "      return origXHR.apply(this, arguments);" +
+                    "    };" +
+                    "    var origFetch = w.fetch;" +
+                    "    w.fetch = function(u,o) {" +
+                    "      var url = (typeof u==='string')?u:(u&&u.url?u.url:'');" +
+                    "      if(url && (url.includes('.m3u8')||url.includes('.mpd'))) window.NeroflixBridge.onStreamUrl(url);" +
+                    "      return origFetch.apply(this, arguments);" +
+                    "    };" +
+                    "    var vids = w.document.querySelectorAll('video');" +
+                    "    for(var i=0;i<vids.length;i++) {" +
+                    "      if(vids[i].src && vids[i].src.includes('.m3u8')) window.NeroflixBridge.onStreamUrl(vids[i].src);" +
+                    "      vids[i].addEventListener('loadstart', function(e){" +
+                    "        if(e.target.src && (e.target.src.includes('.m3u8')||e.target.src.includes('.mp4'))) window.NeroflixBridge.onStreamUrl(e.target.src);" +
+                    "      });" +
+                    "    }" +
+                    "    var frames = w.document.querySelectorAll('iframe');" +
+                    "    for(var i=0;i<frames.length;i++) {" +
+                    "      try { neroHook(frames[i].contentWindow); } catch(e){}" +
+                    "    }" +
+                    "  } catch(e){}" +
+                    "}" +
+                    "neroHook(window);";
+                view.evaluateJavascript(hookJs, null);
                 view.evaluateJavascript(
                     "window.open=function(){return null;};" +
                     "window.alert=function(){};" +
