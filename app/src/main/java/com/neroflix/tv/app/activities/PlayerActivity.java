@@ -137,7 +137,6 @@ public class PlayerActivity extends BaseTvActivity {
                 if (!lower.contains(".m3u8") && !lower.contains("playlist") && !lower.contains("master")) return;
                 streamHandedOff = true;
                 android.util.Log.d("StreamSniff", "JS hook captured: " + url);
-                runOnUiThread(() -> android.widget.Toast.makeText(PlayerActivity.this, "JS: " + url, android.widget.Toast.LENGTH_LONG).show());
                 new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
                     if (!isFinishing() && !isDestroyed()) {
                         launchExoPlayer(url);
