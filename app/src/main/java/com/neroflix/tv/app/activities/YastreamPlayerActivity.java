@@ -546,6 +546,10 @@ if (!activityDestroyed) runOnUiThread(() -> {
             headers.put("Accept-Language", "en-US,en;q=0.9");
             dataSourceFactory.setDefaultRequestProperties(headers);
             android.util.Log.d("YastreamPlayer", "DirectPlay headers: Referer=" + referer + " Origin=" + origin);
+            // Show stream URL in toast so we can test it manually
+            runOnUiThread(() -> android.widget.Toast.makeText(this,
+                "URL: " + m3u8Url.substring(0, Math.min(80, m3u8Url.length())),
+                android.widget.Toast.LENGTH_LONG).show());
         }
 
         // ── Build media source with MergingMediaSource (Stremio-style) ─────
