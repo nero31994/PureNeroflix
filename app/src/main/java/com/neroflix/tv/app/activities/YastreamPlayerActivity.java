@@ -524,15 +524,28 @@ if (!activityDestroyed) runOnUiThread(() -> {
         // requests (manifest AND segments) so vidsrc CDNs accept them.
         // setDefaultRequestProperties applies to every request the factory
         // makes, including HLS segment fetches, not just the manifest.
-        if (directPlayMode && !directStreamReferrer.isEmpty()) {
-            String origin = directStreamReferrer.replaceAll("(https?://[^/]+).*", "$1");
+        if (directPlayMode) {
+            // Extract the correct Referer from the stream URL itself —
+            // CDNs check that requests come from their own player domain,
+            // not the outer embed wrapper page.
+            // e.g. stream from "cdn.vidplay.online/hls/..." needs
+            // Referer: "https://vidplay.online/" not "https://vidfast.pro/"
+            String streamOrigin = m3u8Url.replaceAll("(https?://[^/]+).*", "$1");
+            String referer = directStreamReferrer.isEmpty()
+                ? streamOrigin + "/"
+                : directStreamReferrer;
+            String origin = streamOrigin;
             java.util.Map<String,String> headers = new java.util.HashMap<>();
-            headers.put("Referer", directStreamReferrer);
-            headers.put("Origin", origin);
-            headers.put("Sec-Fetch-Site", "cross-site");
-            headers.put("Sec-Fetch-Mode", "cors");
-            headers.put("Sec-Fetch-Dest", "empty");
+            headers.put("Referer",         referer);
+            headers.put("Origin",          origin);
+            headers.put("User-Agent",      "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/122.0.0.0 Safari/537.36");
+            headers.put("Sec-Fetch-Site",  "cross-site");
+            headers.put("Sec-Fetch-Mode",  "cors");
+            headers.put("Sec-Fetch-Dest",  "empty");
+            headers.put("Accept",          "*/*");
+            headers.put("Accept-Language", "en-US,en;q=0.9");
             dataSourceFactory.setDefaultRequestProperties(headers);
+            android.util.Log.d("YastreamPlayer", "DirectPlay headers: Referer=" + referer + " Origin=" + origin);
         }
 
         // ── Build media source with MergingMediaSource (Stremio-style) ─────
