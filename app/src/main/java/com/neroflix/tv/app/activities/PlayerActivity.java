@@ -136,6 +136,23 @@ public class PlayerActivity extends BaseTvActivity {
             public void onStreamUrl(String url) {
                 if (url == null || url.isEmpty()) return;
                 android.util.Log.d("StreamSniff", "JS captured: " + url);
+                String u = url.toLowerCase();
+                // Reject ad network video URLs — these fire before the real
+                // movie stream and would be captured incorrectly.
+                if (u.contains("googlesyndication") || u.contains("doubleclick") ||
+                    u.contains("2mdn.net") || u.contains("imasdk") ||
+                    u.contains("securepubads") || u.contains("adnxs") ||
+                    u.contains("primis.tech") || u.contains("vidazoo") ||
+                    u.contains("teads.tv") || u.contains("springserve") ||
+                    u.contains("freewheel") || u.contains("moatads") ||
+                    u.contains("/vast") || u.contains("/vpaid") ||
+                    u.contains("amazon-adsystem") || u.contains("pubmatic") ||
+                    u.contains("rubiconproject") || u.contains("openx.net") ||
+                    u.contains("taboola") || u.contains("outbrain") ||
+                    u.contains("criteo") || u.contains("pagead")) {
+                    android.util.Log.d("StreamSniff", "Ad URL blocked: " + url);
+                    return;
+                }
                 if (!streamHandedOff && isStreamUrl(url)) {
                     streamHandedOff = true;
                     new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
