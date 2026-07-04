@@ -558,7 +558,13 @@ if (!activityDestroyed) runOnUiThread(() -> {
             android.util.Log.d("Yastream", "No subtitle — HLS only");
         }
 
-        exoPlayer = new ExoPlayer.Builder(this).build();
+        // Use DefaultRenderersFactory with software decoder fallback
+        androidx.media3.exoplayer.DefaultRenderersFactory rf =
+            new androidx.media3.exoplayer.DefaultRenderersFactory(this)
+                .setExtensionRendererMode(
+                    androidx.media3.exoplayer.DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER);
+        exoPlayer = new ExoPlayer.Builder(this, rf)
+            .build();
         playerView.setPlayer(exoPlayer);
         exoPlayer.setMediaSource(finalSource);
         exoPlayer.prepare();
