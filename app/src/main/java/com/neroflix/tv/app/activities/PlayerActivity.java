@@ -154,15 +154,8 @@ public class PlayerActivity extends BaseTvActivity {
                     return;
                 }
                 if (!streamHandedOff && isStreamUrl(url)) {
-                    streamHandedOff = true;
-                    new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
-                        if (!isFinishing() && !isDestroyed()) {
-                            android.widget.TextView sv = findViewById(R.id.player_loading_status);
-                            if (sv != null) sv.setText("Stream found! Starting player...");
-                            stopPulseAnimation();
-                            launchExoPlayer(url, capturedVttUrl);
-                        }
-                    });
+                    android.util.Log.d("StreamSniff", "Queued: " + url);
+                    addCandidateUrl(url);
                 }
             }
             @android.webkit.JavascriptInterface
@@ -359,9 +352,11 @@ public class PlayerActivity extends BaseTvActivity {
             finish();
             return;
         }
-        streamHandedOff  = false; // reset for each new server attempt
+        streamHandedOff  = false;
         capturedM3u8Url  = null;
         capturedVttUrl   = null;
+        candidateUrls.clear();
+        collectingStarted = false;
         loadingOverlay.setVisibility(View.VISIBLE);
         boolean isTV = "tv".equals(mediaType);
         String embedUrl;
