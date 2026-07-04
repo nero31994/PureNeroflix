@@ -524,14 +524,37 @@ if (!activityDestroyed) runOnUiThread(() -> {
         // requests (manifest AND segments) so vidsrc CDNs accept them.
         // setDefaultRequestProperties applies to every request the factory
         // makes, including HLS segment fetches, not just the manifest.
-        if (directPlayMode && !directStreamReferrer.isEmpty()) {
-            String origin = directStreamReferrer.replaceAll("(https?://[^/]+).*", "$1");
+        if (directPlayMode) {
+            String ref = directStreamReferrer.isEmpty() ?
+                m3u8Url.replaceAll("(https?://[^/]+).*", "$1") + "/" : directStreamReferrer;
+            String origin = m3u8Url.replaceAll("(https?://[^/]+).*", "$1");
             java.util.Map<String,String> headers = new java.util.HashMap<>();
-            headers.put("Referer", directStreamReferrer);
-            headers.put("Origin", origin);
-            headers.put("Sec-Fetch-Site", "cross-site");
-            headers.put("Sec-Fetch-Mode", "cors");
-            headers.put("Sec-Fetch-Dest", "empty");
+            headers.put("Referer",         ref);
+            headers.put("Origin",          origin);
+            headers.put("User-Agent",      "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/122.0.0.0 Safari/537.36");
+            headers.put("Sec-Fetch-Site",  "cross-site");
+            headers.put("Sec-Fetch-Mode",  "cors");
+            headers.put("Sec-Fetch-Dest",  "empty");
+            headers.put("Accept",          "*/*");
+            headers.put("Accept-Language", "en-US,en;q=0.9");
+            // Pass WebView cookies — session CDNs like nexlunar99.site
+            // use cookies to validate ALL segment requests, not just manifest.
+            // Without this, playback fails at ~5s when initial buffer runs out.
+            try {
+                android.webkit.CookieManager cm = android.webkit.CookieManager.getInstance();
+                String urlCookies = cm.getCookie(m3u8Url);
+                String cdnCookies = cm.getCookie(origin);
+                String refCookies = cm.getCookie(ref);
+                String allCookies = "";
+                if (urlCookies != null) allCookies += urlCookies + "; ";
+                if (cdnCookies != null) allCookies += cdnCookies + "; ";
+                if (refCookies != null) allCookies += refCookies;
+                if (!allCookies.trim().isEmpty())
+                    headers.put("Cookie", allCookies.trim());
+                android.util.Log.d("YastreamPlayer", "Cookies: " + allCookies.length() + " chars");
+            } catch (Exception e) {
+                android.util.Log.w("YastreamPlayer", "Cookie fetch failed: " + e.getMessage());
+            }
             dataSourceFactory.setDefaultRequestProperties(headers);
         }
 
