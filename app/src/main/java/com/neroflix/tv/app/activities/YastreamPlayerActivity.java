@@ -516,8 +516,8 @@ if (!activityDestroyed) runOnUiThread(() -> {
 
         DefaultHttpDataSource.Factory dataSourceFactory = new DefaultHttpDataSource.Factory()
             .setUserAgent("Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/122.0.0.0 Safari/537.36")
-            .setConnectTimeoutMs(8000)
-            .setReadTimeoutMs(10000)
+            .setConnectTimeoutMs(15000)
+            .setReadTimeoutMs(20000)
             .setAllowCrossProtocolRedirects(true);
 
         // In direct play mode, apply Referer + Origin headers to ALL
