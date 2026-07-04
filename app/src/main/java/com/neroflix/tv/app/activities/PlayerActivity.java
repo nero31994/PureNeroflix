@@ -128,44 +128,6 @@ public class PlayerActivity extends BaseTvActivity {
         webView.setScrollBarStyle(View.SCROLLBARS_INSIDE_OVERLAY);
         webView.setOverScrollMode(View.OVER_SCROLL_NEVER);
 
-        // JavascriptInterface lets JS inside the WebView (including iframes)
-        // call back into Java with captured stream URLs — this works even
-        // when shouldInterceptRequest misses iframe sub-requests.
-        webView.addJavascriptInterface(new Object() {
-            @android.webkit.JavascriptInterface
-            public void onStreamUrl(String url) {
-                if (url == null || url.isEmpty()) return;
-                android.util.Log.d("StreamSniff", "JS captured: " + url);
-                String u = url.toLowerCase();
-                // Reject ad network video URLs — these fire before the real
-                // movie stream and would be captured incorrectly.
-                if (u.contains("googlesyndication") || u.contains("doubleclick") ||
-                    u.contains("2mdn.net") || u.contains("imasdk") ||
-                    u.contains("securepubads") || u.contains("adnxs") ||
-                    u.contains("primis.tech") || u.contains("vidazoo") ||
-                    u.contains("teads.tv") || u.contains("springserve") ||
-                    u.contains("freewheel") || u.contains("moatads") ||
-                    u.contains("/vast") || u.contains("/vpaid") ||
-                    u.contains("amazon-adsystem") || u.contains("pubmatic") ||
-                    u.contains("rubiconproject") || u.contains("openx.net") ||
-                    u.contains("taboola") || u.contains("outbrain") ||
-                    u.contains("criteo") || u.contains("pagead")) {
-                    android.util.Log.d("StreamSniff", "Ad URL blocked: " + url);
-                    return;
-                }
-                if (!streamHandedOff && isStreamUrl(url)) {
-                    android.util.Log.d("StreamSniff", "Queued: " + url);
-                    addCandidateUrl(url);
-                }
-            }
-            @android.webkit.JavascriptInterface
-            public void onSubtitleUrl(String url) {
-                if (url == null || url.isEmpty()) return;
-                android.util.Log.d("StreamSniff", "JS subtitle: " + url);
-                if (capturedVttUrl == null) capturedVttUrl = url;
-            }
-        }, "NeroflixBridge");
-
         webView.setWebViewClient(new WebViewClient() {
 
             @Override
@@ -222,61 +184,9 @@ public class PlayerActivity extends BaseTvActivity {
             @Override
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
-                // Re-inject hooks on every page/frame finish
-                // (iframes trigger onPageFinished separately)
-                String reHook =
-                    "function neroHook(w) {" +
-                    "  try {" +
-                    "    var origXHR = w.XMLHttpRequest.prototype.open;" +
-                    "    if(origXHR._nero) return;" + // already hooked
-                    "    w.XMLHttpRequest.prototype.open = function(m,u) {" +
-                    "      if(u&&(u.includes('.m3u8')||u.includes('.mpd'))) try{window.NeroflixBridge.onStreamUrl(u);}catch(e){}" +
-                    "      return origXHR.apply(this, arguments);" +
-                    "    };" +
-                    "    w.XMLHttpRequest.prototype.open._nero = true;" +
-                    "    var vids = w.document.querySelectorAll('video');" +
-                    "    for(var i=0;i<vids.length;i++){" +
-                    "      if(vids[i].src&&vids[i].src.includes('.m3u8')) try{window.NeroflixBridge.onStreamUrl(vids[i].src);}catch(e){}" +
-                    "    }" +
-                    "  } catch(e){}" +
-                    "}" +
-                    "neroHook(window);" +
-                    "var fr=document.querySelectorAll('iframe');" +
-                    "for(var i=0;i<fr.length;i++){try{neroHook(fr[i].contentWindow);}catch(e){}}";
-                view.evaluateJavascript(reHook, null);
                 // Keep overlay visible — we never want the WebView visible
                 // to the user. Overlay stays up until stream is sniffed
                 // and we hand off to YastreamPlayerActivity.
-                // Inject stream hooking JS into ALL frames
-                String hookJs =
-                    "function neroHook(w) {" +
-                    "  try {" +
-                    "    var origXHR = w.XMLHttpRequest.prototype.open;" +
-                    "    w.XMLHttpRequest.prototype.open = function(m,u) {" +
-                    "      if(u && (u.includes('.m3u8')||u.includes('.mpd'))) window.NeroflixBridge.onStreamUrl(u);" +
-                    "      return origXHR.apply(this, arguments);" +
-                    "    };" +
-                    "    var origFetch = w.fetch;" +
-                    "    w.fetch = function(u,o) {" +
-                    "      var url = (typeof u==='string')?u:(u&&u.url?u.url:'');" +
-                    "      if(url && (url.includes('.m3u8')||url.includes('.mpd'))) window.NeroflixBridge.onStreamUrl(url);" +
-                    "      return origFetch.apply(this, arguments);" +
-                    "    };" +
-                    "    var vids = w.document.querySelectorAll('video');" +
-                    "    for(var i=0;i<vids.length;i++) {" +
-                    "      if(vids[i].src && vids[i].src.includes('.m3u8')) window.NeroflixBridge.onStreamUrl(vids[i].src);" +
-                    "      vids[i].addEventListener('loadstart', function(e){" +
-                    "        if(e.target.src && (e.target.src.includes('.m3u8')||e.target.src.includes('.mp4'))) window.NeroflixBridge.onStreamUrl(e.target.src);" +
-                    "      });" +
-                    "    }" +
-                    "    var frames = w.document.querySelectorAll('iframe');" +
-                    "    for(var i=0;i<frames.length;i++) {" +
-                    "      try { neroHook(frames[i].contentWindow); } catch(e){}" +
-                    "    }" +
-                    "  } catch(e){}" +
-                    "}" +
-                    "neroHook(window);";
-                view.evaluateJavascript(hookJs, null);
                 view.evaluateJavascript(
                     "window.open=function(){return null;};" +
                     "window.alert=function(){};" +
@@ -352,11 +262,9 @@ public class PlayerActivity extends BaseTvActivity {
             finish();
             return;
         }
-        streamHandedOff  = false;
+        streamHandedOff  = false; // reset for each new server attempt
         capturedM3u8Url  = null;
         capturedVttUrl   = null;
-        candidateUrls.clear();
-        collectingStarted = false;
         loadingOverlay.setVisibility(View.VISIBLE);
         boolean isTV = "tv".equals(mediaType);
         String embedUrl;
@@ -465,6 +373,8 @@ public class PlayerActivity extends BaseTvActivity {
         String lower = url.toLowerCase();
 
         // ── Fast reject: skip obviously non-video requests ──────────────────
+        // These account for ~90% of shouldInterceptRequest calls and should
+        // be rejected as quickly as possible to avoid slowing page load.
         if (lower.contains(".js")    || lower.contains(".css")   ||
             lower.contains(".png")   || lower.contains(".jpg")   ||
             lower.contains(".gif")   || lower.contains(".svg")   ||
@@ -472,29 +382,8 @@ public class PlayerActivity extends BaseTvActivity {
             lower.contains(".ico")   || lower.contains(".json")  ||
             lower.contains("google") || lower.contains("facebook") ||
             lower.contains("analytics") || lower.contains("doubleclick") ||
-            lower.contains("tracker")) {
+            lower.contains("ads")    || lower.contains("tracker")) {
             return false;
-        }
-
-        // ── Reject known ad networks that serve video (would be captured
-        //    before the real movie stream and cause playback errors) ──────────
-        String[] adDomains = {
-            "googlesyndication", "googleadservices", "doubleclick",
-            "adnxs.com", "adsystem", "adservice", "serving-sys",
-            "2mdn.net", "ads.youtube", "moatads", "amazon-adsystem",
-            "advertising.com", "addthis", "scorecardresearch",
-            "imdb-advertising", "pubmatic", "rubiconproject",
-            "openx.net", "criteo", "taboola", "outbrain",
-            "sharethrough", "media.net", "adform", "lijit",
-            // Embed-specific ad networks
-            "primis.tech", "vidazoo", "teads.tv", "appnexus",
-            "spotxchange", "springserve", "freewheel", "tremor",
-            "jwplatform.com/libraries", // JW Player ad lib
-            "imasdk.googleapis", // Google IMA SDK ads
-            "securepubads", "pagead2"
-        };
-        for (String ad : adDomains) {
-            if (lower.contains(ad)) return false;
         }
 
         // ── HLS manifest: most reliable signal ──────────────────────────────
