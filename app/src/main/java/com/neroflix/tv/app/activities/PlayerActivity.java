@@ -453,8 +453,6 @@ public class PlayerActivity extends BaseTvActivity {
         String lower = url.toLowerCase();
 
         // ── Fast reject: skip obviously non-video requests ──────────────────
-        // These account for ~90% of shouldInterceptRequest calls and should
-        // be rejected as quickly as possible to avoid slowing page load.
         if (lower.contains(".js")    || lower.contains(".css")   ||
             lower.contains(".png")   || lower.contains(".jpg")   ||
             lower.contains(".gif")   || lower.contains(".svg")   ||
@@ -462,8 +460,29 @@ public class PlayerActivity extends BaseTvActivity {
             lower.contains(".ico")   || lower.contains(".json")  ||
             lower.contains("google") || lower.contains("facebook") ||
             lower.contains("analytics") || lower.contains("doubleclick") ||
-            lower.contains("ads")    || lower.contains("tracker")) {
+            lower.contains("tracker")) {
             return false;
+        }
+
+        // ── Reject known ad networks that serve video (would be captured
+        //    before the real movie stream and cause playback errors) ──────────
+        String[] adDomains = {
+            "googlesyndication", "googleadservices", "doubleclick",
+            "adnxs.com", "adsystem", "adservice", "serving-sys",
+            "2mdn.net", "ads.youtube", "moatads", "amazon-adsystem",
+            "advertising.com", "addthis", "scorecardresearch",
+            "imdb-advertising", "pubmatic", "rubiconproject",
+            "openx.net", "criteo", "taboola", "outbrain",
+            "sharethrough", "media.net", "adform", "lijit",
+            // Embed-specific ad networks
+            "primis.tech", "vidazoo", "teads.tv", "appnexus",
+            "spotxchange", "springserve", "freewheel", "tremor",
+            "jwplatform.com/libraries", // JW Player ad lib
+            "imasdk.googleapis", // Google IMA SDK ads
+            "securepubads", "pagead2"
+        };
+        for (String ad : adDomains) {
+            if (lower.contains(ad)) return false;
         }
 
         // ── HLS manifest: most reliable signal ──────────────────────────────
