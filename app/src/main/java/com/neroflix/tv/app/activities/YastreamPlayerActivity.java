@@ -18,6 +18,10 @@ import androidx.media3.common.util.UnstableApi;
 import androidx.media3.datasource.DefaultHttpDataSource;
 import androidx.media3.exoplayer.ExoPlayer;
 import androidx.media3.exoplayer.hls.HlsMediaSource;
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory;
+import androidx.media3.exoplayer.rtsp.RtspMediaSource;
+import androidx.media3.exoplayer.smoothstreaming.SsMediaSource;
+import androidx.media3.exoplayer.dash.DashMediaSource;
 import androidx.media3.ui.PlayerView;
 
 import com.neroflix.tv.app.LicenseManager;
@@ -558,9 +562,11 @@ if (!activityDestroyed) runOnUiThread(() -> {
             dataSourceFactory.setDefaultRequestProperties(headers);
         }
 
-        // ── Build media source with MergingMediaSource (Stremio-style) ─────
-        HlsMediaSource hlsSource = new HlsMediaSource.Factory(dataSourceFactory)
-            .createMediaSource(MediaItem.fromUri(android.net.Uri.parse(m3u8Url)));
+        // ── Smart codec detection — picks correct source factory per URL ─────
+        // Supports: HLS (.m3u8), DASH (.mpd), SmoothStreaming (.ism),
+        //           Progressive MP4/MKV/AVI/WebM, RTSP, Widevine DRM
+        androidx.media3.exoplayer.source.MediaSource hlsSource =
+            buildSmartMediaSource(m3u8Url, dataSourceFactory);
 
         androidx.media3.exoplayer.source.MediaSource finalSource;
         if (externalSubUrl != null && !externalSubUrl.isEmpty()) {
