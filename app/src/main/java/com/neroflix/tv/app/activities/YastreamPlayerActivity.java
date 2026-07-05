@@ -244,10 +244,30 @@ public class YastreamPlayerActivity extends BaseTvActivity {
             episode,
             streams -> {
                 if (streams == null || streams.length() == 0) {
-                    runOnUiThread(() -> {
-                        showLoading(false);
-                        showError("No streams available for this title.\nTry a different server.");
-                    });
+                    // Direct failed — fallback to worker
+                    android.util.Log.w("YastreamPlayer", "Direct fetch empty, falling back to worker");
+                    runOnUiThread(() -> setStatus("Trying alternate source..."));
+                    LicenseManager.fetchYastreamStreams(
+                        this,
+                        String.valueOf(tmdbId),
+                        mediaType,
+                        season,
+                        episode,
+                        workerStreams -> {
+                            if (workerStreams == null || workerStreams.length() == 0) {
+                                runOnUiThread(() -> {
+                                    showLoading(false);
+                                    showError("No streams available for this title.\nTry a different server.");
+                                });
+                                return;
+                            }
+                            streamList = workerStreams;
+                            runOnUiThread(() -> {
+                                showLoading(false);
+                                showStreamList();
+                            });
+                        }
+                    );
                     return;
                 }
                 streamList = streams;
