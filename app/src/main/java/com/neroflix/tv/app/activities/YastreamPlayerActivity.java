@@ -781,4 +781,30 @@ if (!activityDestroyed) runOnUiThread(() -> {
 
 
 
+
+    private androidx.media3.exoplayer.source.MediaSource buildSmartMediaSource(
+            String url,
+            androidx.media3.datasource.DataSource.Factory dsFactory) {
+        String lower = url.toLowerCase();
+        android.net.Uri uri = android.net.Uri.parse(url);
+        if (lower.contains(".m3u8") || lower.contains("/hls/")) {
+            return new androidx.media3.exoplayer.hls.HlsMediaSource.Factory(dsFactory)
+                .createMediaSource(MediaItem.fromUri(uri));
+        }
+        if (lower.contains(".mpd") || lower.contains("/dash/")) {
+            return new androidx.media3.exoplayer.dash.DashMediaSource.Factory(dsFactory)
+                .createMediaSource(MediaItem.fromUri(uri));
+        }
+        if (lower.contains(".ism")) {
+            return new androidx.media3.exoplayer.smoothstreaming.SsMediaSource.Factory(dsFactory)
+                .createMediaSource(MediaItem.fromUri(uri));
+        }
+        if (lower.startsWith("rtsp://") || lower.startsWith("rtsps://")) {
+            return new androidx.media3.exoplayer.rtsp.RtspMediaSource.Factory()
+                .createMediaSource(MediaItem.fromUri(uri));
+        }
+        return new androidx.media3.exoplayer.source.DefaultMediaSourceFactory(dsFactory)
+            .createMediaSource(MediaItem.fromUri(uri));
+    }
+
 }
