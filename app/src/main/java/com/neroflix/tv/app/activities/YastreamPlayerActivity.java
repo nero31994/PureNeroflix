@@ -507,7 +507,13 @@ if (!activityDestroyed) runOnUiThread(() -> {
             if (m3u8Url.isEmpty()) { showError("Invalid stream URL."); return; }
 
             // Use subtitle pre-fetched by DetailActivity
-            if (!activityDestroyed) runOnUiThread(() -> initExoPlayer(m3u8Url, directSubtitleUrl));
+            if (!activityDestroyed) {
+                // Run heavy ExoPlayer setup on background thread to prevent ANR
+                final String finalUrl = m3u8Url;
+                new Thread(() -> {
+                    if (!activityDestroyed) runOnUiThread(() -> initExoPlayer(finalUrl, directSubtitleUrl));
+                }).start();
+            }
         } catch (Exception e) {
             showError("Failed to load stream: " + e.getMessage());
         }
@@ -541,24 +547,17 @@ if (!activityDestroyed) runOnUiThread(() -> {
             headers.put("Sec-Fetch-Dest",  "empty");
             headers.put("Accept",          "*/*");
             headers.put("Accept-Language", "en-US,en;q=0.9");
-            // Pass WebView cookies — session CDNs like nexlunar99.site
-            // use cookies to validate ALL segment requests, not just manifest.
-            // Without this, playback fails at ~5s when initial buffer runs out.
+            // Cookie fetching is fast (in-memory) but do it safely
             try {
                 android.webkit.CookieManager cm = android.webkit.CookieManager.getInstance();
-                String urlCookies = cm.getCookie(m3u8Url);
-                String cdnCookies = cm.getCookie(origin);
-                String refCookies = cm.getCookie(ref);
                 String allCookies = "";
-                if (urlCookies != null) allCookies += urlCookies + "; ";
-                if (cdnCookies != null) allCookies += cdnCookies + "; ";
-                if (refCookies != null) allCookies += refCookies;
+                String c1 = cm.getCookie(m3u8Url);
+                String c2 = cm.getCookie(origin);
+                if (c1 != null) allCookies += c1 + "; ";
+                if (c2 != null) allCookies += c2;
                 if (!allCookies.trim().isEmpty())
                     headers.put("Cookie", allCookies.trim());
-                android.util.Log.d("YastreamPlayer", "Cookies: " + allCookies.length() + " chars");
-            } catch (Exception e) {
-                android.util.Log.w("YastreamPlayer", "Cookie fetch failed: " + e.getMessage());
-            }
+            } catch (Exception ignored) {}
             dataSourceFactory.setDefaultRequestProperties(headers);
         }
 
