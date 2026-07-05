@@ -12,42 +12,30 @@ public abstract class BaseTvActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
     }
 
+    // Subclasses override this to handle TV remote keys.
+    // Return true if consumed, false to let system handle it.
     protected boolean onTvKeyDown(int keyCode, KeyEvent event) {
         return false;
     }
 
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
+        // Normalize first
         int keyCode = normalizeKeyCode(event.getKeyCode());
-        if (event.getAction() == KeyEvent.ACTION_UP) {
-            switch (keyCode) {
-                case KeyEvent.KEYCODE_DPAD_CENTER:
-                case KeyEvent.KEYCODE_ENTER:
-                case KeyEvent.KEYCODE_NUMPAD_ENTER:
-                    if (onTvKeyDown(keyCode, event)) return true;
-                    if (performClickOnFocused()) return true;
-                    break;
-            }
+
+        // Only handle ACTION_DOWN here — avoids double-firing with onKeyDown
+        if (event.getAction() == KeyEvent.ACTION_DOWN) {
+            if (onTvKeyDown(keyCode, event)) return true;
         }
         return super.dispatchKeyEvent(event);
     }
 
     @Override
-    public boolean onKeyDown(int normalizedKeyCode, KeyEvent event) {
-        int keyCode = normalizeKeyCode(normalizedKeyCode);
-        if (onTvKeyDown(keyCode, event)) return true;
-        switch (keyCode) {
-            case KeyEvent.KEYCODE_DPAD_UP:    return moveFocus(View.FOCUS_UP);
-            case KeyEvent.KEYCODE_DPAD_DOWN:  return moveFocus(View.FOCUS_DOWN);
-            case KeyEvent.KEYCODE_DPAD_LEFT:  return moveFocus(View.FOCUS_LEFT);
-            case KeyEvent.KEYCODE_DPAD_RIGHT: return moveFocus(View.FOCUS_RIGHT);
-            case KeyEvent.KEYCODE_DPAD_CENTER:
-            case KeyEvent.KEYCODE_ENTER:
-            case KeyEvent.KEYCODE_NUMPAD_ENTER:
-                return performClickOnFocused();
-            default:
-                return super.onKeyDown(keyCode, event);
-        }
+    public boolean onKeyDown(int keyCode, KeyEvent event) {
+        // Do NOT intercept dpad/enter here — IPTVActivity handles everything
+        // via onTvKeyDown in dispatchKeyEvent above.
+        // Only pass to super so system back stack works.
+        return super.onKeyDown(normalizeKeyCode(keyCode), event);
     }
 
     private int normalizeKeyCode(int keyCode) {
@@ -57,22 +45,5 @@ public abstract class BaseTvActivity extends AppCompatActivity {
             case KeyEvent.KEYCODE_BUTTON_START: return KeyEvent.KEYCODE_DPAD_CENTER;
             default: return keyCode;
         }
-    }
-
-    private boolean moveFocus(int direction) {
-        View current = getCurrentFocus();
-        if (current == null) {
-            View root = findViewById(android.R.id.content);
-            return root != null && root.requestFocus();
-        }
-        View next = current.focusSearch(direction);
-        if (next != null && next != current) return next.requestFocus();
-        return false;
-    }
-
-    private boolean performClickOnFocused() {
-        View current = getCurrentFocus();
-        if (current != null && current.isClickable()) return current.performClick();
-        return false;
     }
 }

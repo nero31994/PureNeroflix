@@ -781,8 +781,9 @@ public class IPTVActivity extends BaseTvActivity {
                         hideSidebar();
                         focusZone = FocusZone.PLAYER;
                         return true;
+                    default:
+                        return false;
                 }
-                return true;
 
             case GROUPS:
                 switch (keyCode) {
@@ -994,7 +995,10 @@ public class IPTVActivity extends BaseTvActivity {
 
     @Override
     public boolean onTouchEvent(MotionEvent e) {
-        showSidebar();
+        if (!sidebarVisible) {
+            showSidebar();
+            focusZone = FocusZone.CHANNELS;
+        }
         resetAutoHide();
         return super.onTouchEvent(e);
     }
