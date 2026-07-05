@@ -261,21 +261,82 @@ public class YastreamPlayerActivity extends BaseTvActivity {
 
                 new Thread(() -> {
                     try {
-                        String stremioId = "tmdb:" + tmdbId;
-                        if ("series".equals(mediaType) || "tv".equals(mediaType)) {
-                            stremioId += ":" + season + ":" + episode;
+                        // 1. Try subtitles embedded in stream objects first
+                        if (streams.length() > 0) {
+                            org.json.JSONArray embedded =
+                                streams.getJSONObject(0).optJSONArray("subtitles");
+                            if (embedded != null && embedded.length() > 0) {
+                                subtitleHolder[0] = embedded;
+                                android.util.Log.d("Yastream", "Using embedded subtitles: " + embedded.length());
+                            }
                         }
-                        String subsUrl = NEROTIVI + "/subtitles?type="
-                            + ("tv".equals(mediaType) ? "series" : mediaType)
-                            + "&id=" + stremioId;
-                        if (season > 0 && episode > 0) {
-                            subsUrl += "&season=" + season + "&episode=" + episode;
+
+                        // 2. If no embedded subs, fetch from yastream directly via IMDB ID
+                        if (subtitleHolder[0] == null || subtitleHolder[0].length() == 0) {
+                            String extType = "movie".equals(mediaType) ? "movie" : "tv";
+                            String extUrl = "https://api.themoviedb.org/3/" + extType + "/" + tmdbId
+                                + "/external_ids?api_key=" + com.neroflix.tv.app.BuildConfig.TMDB_API_KEY;
+                            org.json.JSONObject extJson =
+                                new org.json.JSONObject(fetchUrl(extUrl));
+                            String imdbId = extJson.optString("imdb_id", "");
+
+                            if (!imdbId.isEmpty()) {
+                                String yasType = "movie".equals(mediaType) ? "movie" : "series";
+                                String yasSubId = imdbId;
+                                if (!"movie".equals(mediaType) && season > 0 && episode > 0)
+                                    yasSubId += ":" + season + ":" + episode;
+                                String subsUrl = YASTREAM_BASE + "/" + YASTREAM_CONFIG
+                                    + "/subtitles/" + yasType + "/" + yasSubId + ".json";
+                                android.util.Log.d("Yastream", "Direct sub URL: " + subsUrl);
+                                org.json.JSONObject subsJson =
+                                    new org.json.JSONObject(fetchUrl(subsUrl));
+                                subtitleHolder[0] = subsJson.optJSONArray("subtitles");
+                                android.util.Log.d("Yastream", "Direct subs found: "
+                                    + (subtitleHolder[0] != null ? subtitleHolder[0].length() : 0));
+                            }
                         }
-                        org.json.JSONObject subsJson =
-                            new org.json.JSONObject(fetchUrl(subsUrl));
-                        subtitleHolder[0] = subsJson.optJSONArray("subtitles");
-                    } catch (Exception ignored) {}
-                    finally { latch.countDown(); }
+
+                        // 3. Fallback: OpenSubtitles via Stremio
+                        if (subtitleHolder[0] == null || subtitleHolder[0].length() == 0) {
+                            String extType = "movie".equals(mediaType) ? "movie" : "tv";
+                            String extUrl = "https://api.themoviedb.org/3/" + extType + "/" + tmdbId
+                                + "/external_ids?api_key=" + com.neroflix.tv.app.BuildConfig.TMDB_API_KEY;
+                            org.json.JSONObject extJson =
+                                new org.json.JSONObject(fetchUrl(extUrl));
+                            String imdbId = extJson.optString("imdb_id", "");
+                            if (!imdbId.isEmpty()) {
+                                String stremioType = "movie".equals(mediaType) ? "movie" : "series";
+                                String stremioSubId = imdbId;
+                                if (!"movie".equals(mediaType) && season > 0 && episode > 0)
+                                    stremioSubId += ":" + season + ":" + episode;
+                                String subsUrl = "https://opensubtitles-v3.strem.io/subtitles/"
+                                    + stremioType + "/" + stremioSubId + ".json";
+                                org.json.JSONObject subsJson =
+                                    new org.json.JSONObject(fetchUrl(subsUrl));
+                                org.json.JSONArray subsArr = subsJson.optJSONArray("subtitles");
+                                if (subsArr != null && subsArr.length() > 0) {
+                                    org.json.JSONArray picked = new org.json.JSONArray();
+                                    // Prefer Filipino (tgl), then English
+                                    for (String lang : new String[]{"tgl", "eng"}) {
+                                        for (int si = 0; si < subsArr.length(); si++) {
+                                            org.json.JSONObject s = subsArr.getJSONObject(si);
+                                            if (lang.equals(s.optString("lang", ""))) {
+                                                org.json.JSONObject entry = new org.json.JSONObject();
+                                                entry.put("url",  s.optString("url", ""));
+                                                entry.put("lang", lang);
+                                                picked.put(entry);
+                                                break;
+                                            }
+                                        }
+                                        if (picked.length() > 0) break;
+                                    }
+                                    if (picked.length() > 0) subtitleHolder[0] = picked;
+                                }
+                            }
+                        }
+                    } catch (Exception e) {
+                        android.util.Log.w("Yastream", "Subtitle fetch failed: " + e.getMessage());
+                    } finally { latch.countDown(); }
                 }).start();
 
                 // Wait max 4 seconds for subtitles — don't block playback longer
