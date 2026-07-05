@@ -604,8 +604,9 @@ if (!activityDestroyed) runOnUiThread(() -> {
 
                 android.util.Log.d("Yastream", "Playing with subtitle: " + finalSubUrl);
 
+                final org.json.JSONArray allSubs = stream.optJSONArray("subtitles");
                 new Thread(() -> {
-                    if (!activityDestroyed) runOnUiThread(() -> initExoPlayer(finalUrl, finalSubUrl));
+                    if (!activityDestroyed) runOnUiThread(() -> initExoPlayer(finalUrl, finalSubUrl, allSubs));
                 }).start();
             }
         } catch (Exception e) {
