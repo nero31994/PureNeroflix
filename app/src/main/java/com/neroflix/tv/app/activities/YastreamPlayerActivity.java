@@ -568,12 +568,44 @@ if (!activityDestroyed) runOnUiThread(() -> {
             String m3u8Url     = stream.optString("url", "");
             if (m3u8Url.isEmpty()) { showError("Invalid stream URL."); return; }
 
-            // Use subtitle pre-fetched by DetailActivity
             if (!activityDestroyed) {
-                // Run heavy ExoPlayer setup on background thread to prevent ANR
                 final String finalUrl = m3u8Url;
+
+                // Read subtitle from stream object first, fallback to directSubtitleUrl
+                String subFromStream = null;
+                try {
+                    org.json.JSONArray subs = stream.optJSONArray("subtitles");
+                    if (subs != null && subs.length() > 0) {
+                        // Prefer tgl (Filipino), then eng, then first available
+                        for (int si = 0; si < subs.length(); si++) {
+                            org.json.JSONObject sub = subs.getJSONObject(si);
+                            if ("tgl".equals(sub.optString("lang", ""))) {
+                                subFromStream = sub.optString("url", "");
+                                break;
+                            }
+                        }
+                        if (subFromStream == null || subFromStream.isEmpty()) {
+                            for (int si = 0; si < subs.length(); si++) {
+                                org.json.JSONObject sub = subs.getJSONObject(si);
+                                if ("eng".equals(sub.optString("lang", ""))) {
+                                    subFromStream = sub.optString("url", "");
+                                    break;
+                                }
+                            }
+                        }
+                        if (subFromStream == null || subFromStream.isEmpty()) {
+                            subFromStream = subs.getJSONObject(0).optString("url", "");
+                        }
+                    }
+                } catch (Exception ignored) {}
+
+                final String finalSubUrl = (subFromStream != null && !subFromStream.isEmpty())
+                    ? subFromStream : directSubtitleUrl;
+
+                android.util.Log.d("Yastream", "Playing with subtitle: " + finalSubUrl);
+
                 new Thread(() -> {
-                    if (!activityDestroyed) runOnUiThread(() -> initExoPlayer(finalUrl, directSubtitleUrl));
+                    if (!activityDestroyed) runOnUiThread(() -> initExoPlayer(finalUrl, finalSubUrl));
                 }).start();
             }
         } catch (Exception e) {
