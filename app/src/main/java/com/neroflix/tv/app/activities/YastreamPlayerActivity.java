@@ -113,7 +113,7 @@ public class YastreamPlayerActivity extends BaseTvActivity {
         setupViews();
         hideSystemUi(); // true fullscreen — hide nav bar + status bar
         if (directPlayMode) {
-            initExoPlayer(getIntent().getStringExtra("direct_stream_url"), directSubtitleUrl);
+            initExoPlayer(getIntent().getStringExtra("direct_stream_url"), directSubtitleUrl, null);
         } else {
             fetchAndPlay();
         }
