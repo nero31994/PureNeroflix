@@ -613,7 +613,7 @@ if (!activityDestroyed) runOnUiThread(() -> {
         }
     }
 
-    private void initExoPlayer(String m3u8Url, String externalSubUrl) {
+    private void initExoPlayer(String m3u8Url, String externalSubUrl, org.json.JSONArray allSubs) {
         releasePlayer();
         showLoading(true);
         hideError();
@@ -662,52 +662,90 @@ if (!activityDestroyed) runOnUiThread(() -> {
             buildSmartMediaSource(m3u8Url, dataSourceFactory);
 
         androidx.media3.exoplayer.source.MediaSource finalSource;
-        if (externalSubUrl != null && !externalSubUrl.isEmpty()) {
-            // Detect subtitle format from URL
-            String subMime;
-            String subLower = externalSubUrl.toLowerCase();
-            if (subLower.contains(".vtt") || subLower.contains("vtt")) {
-                subMime = androidx.media3.common.MimeTypes.TEXT_VTT;
-            } else if (subLower.contains(".ass") || subLower.contains(".ssa")) {
-                subMime = androidx.media3.common.MimeTypes.TEXT_SSA;
-            } else {
-                // Default to VTT — yastream/OpenSubtitles mostly serve VTT
-                subMime = androidx.media3.common.MimeTypes.TEXT_VTT;
-            }
+        // Build all subtitle tracks for CC switching
+        java.util.List<androidx.media3.exoplayer.source.MediaSource> sources = new java.util.ArrayList<>();
+        sources.add(hlsSource);
 
-            // Detect language from URL
-            String subLang  = "en";
-            String subLabel = "English";
-            if (externalSubUrl.contains("tgl") || externalSubUrl.contains("fil")) {
-                subLang  = "tgl";
-                subLabel = "Filipino";
-            } else if (externalSubUrl.contains("kor")) {
-                subLang  = "kor";
-                subLabel = "Korean";
-            } else if (externalSubUrl.contains("zho") || externalSubUrl.contains("chi")) {
-                subLang  = "zho";
-                subLabel = "Chinese";
-            }
+        // Helper to detect mime type
+        java.util.function.Function<String, String> getMime = (url) -> {
+            String lo = url.toLowerCase();
+            if (lo.contains(".ass") || lo.contains(".ssa")) return androidx.media3.common.MimeTypes.TEXT_SSA;
+            return androidx.media3.common.MimeTypes.TEXT_VTT; // default VTT
+        };
 
-            android.util.Log.d("Yastream", "Sub mime: " + subMime + " lang: " + subLang + " url: " + externalSubUrl);
+        // Helper to detect language label
+        java.util.function.Function<String, String[]> getLangLabel = (url) -> {
+            if (url.contains("tgl") || url.contains("fil")) return new String[]{"tgl", "Filipino"};
+            if (url.contains("kor"))                         return new String[]{"kor", "Korean"};
+            if (url.contains("zho") || url.contains("chi")) return new String[]{"zho", "Chinese"};
+            if (url.contains("jpn") || url.contains("ja-")) return new String[]{"jpn", "Japanese"};
+            if (url.contains("tha"))                         return new String[]{"tha", "Thai"};
+            return new String[]{"eng", "English"};
+        };
 
-            try {
+        try {
+            // Add all available subtitle tracks from allSubs
+            java.util.Set<String> addedUrls = new java.util.HashSet<>();
+
+            if (allSubs != null && allSubs.length() > 0) {
+                // First pass — add auto-selected (default) sub
+                if (externalSubUrl != null && !externalSubUrl.isEmpty()) {
+                    String[] ll = getLangLabel.apply(externalSubUrl);
+                    MediaItem.SubtitleConfiguration defConfig =
+                        new MediaItem.SubtitleConfiguration.Builder(android.net.Uri.parse(externalSubUrl))
+                            .setMimeType(getMime.apply(externalSubUrl))
+                            .setLanguage(ll[0])
+                            .setLabel(ll[1])
+                            .setSelectionFlags(androidx.media3.common.C.SELECTION_FLAG_DEFAULT)
+                            .build();
+                    sources.add(new androidx.media3.exoplayer.source.SingleSampleMediaSource
+                        .Factory(dataSourceFactory)
+                        .createMediaSource(defConfig, androidx.media3.common.C.TIME_UNSET));
+                    addedUrls.add(externalSubUrl);
+                    android.util.Log.d("Yastream", "Added default sub: " + externalSubUrl);
+                }
+
+                // Second pass — add remaining subs (non-default, for CC switching)
+                for (int si = 0; si < allSubs.length(); si++) {
+                    org.json.JSONObject sub = allSubs.getJSONObject(si);
+                    String subUrl  = sub.optString("url", "");
+                    String subLang = sub.optString("lang", "und");
+                    String subLabel = sub.optString("label", subLang);
+                    if (subUrl.isEmpty() || addedUrls.contains(subUrl)) continue;
+                    addedUrls.add(subUrl);
+                    MediaItem.SubtitleConfiguration cfg =
+                        new MediaItem.SubtitleConfiguration.Builder(android.net.Uri.parse(subUrl))
+                            .setMimeType(getMime.apply(subUrl))
+                            .setLanguage(subLang)
+                            .setLabel(subLabel)
+                            .build(); // no SELECTION_FLAG_DEFAULT — user picks via CC
+                    sources.add(new androidx.media3.exoplayer.source.SingleSampleMediaSource
+                        .Factory(dataSourceFactory)
+                        .createMediaSource(cfg, androidx.media3.common.C.TIME_UNSET));
+                    android.util.Log.d("Yastream", "Added extra sub: " + subLang + " " + subUrl);
+                }
+            } else if (externalSubUrl != null && !externalSubUrl.isEmpty()) {
+                // No allSubs — just add the single selected sub
+                String[] ll = getLangLabel.apply(externalSubUrl);
                 MediaItem.SubtitleConfiguration subConfig =
                     new MediaItem.SubtitleConfiguration.Builder(android.net.Uri.parse(externalSubUrl))
-                        .setMimeType(subMime)
-                        .setLanguage(subLang)
-                        .setLabel(subLabel)
+                        .setMimeType(getMime.apply(externalSubUrl))
+                        .setLanguage(ll[0])
+                        .setLabel(ll[1])
                         .setSelectionFlags(androidx.media3.common.C.SELECTION_FLAG_DEFAULT)
                         .build();
-                androidx.media3.exoplayer.source.SingleSampleMediaSource subSource =
-                    new androidx.media3.exoplayer.source.SingleSampleMediaSource.Factory(dataSourceFactory)
-                        .createMediaSource(subConfig, androidx.media3.common.C.TIME_UNSET);
-                finalSource = new androidx.media3.exoplayer.source.MergingMediaSource(hlsSource, subSource);
-                android.util.Log.d("Yastream", "MergingMediaSource with sub: " + externalSubUrl);
-            } catch (Exception subErr) {
-                android.util.Log.w("Yastream", "Subtitle load failed, playing without: " + subErr.getMessage());
-                finalSource = hlsSource;
+                sources.add(new androidx.media3.exoplayer.source.SingleSampleMediaSource
+                    .Factory(dataSourceFactory)
+                    .createMediaSource(subConfig, androidx.media3.common.C.TIME_UNSET));
+                android.util.Log.d("Yastream", "Single sub: " + externalSubUrl);
             }
+        } catch (Exception subErr) {
+            android.util.Log.w("Yastream", "Subtitle setup failed: " + subErr.getMessage());
+        }
+
+        if (sources.size() > 1) {
+            finalSource = new androidx.media3.exoplayer.source.MergingMediaSource(
+                sources.toArray(new androidx.media3.exoplayer.source.MediaSource[0]));
         } else {
             finalSource = hlsSource;
             android.util.Log.d("Yastream", "No subtitle — HLS only");
