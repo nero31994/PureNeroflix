@@ -382,6 +382,96 @@ public class LicenseManager {
     // -----------------------------------------------------------------------
     // Internal helpers
     // -----------------------------------------------------------------------
+
+    // ── Direct yastream fetch (bypasses Cloudflare worker) ──────────────────
+    public static void fetchYastreamStreamsDirect(Context context,
+                                                   String tmdbId,
+                                                   String mediaType,
+                                                   int season,
+                                                   int episode,
+                                                   StreamsCallback callback) {
+        new Thread(() -> {
+            try {
+                String type = ("tv".equals(mediaType) || "series".equals(mediaType))
+                    ? "series" : "movie";
+
+                String stremioId = "tmdb:" + tmdbId;
+                if ("series".equals(type) && season > 0 && episode > 0) {
+                    stremioId = "tmdb:" + tmdbId + ":" + season + ":" + episode;
+                }
+
+                String config = "eyJjYXRhbG9ncyI6WyJraXNza2guc2VyaWVzLktvcmVhbiIsImtpc3NraC5tb3ZpZS5Lb3JlYW4iLCJraXNza2gubW92aWUuQ2hpbmVzZSIsImtpc3NraC5zZXJpZXMuQ2hpbmVzZSIsImtpc3NraC5tb3ZpZS5VUyIsImtpc3NraC5zZXJpZXMuVVMiLCJraXNza2gubW92aWUuVGhhaSIsImtpc3NraC5zZXJpZXMuVGhhaSIsImtpc3NraC5tb3ZpZS5QaGlsaXBwaW5lIiwia2lzc2toLnNlcmllcy5QaGlsaXBwaW5lIiwia2lzc2toLm1vdmllLkphcGFuZXNlIiwia2lzc2toLnNlcmllcy5KYXBhbmVzZSIsImtpc3NraC5tb3ZpZS5Ib25na29uZyIsImtpc3NraC5zZXJpZXMuSG9uZ2tvbmciLCJraXNza2gubW92aWUuVGFpd2FuZXNlIiwia2lzc2toLnNlcmllcy5UYWl3YW5lc2UiLCJvbmV0b3VjaHR2LnNlcmllcy5Lb3JlYW4iLCJvbmV0b3VjaHR2LnNlcmllcy5Qb3B1bGFyIiwib25ldG91Y2h0di5zZXJpZXMuQ2hpbmVzZSIsIm9uZXRvdWNodHYuc2VyaWVzLlRoYWkiLCJraXNza2guc2VyaWVzLlNlYXJjaCIsImtpc3NraC5tb3ZpZS5TZWFyY2giLCJvbmV0b3VjaHR2LnNlcmllcy5TZWFyY2giLCJpZHJhbWEuc2VyaWVzLmlEcmFtYSIsImlkcmFtYS5zZXJpZXMuU2VhcmNoIl0sImNhdGFsb2ciOlsia2lzc2toIiwib25ldG91Y2h0diIsImlkcmFtYSJdLCJzdHJlYW0iOlsia2lzc2toIiwib25ldG91Y2h0diIsImlkcmFtYSIsImtrcGhpbSJdLCJuc2Z3IjpmYWxzZSwiaW5mbyI6ZmFsc2UsInBvc3RlciI6InJwZGIiLCJtZnBVcmwiOiIiLCJ0YktleSI6IiIsIm1mcFBhc3MiOiIifQ==";
+
+                String urlStr = "https://yastream.tamthai.de/stream/"
+                    + type + "/"
+                    + android.net.Uri.encode(stremioId) + ".json"
+                    + "?config=" + android.net.Uri.encode(config);
+
+                java.net.URL url = new java.net.URL(urlStr);
+                java.net.HttpURLConnection conn = (java.net.HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("GET");
+                conn.setRequestProperty("User-Agent",
+                    "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 Chrome/124.0.0.0 Mobile Safari/537.36");
+                conn.setRequestProperty("Accept", "application/json");
+                conn.setRequestProperty("Referer", "https://app.stremio.com/");
+                conn.setRequestProperty("Origin",  "https://app.stremio.com");
+                conn.setConnectTimeout(10000);
+                conn.setReadTimeout(15000);
+
+                int code = conn.getResponseCode();
+                if (code != 200) { callback.onResult(new org.json.JSONArray()); return; }
+
+                StringBuilder sb = new StringBuilder();
+                try (java.io.BufferedReader br = new java.io.BufferedReader(
+                        new java.io.InputStreamReader(conn.getInputStream()))) {
+                    String line;
+                    while ((line = br.readLine()) != null) sb.append(line);
+                }
+
+                org.json.JSONObject resp    = new org.json.JSONObject(sb.toString());
+                org.json.JSONArray  raw     = resp.optJSONArray("streams");
+                org.json.JSONArray  streams = new org.json.JSONArray();
+
+                if (raw != null) {
+                    for (int i = 0; i < raw.length(); i++) {
+                        org.json.JSONObject s         = raw.getJSONObject(i);
+                        String              streamUrl = s.optString("url", "");
+                        if (streamUrl.isEmpty()) continue;
+
+                        String titleRaw = s.optString("title", s.optString("name", ""));
+                        String[] parts  = titleRaw.split("\\n");
+                        String provider = parts.length >= 2 ? parts[1].trim()
+                                        : (parts.length > 0 ? parts[0].trim() : "unknown");
+                        String quality  = parts.length >= 3 ? parts[2].trim().toUpperCase() : "unknown";
+
+                        if ("unknown".equals(quality)) {
+                            java.util.regex.Matcher m =
+                                java.util.regex.Pattern.compile(
+                                    "\\b(4K|2160p|1080p|720p|480p|360p)\\b",
+                                    java.util.regex.Pattern.CASE_INSENSITIVE).matcher(titleRaw);
+                            if (m.find()) quality = m.group(1).toUpperCase();
+                        }
+
+                        org.json.JSONObject out = new org.json.JSONObject();
+                        out.put("provider", provider);
+                        out.put("quality",  quality);
+                        out.put("title",    !"unknown".equals(quality)
+                            ? provider + " \u2022 " + quality : provider);
+                        out.put("url",      streamUrl);
+                        org.json.JSONArray subs = s.optJSONArray("subtitles");
+                        out.put("subtitles", subs != null ? subs : new org.json.JSONArray());
+                        streams.put(out);
+                    }
+                }
+                callback.onResult(streams);
+
+            } catch (Exception e) {
+                android.util.Log.e("LicenseManager", "fetchYastreamStreamsDirect failed", e);
+                callback.onResult(new org.json.JSONArray());
+            }
+        }).start();
+    }
+
     private static String postToWorker(String bodyJson) {
         try {
             URL url = new URL(workerUrl());
