@@ -905,18 +905,109 @@ if (!activityDestroyed) runOnUiThread(() -> {
 
     private void toggleSubtitles() {
         if (exoPlayer == null) return;
-        subtitlesOn = !subtitlesOn;
-        androidx.media3.common.TrackSelectionParameters params =
-            exoPlayer.getTrackSelectionParameters()
-                .buildUpon()
-                .setIgnoredTextSelectionFlags(
-                    subtitlesOn ? 0 : androidx.media3.common.C.SELECTION_FLAG_DEFAULT)
-                .build();
-        exoPlayer.setTrackSelectionParameters(params);
-        setStatus(subtitlesOn ? "Subtitles ON" : "Subtitles OFF");
-        // Clear status after 2 seconds
-        new android.os.Handler(android.os.Looper.getMainLooper())
-            .postDelayed(() -> setStatus(""), 2000);
+
+        // Build subtitle track list from current streamList
+        java.util.List<String> labels   = new java.util.ArrayList<>();
+        java.util.List<String> subUrls  = new java.util.ArrayList<>();
+        java.util.List<String> subLangs = new java.util.ArrayList<>();
+
+        // Add "Off" option first
+        labels.add("Off");
+        subUrls.add("");
+        subLangs.add("");
+
+        try {
+            if (streamList != null && currentStreamIndex < streamList.length()) {
+                org.json.JSONArray subs =
+                    streamList.getJSONObject(currentStreamIndex).optJSONArray("subtitles");
+                if (subs != null) {
+                    for (int i = 0; i < subs.length(); i++) {
+                        org.json.JSONObject sub = subs.getJSONObject(i);
+                        String url   = sub.optString("url",   "");
+                        String lang  = sub.optString("lang",  "und");
+                        String label = sub.optString("label", lang);
+                        if (url.isEmpty()) continue;
+                        // Make label human readable
+                        if ("tgl".equals(lang) || "fil".equals(lang)) label = "Filipino";
+                        else if ("eng".equals(lang))                    label = "English";
+                        else if ("kor".equals(lang))                    label = "Korean";
+                        else if ("zho".equals(lang) || "chi".equals(lang)) label = "Chinese";
+                        else if ("jpn".equals(lang))                    label = "Japanese";
+                        else if ("tha".equals(lang))                    label = "Thai";
+                        labels.add(label + " (" + lang + ")");
+                        subUrls.add(url);
+                        subLangs.add(lang);
+                    }
+                }
+            }
+        } catch (Exception ignored) {}
+
+        if (labels.size() <= 1) {
+            // No subtitles available — just toggle off/on
+            subtitlesOn = !subtitlesOn;
+            androidx.media3.common.TrackSelectionParameters params =
+                exoPlayer.getTrackSelectionParameters()
+                    .buildUpon()
+                    .setIgnoredTextSelectionFlags(
+                        subtitlesOn ? 0 : androidx.media3.common.C.SELECTION_FLAG_DEFAULT)
+                    .build();
+            exoPlayer.setTrackSelectionParameters(params);
+            setStatus(subtitlesOn ? "Subtitles ON" : "Subtitles OFF");
+            new android.os.Handler(android.os.Looper.getMainLooper())
+                .postDelayed(() -> setStatus(""), 2000);
+            return;
+        }
+
+        // Show subtitle picker dialog
+        new androidx.appcompat.app.AlertDialog.Builder(this)
+            .setTitle("Select Subtitle")
+            .setItems(labels.toArray(new String[0]), (d, which) -> {
+                if (which == 0) {
+                    // Turn off subtitles
+                    subtitlesOn = false;
+                    exoPlayer.setTrackSelectionParameters(
+                        exoPlayer.getTrackSelectionParameters()
+                            .buildUpon()
+                            .setIgnoredTextSelectionFlags(
+                                androidx.media3.common.C.SELECTION_FLAG_DEFAULT)
+                            .setPreferredTextLanguage("")
+                            .setDisabledTrackTypes(
+                                com.google.common.collect.ImmutableSet.of(
+                                    androidx.media3.common.C.TRACK_TYPE_TEXT))
+                            .build());
+                    setStatus("Subtitles OFF");
+                } else {
+                    // Switch to selected subtitle by reloading player with new sub
+                    subtitlesOn = true;
+                    String selectedUrl  = subUrls.get(which);
+                    String selectedLang = subLangs.get(which);
+                    String selectedLabel = labels.get(which);
+                    android.util.Log.d("Yastream", "Switching sub to: " + selectedLang + " " + selectedUrl);
+
+                    // Get current stream URL
+                    try {
+                        org.json.JSONArray subs =
+                            streamList.getJSONObject(currentStreamIndex).optJSONArray("subtitles");
+                        String streamUrl = streamList.getJSONObject(currentStreamIndex).optString("url", "");
+                        if (!streamUrl.isEmpty()) {
+                            long pos = exoPlayer.getCurrentPosition();
+                            initExoPlayer(streamUrl, selectedUrl, subs);
+                            // Seek to previous position after reload
+                            new android.os.Handler(android.os.Looper.getMainLooper())
+                                .postDelayed(() -> {
+                                    if (exoPlayer != null) exoPlayer.seekTo(pos);
+                                }, 800);
+                        }
+                    } catch (Exception e) {
+                        android.util.Log.w("Yastream", "Sub switch failed: " + e.getMessage());
+                    }
+                    setStatus("Subtitle: " + selectedLabel);
+                }
+                new android.os.Handler(android.os.Looper.getMainLooper())
+                    .postDelayed(() -> setStatus(""), 2000);
+            })
+            .setNegativeButton("Cancel", null)
+            .show();
     }
 
     private void hideSystemUI() {
