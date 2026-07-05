@@ -581,41 +581,16 @@ if (!activityDestroyed) runOnUiThread(() -> {
             android.util.Log.d("Yastream", "No subtitle — HLS only");
         }
 
-        // Force software decoder — hardware H.264 decoders on budget
-        // Android TV boxes (Allwinner/Amlogic) report format_supported=YES
-        // but crash on High Profile streams. Software decoder is slower
-        // but works reliably on ALL devices.
+        // Hardware decoder with automatic fallback:
+        // 1. Try hardware decoder first (best performance)
+        // 2. If hardware fails mid-stream, automatically retry with software
+        // setEnableDecoderFallback(true) is the key — tells ExoPlayer to
+        // silently switch to the next available decoder instead of erroring.
         androidx.media3.exoplayer.DefaultRenderersFactory rf =
-            new androidx.media3.exoplayer.DefaultRenderersFactory(this) {
-                @Override
-                protected void buildVideoRenderers(
-                        android.content.Context context,
-                        int extensionRendererMode,
-                        androidx.media3.exoplayer.mediacodec.MediaCodecSelector mediaCodecSelector,
-                        boolean enableDecoderFallback,
-                        android.os.Handler eventHandler,
-                        androidx.media3.exoplayer.video.VideoRendererEventListener eventListener,
-                        long allowedVideoJoiningTimeMs,
-                        java.util.ArrayList<androidx.media3.exoplayer.Renderer> out) {
-                    // Use software-only MediaCodecSelector
-                    androidx.media3.exoplayer.mediacodec.MediaCodecSelector softwareSelector =
-                        (mimeType, requiresSecure, requiresTunneling) -> {
-                            java.util.List<androidx.media3.exoplayer.mediacodec.MediaCodecInfo> all =
-                                androidx.media3.exoplayer.mediacodec.MediaCodecUtil
-                                    .getDecoderInfos(mimeType, requiresSecure, requiresTunneling);
-                            // Prefer software decoders
-                            java.util.List<androidx.media3.exoplayer.mediacodec.MediaCodecInfo> soft =
-                                new java.util.ArrayList<>();
-                            for (androidx.media3.exoplayer.mediacodec.MediaCodecInfo c : all)
-                                if (!c.hardwareAccelerated) soft.add(c);
-                            return soft.isEmpty() ? all : soft;
-                        };
-                    super.buildVideoRenderers(context, extensionRendererMode,
-                        softwareSelector, true, eventHandler, eventListener,
-                        allowedVideoJoiningTimeMs, out);
-                }
-            }.setExtensionRendererMode(
-                androidx.media3.exoplayer.DefaultRenderersFactory.EXTENSION_RENDERER_MODE_PREFER);
+            new androidx.media3.exoplayer.DefaultRenderersFactory(this)
+                .setEnableDecoderFallback(true)
+                .setExtensionRendererMode(
+                    androidx.media3.exoplayer.DefaultRenderersFactory.EXTENSION_RENDERER_MODE_ON);
         exoPlayer = new ExoPlayer.Builder(this, rf)
             .build();
         playerView.setPlayer(exoPlayer);
