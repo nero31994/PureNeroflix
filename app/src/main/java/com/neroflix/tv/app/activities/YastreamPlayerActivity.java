@@ -244,30 +244,10 @@ public class YastreamPlayerActivity extends BaseTvActivity {
             episode,
             streams -> {
                 if (streams == null || streams.length() == 0) {
-                    // Direct failed — fallback to worker
-                    android.util.Log.w("YastreamPlayer", "Direct fetch empty, falling back to worker");
-                    runOnUiThread(() -> setStatus("Trying alternate source..."));
-                    LicenseManager.fetchYastreamStreams(
-                        this,
-                        String.valueOf(tmdbId),
-                        mediaType,
-                        season,
-                        episode,
-                        workerStreams -> {
-                            if (workerStreams == null || workerStreams.length() == 0) {
-                                runOnUiThread(() -> {
-                                    showLoading(false);
-                                    showError("No streams available for this title.\nTry a different server.");
-                                });
-                                return;
-                            }
-                            streamList = workerStreams;
-                            runOnUiThread(() -> {
-                                showLoading(false);
-                                playStream(0);
-                            });
-                        }
-                    );
+                    runOnUiThread(() -> {
+                        showLoading(false);
+                        showError("No streams available for this title.\nTry a different server.");
+                    });
                     return;
                 }
                 streamList = streams;
@@ -322,7 +302,7 @@ public class YastreamPlayerActivity extends BaseTvActivity {
 
     // Yastream kdrama config — direct path format (not query param)
     private static final String YASTREAM_BASE   = "https://yastream.tamthai.de";
-    private static final String YASTREAM_CONFIG = "eyJjYXRhbG9ncyI6WyJraXNza2guc2VyaWVzLktvcmVhbiIsImtpc3NraC5tb3ZpZS5Lb3JlYW4iLCJraXNza2gubW92aWUuQ2hpbmVzZSIsImtpc3NraC5zZXJpZXMuQ2hpbmVzZSIsImtpc3NraC5tb3ZpZS5UaGFpIiwia2lzc2toLnNlcmllcy5UaGFpIiwia2lzc2toLm1vdmllLkphcGFuZXNlIiwia2lzc2toLnNlcmllcy5KYXBhbmVzZSIsImtpc3NraC5tb3ZpZS5Ib25na29uZyIsImtpc3NraC5zZXJpZXMuSG9uZ2tvbmciLCJraXNza2gubW92aWUuVGFpd2FuZXNlIiwia2lzc2toLnNlcmllcy5UYWl3YW5lc2UiLCJraXNza2guc2VyaWVzLlBoaWxpcHBpbmUiLCJvbmV0b3VjaHR2LnNlcmllcy5Lb3JlYW4iLCJvbmV0b3VjaHR2LnNlcmllcy5Qb3B1bGFyIiwib25ldG91Y2h0di5zZXJpZXMuQ2hpbmVzZSIsIm9uZXRvdWNodHYuc2VyaWVzLlRoYWkiLCJraXNza2guc2VyaWVzLlNlYXJjaCIsImtpc3NraC5tb3ZpZS5TZWFyY2giLCJvbmV0b3VjaHR2LnNlcmllcy5TZWFyY2giLCJpZHJhbWEuc2VyaWVzLmlEcmFtYSIsImlkcmFtYS5zZXJpZXMuU2VhcmNoIl0sImNhdGFsb2ciOlsia2lzc2toIiwib25ldG91Y2h0diIsImlkcmFtYSJdLCJzdHJlYW0iOlsia2lzc2toIiwib25ldG91Y2h0diIsImlkcmFtYSJdLCJuc2Z3IjpmYWxzZSwiaW5mbyI6ZmFsc2UsInBvc3RlciI6ImVyZGIiLCJtZnBVcmwiOiIiLCJ0YktleSI6IiIsIm1mcFBhc3MiOiIifQ==";
+    private static final String YASTREAM_CONFIG = "eyJjYXRhbG9ncyI6WyJraXNza2guc2VyaWVzLktvcmVhbiIsImtpc3NraC5tb3ZpZS5Lb3JlYW4iLCJraXNza2gubW92aWUuQ2hpbmVzZSIsImtpc3NraC5zZXJpZXMuQ2hpbmVzZSIsImtpc3NraC5tb3ZpZS5VUyIsImtpc3NraC5zZXJpZXMuVVMiLCJraXNza2gubW92aWUuVGhhaSIsImtpc3NraC5zZXJpZXMuVGhhaSIsImtpc3NraC5tb3ZpZS5QaGlsaXBwaW5lIiwia2lzc2toLnNlcmllcy5QaGlsaXBwaW5lIiwia2lzc2toLm1vdmllLkphcGFuZXNlIiwia2lzc2toLnNlcmllcy5KYXBhbmVzZSIsImtpc3NraC5tb3ZpZS5Ib25na29uZyIsImtpc3NraC5zZXJpZXMuSG9uZ2tvbmciLCJraXNza2gubW92aWUuVGFpd2FuZXNlIiwia2lzc2toLnNlcmllcy5UYWl3YW5lc2UiLCJvbmV0b3VjaHR2LnNlcmllcy5Lb3JlYW4iLCJvbmV0b3VjaHR2LnNlcmllcy5Qb3B1bGFyIiwib25ldG91Y2h0di5zZXJpZXMuQ2hpbmVzZSIsIm9uZXRvdWNodHYuc2VyaWVzLlRoYWkiLCJraXNza2guc2VyaWVzLlNlYXJjaCIsImtpc3NraC5tb3ZpZS5TZWFyY2giLCJvbmV0b3VjaHR2LnNlcmllcy5TZWFyY2giLCJpZHJhbWEuc2VyaWVzLmlEcmFtYSIsImlkcmFtYS5zZXJpZXMuU2VhcmNoIl0sImNhdGFsb2ciOlsia2lzc2toIiwib25ldG91Y2h0diIsImlkcmFtYSJdLCJzdHJlYW0iOlsia2lzc2toIiwib25ldG91Y2h0diIsImlkcmFtYSIsImtrcGhpbSJdLCJuc2Z3IjpmYWxzZSwiaW5mbyI6ZmFsc2UsInBvc3RlciI6InJwZGIiLCJtZnBVcmwiOiIiLCJ0YktleSI6IiIsIm1mcFBhc3MiOiIifQ==";
     private static final String NEROTIVI        = "https://nerotivi.kkt01.workers.dev";
 
     private String fetchUrl(String url) throws Exception {
