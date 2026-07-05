@@ -264,7 +264,7 @@ public class YastreamPlayerActivity extends BaseTvActivity {
                             streamList = workerStreams;
                             runOnUiThread(() -> {
                                 showLoading(false);
-                                showStreamList();
+                                playStream(0);
                             });
                         }
                     );
