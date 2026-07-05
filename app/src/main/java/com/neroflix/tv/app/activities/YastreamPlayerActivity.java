@@ -663,18 +663,51 @@ if (!activityDestroyed) runOnUiThread(() -> {
 
         androidx.media3.exoplayer.source.MediaSource finalSource;
         if (externalSubUrl != null && !externalSubUrl.isEmpty()) {
-            MediaItem.SubtitleConfiguration subConfig =
-                new MediaItem.SubtitleConfiguration.Builder(android.net.Uri.parse(externalSubUrl))
-                    .setMimeType(androidx.media3.common.MimeTypes.APPLICATION_SUBRIP)
-                    .setLanguage("en")
-                    .setLabel("English")
-                    .setSelectionFlags(androidx.media3.common.C.SELECTION_FLAG_DEFAULT)
-                    .build();
-            androidx.media3.exoplayer.source.SingleSampleMediaSource subSource =
-                new androidx.media3.exoplayer.source.SingleSampleMediaSource.Factory(dataSourceFactory)
-                    .createMediaSource(subConfig, androidx.media3.common.C.TIME_UNSET);
-            finalSource = new androidx.media3.exoplayer.source.MergingMediaSource(hlsSource, subSource);
-            android.util.Log.d("Yastream", "MergingMediaSource with sub: " + externalSubUrl);
+            // Detect subtitle format from URL
+            String subMime;
+            String subLower = externalSubUrl.toLowerCase();
+            if (subLower.contains(".vtt") || subLower.contains("vtt")) {
+                subMime = androidx.media3.common.MimeTypes.TEXT_VTT;
+            } else if (subLower.contains(".ass") || subLower.contains(".ssa")) {
+                subMime = androidx.media3.common.MimeTypes.TEXT_SSA;
+            } else {
+                // Default to VTT — yastream/OpenSubtitles mostly serve VTT
+                subMime = androidx.media3.common.MimeTypes.TEXT_VTT;
+            }
+
+            // Detect language from URL
+            String subLang  = "en";
+            String subLabel = "English";
+            if (externalSubUrl.contains("tgl") || externalSubUrl.contains("fil")) {
+                subLang  = "tgl";
+                subLabel = "Filipino";
+            } else if (externalSubUrl.contains("kor")) {
+                subLang  = "kor";
+                subLabel = "Korean";
+            } else if (externalSubUrl.contains("zho") || externalSubUrl.contains("chi")) {
+                subLang  = "zho";
+                subLabel = "Chinese";
+            }
+
+            android.util.Log.d("Yastream", "Sub mime: " + subMime + " lang: " + subLang + " url: " + externalSubUrl);
+
+            try {
+                MediaItem.SubtitleConfiguration subConfig =
+                    new MediaItem.SubtitleConfiguration.Builder(android.net.Uri.parse(externalSubUrl))
+                        .setMimeType(subMime)
+                        .setLanguage(subLang)
+                        .setLabel(subLabel)
+                        .setSelectionFlags(androidx.media3.common.C.SELECTION_FLAG_DEFAULT)
+                        .build();
+                androidx.media3.exoplayer.source.SingleSampleMediaSource subSource =
+                    new androidx.media3.exoplayer.source.SingleSampleMediaSource.Factory(dataSourceFactory)
+                        .createMediaSource(subConfig, androidx.media3.common.C.TIME_UNSET);
+                finalSource = new androidx.media3.exoplayer.source.MergingMediaSource(hlsSource, subSource);
+                android.util.Log.d("Yastream", "MergingMediaSource with sub: " + externalSubUrl);
+            } catch (Exception subErr) {
+                android.util.Log.w("Yastream", "Subtitle load failed, playing without: " + subErr.getMessage());
+                finalSource = hlsSource;
+            }
         } else {
             finalSource = hlsSource;
             android.util.Log.d("Yastream", "No subtitle — HLS only");
