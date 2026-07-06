@@ -793,23 +793,25 @@ if (!activityDestroyed) runOnUiThread(() -> {
         exoPlayer.addListener(new Player.Listener() {
             @Override public void onPlayerError(androidx.media3.common.PlaybackException error) {
                 android.util.Log.e("Yastream", "Player error: " + error.getMessage());
-                // If error is subtitle-related, retry without subtitles
-                if (error.errorCode == androidx.media3.common.PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED
-                    || error.errorCode == androidx.media3.common.PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS
-                    || error.getMessage() != null && error.getMessage().contains("Source error")) {
-                    if (externalSubUrl != null && !externalSubUrl.isEmpty()) {
-                        android.util.Log.w("Yastream", "Retrying without subtitles");
-                        runOnUiThread(() -> {
-                            setStatus("Retrying without subtitles...");
-                            initExoPlayer(m3u8Url, null, null);
-                        });
-                        return;
-                    }
+                showLoading(false);
+                // 1. If we had subtitles, retry without them first
+                if (hasSubtitles && !lastM3u8Url.isEmpty()) {
+                    android.util.Log.w("Yastream", "Retrying without subtitles");
+                    hasSubtitles = false;
+                    runOnUiThread(() -> {
+                        setStatus("Retrying without subtitles...");
+                        initExoPlayer(lastM3u8Url, null, null);
+                    });
+                    return;
                 }
-                runOnUiThread(() -> {
-                    showLoading(false);
-                    showError("Playback error: " + error.getMessage());
-                });
+                // 2. Try next stream source
+                if (streamList != null && currentStreamIndex < streamList.length() - 1) {
+                    setStatus("Trying next source...");
+                    playStream(currentStreamIndex + 1);
+                    return;
+                }
+                // 3. Nothing left — show error
+                showError("Playback error: " + error.getMessage());
             }
 
             @Override public void onPlaybackStateChanged(int state) {
@@ -818,15 +820,6 @@ if (!activityDestroyed) runOnUiThread(() -> {
                     case Player.STATE_READY: showLoading(false); setStatus(""); break;
                     case Player.STATE_ENDED: showLoading(false); setStatus("Playback ended"); break;
                     case Player.STATE_IDLE: showLoading(false); break;
-                }
-            }
-            @Override public void onPlayerError(PlaybackException error) {
-                showLoading(false);
-                if (streamList != null && currentStreamIndex < streamList.length() - 1) {
-                    setStatus("Trying next source...");
-                    playStream(currentStreamIndex + 1);
-                } else {
-                    showError("Playback error: " + error.getMessage());
                 }
             }
         });
