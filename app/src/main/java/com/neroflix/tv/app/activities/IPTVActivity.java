@@ -367,7 +367,7 @@ public class IPTVActivity extends BaseTvActivity {
         }
     };
 
-    // ── Channel loading ──────────────────────────────────────────────────────
+    // ── Channel loading ──────────────────────────────────────────────────���───
 
     private static final long CACHE_DURATION_MS = 24 * 60 * 60 * 1000L; // 24 hours
     private static final String CACHE_FILE = "m3u_playlist_cache.txt";
@@ -1235,7 +1235,15 @@ public class IPTVActivity extends BaseTvActivity {
         }
         if (adapter != null) adapter.filter("");
     }
-        resetAutoHide();
+
+    @Override
+    public boolean onTouchEvent(MotionEvent e) {
+        if (!sidebarVisible) {
+            showSidebar();
+            focusZone = FocusZone.CHANNELS;
+        } else {
+            resetAutoHide();
+        }
         return super.onTouchEvent(e);
     }
 
