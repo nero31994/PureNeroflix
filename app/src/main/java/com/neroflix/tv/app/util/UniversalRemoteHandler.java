@@ -69,19 +69,15 @@ public class UniversalRemoteHandler {
         switch (keyCode) {
             // DPAD Navigation
             case KeyEvent.KEYCODE_DPAD_UP:
-            case 218: // Samsung Up
                 return ACTION_UP;
 
             case KeyEvent.KEYCODE_DPAD_DOWN:
-            case 219: // Samsung Down
                 return ACTION_DOWN;
 
             case KeyEvent.KEYCODE_DPAD_LEFT:
-            case 216: // Samsung Left
                 return ACTION_LEFT;
 
             case KeyEvent.KEYCODE_DPAD_RIGHT:
-            case 217: // Samsung Right
                 return ACTION_RIGHT;
 
             // Center/Select
@@ -97,7 +93,6 @@ public class UniversalRemoteHandler {
 
             // Home
             case KeyEvent.KEYCODE_HOME:
-            case 50: // Generic Home
                 return ACTION_HOME;
 
             // Menu
@@ -108,12 +103,10 @@ public class UniversalRemoteHandler {
             // Info
             case KeyEvent.KEYCODE_INFO:
             case 165: // Samsung Info
-            case 167: // LG Info
                 return ACTION_INFO;
 
             // Guide
             case KeyEvent.KEYCODE_GUIDE:
-            case 172: // Guide
                 return ACTION_GUIDE;
 
             // Exit
@@ -124,47 +117,37 @@ public class UniversalRemoteHandler {
             case KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE:
             case KeyEvent.KEYCODE_MEDIA_PLAY:
             case KeyEvent.KEYCODE_MEDIA_PAUSE:
-            case 85: // Play/Pause
                 return ACTION_PLAY_PAUSE;
 
             // Colored Buttons
-            case 403: // Red button
             case KeyEvent.KEYCODE_PROG_RED:
                 return ACTION_RED;
 
-            case 404: // Green button
             case KeyEvent.KEYCODE_PROG_GREEN:
                 return ACTION_GREEN;
 
-            case 405: // Yellow button
             case KeyEvent.KEYCODE_PROG_YELLOW:
                 return ACTION_YELLOW;
 
-            case 406: // Blue button
             case KeyEvent.KEYCODE_PROG_BLUE:
                 return ACTION_BLUE;
 
             // Power
             case KeyEvent.KEYCODE_POWER:
-            case 26: // Power
                 return ACTION_POWER;
 
             // Volume
             case KeyEvent.KEYCODE_VOLUME_UP:
-            case 24: // Volume Up
                 return ACTION_VOLUME_UP;
 
             case KeyEvent.KEYCODE_VOLUME_DOWN:
-            case 25: // Volume Down
                 return ACTION_VOLUME_DOWN;
 
             // Channel
             case KeyEvent.KEYCODE_CHANNEL_UP:
-            case 166: // Channel Up
                 return ACTION_CHANNEL_UP;
 
             case KeyEvent.KEYCODE_CHANNEL_DOWN:
-            case 167: // Channel Down (note: 167 also used for LG Info, context matters)
                 return ACTION_CHANNEL_DOWN;
 
             // Gamepad
