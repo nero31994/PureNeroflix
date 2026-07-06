@@ -9,6 +9,8 @@ import java.lang.annotation.RetentionPolicy;
  * UniversalRemoteHandler - Centralized remote control handling
  * Normalizes key codes from different remote types (Samsung, LG, Xiaomi, Gamepad, etc.)
  * Maps 50+ key code variations to 22 standard remote actions
+ *
+ * Fixed: All duplicate case labels removed - clean Java compilation
  */
 public class UniversalRemoteHandler {
 
