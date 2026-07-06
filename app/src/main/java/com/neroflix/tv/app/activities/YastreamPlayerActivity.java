@@ -923,7 +923,9 @@ if (!activityDestroyed) runOnUiThread(() -> {
         if (exoPlayer != null) { exoPlayer.stop(); exoPlayer.release(); exoPlayer = null; }
     }
 
-    private boolean subtitlesOn = true;
+    private boolean subtitlesOn  = true;
+    private boolean hasSubtitles = false;
+    private String  lastM3u8Url  = "";
 
     private void toggleSubtitles() {
         if (exoPlayer == null) return;
