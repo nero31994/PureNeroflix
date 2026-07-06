@@ -105,13 +105,11 @@ public class UniversalRemoteHandler {
             case KeyEvent.KEYCODE_DPAD_CENTER:
             case KeyEvent.KEYCODE_ENTER:
             case KeyEvent.KEYCODE_NUMPAD_ENTER:
-            case 66: // Standard Enter
                 return ACTION_CENTER;
 
             // Back/Escape keys
             case KeyEvent.KEYCODE_BACK:
             case KeyEvent.KEYCODE_ESCAPE:
-            case 4: // Standard Back
                 return ACTION_BACK;
 
             // Home keys
@@ -121,23 +119,19 @@ public class UniversalRemoteHandler {
 
             // Menu/Options keys
             case KeyEvent.KEYCODE_MENU:
-            case 82: // Standard Menu
             case 139: // Generic Menu
                 return ACTION_MENU;
 
             // Info/Details keys
             case KeyEvent.KEYCODE_INFO:
-            case 165: // Samsung Info
             case 167: // LG Info
                 return ACTION_INFO;
 
             // Guide key
             case KeyEvent.KEYCODE_GUIDE:
-            case 172: // Guide
                 return ACTION_GUIDE;
 
             // Exit key
-            case KeyEvent.KEYCODE_PROG_RED:
             case 183: // Exit variant
                 return ACTION_EXIT;
 
@@ -145,12 +139,10 @@ public class UniversalRemoteHandler {
             case KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE:
             case KeyEvent.KEYCODE_MEDIA_PLAY:
             case KeyEvent.KEYCODE_MEDIA_PAUSE:
-            case 85: // Play/Pause
                 return ACTION_PLAY_PAUSE;
 
             // Colored buttons (Red, Green, Yellow, Blue)
             case 403: // Red button
-            case KeyEvent.KEYCODE_PROG_RED:
                 return ACTION_RED;
 
             case 404: // Green button
