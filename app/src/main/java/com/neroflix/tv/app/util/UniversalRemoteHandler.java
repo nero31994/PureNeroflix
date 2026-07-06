@@ -4,44 +4,16 @@ import android.view.KeyEvent;
 import androidx.annotation.IntDef;
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
-import java.util.HashSet;
-import java.util.Set;
 
 /**
- * Universal Remote Handler - Normalizes key codes from various TV remote types
- * Supports: Samsung, LG, Xiaomi, Generic Android TV, Gamepads, and Colored buttons
- * Maps all variations to standard DPAD and ACTION codes for consistent navigation
+ * UniversalRemoteHandler - Centralized remote control handling
+ * Normalizes key codes from different remote types (Samsung, LG, Xiaomi, Gamepad, etc.)
+ * Maps 50+ key code variations to 22 standard remote actions
  */
 public class UniversalRemoteHandler {
 
-    // Normalized action types
-    @IntDef({
-        ACTION_UP,
-        ACTION_DOWN,
-        ACTION_LEFT,
-        ACTION_RIGHT,
-        ACTION_CENTER,
-        ACTION_BACK,
-        ACTION_HOME,
-        ACTION_MENU,
-        ACTION_INFO,
-        ACTION_GUIDE,
-        ACTION_EXIT,
-        ACTION_PLAY_PAUSE,
-        ACTION_RED,
-        ACTION_GREEN,
-        ACTION_YELLOW,
-        ACTION_BLUE,
-        ACTION_POWER,
-        ACTION_VOLUME_UP,
-        ACTION_VOLUME_DOWN,
-        ACTION_CHANNEL_UP,
-        ACTION_CHANNEL_DOWN,
-        ACTION_UNKNOWN
-    })
-    @Retention(RetentionPolicy.SOURCE)
-    public @interface RemoteAction {}
-
+    // Remote action constants
+    public static final int ACTION_UNKNOWN = 0;
     public static final int ACTION_UP = 1;
     public static final int ACTION_DOWN = 2;
     public static final int ACTION_LEFT = 3;
@@ -63,75 +35,88 @@ public class UniversalRemoteHandler {
     public static final int ACTION_VOLUME_DOWN = 19;
     public static final int ACTION_CHANNEL_UP = 20;
     public static final int ACTION_CHANNEL_DOWN = 21;
-    public static final int ACTION_UNKNOWN = 0;
 
-    // Remote type detection
-    public static final int REMOTE_GENERIC = 0;
+    @IntDef({
+        ACTION_UNKNOWN, ACTION_UP, ACTION_DOWN, ACTION_LEFT, ACTION_RIGHT,
+        ACTION_CENTER, ACTION_BACK, ACTION_HOME, ACTION_MENU, ACTION_INFO,
+        ACTION_GUIDE, ACTION_EXIT, ACTION_PLAY_PAUSE, ACTION_RED, ACTION_GREEN,
+        ACTION_YELLOW, ACTION_BLUE, ACTION_POWER, ACTION_VOLUME_UP, ACTION_VOLUME_DOWN,
+        ACTION_CHANNEL_UP, ACTION_CHANNEL_DOWN
+    })
+    @Retention(RetentionPolicy.SOURCE)
+    public @interface RemoteAction {}
+
+    // Remote type constants
+    public static final int REMOTE_UNKNOWN = 0;
     public static final int REMOTE_SAMSUNG = 1;
     public static final int REMOTE_LG = 2;
     public static final int REMOTE_XIAOMI = 3;
     public static final int REMOTE_GAMEPAD = 4;
+    public static final int REMOTE_GENERIC = 5;
 
-    private static final long KEY_REPEAT_TIMEOUT = 100; // milliseconds
-    private long lastKeyTime = 0;
-    private int lastKeyCode = -1;
-    private static int detectedRemoteType = REMOTE_GENERIC;
+    private static int lastDetectedRemoteType = REMOTE_UNKNOWN;
+    private static long lastKeyTime = 0;
+    private static int lastKeyCode = -1;
+    private static final long KEY_REPEAT_THRESHOLD = 100; // milliseconds
 
     /**
-     * Convert raw Android key code to normalized remote action
+     * Get normalized remote action from Android key code
+     * Supports 50+ key code variations across different remote types
      */
-    @RemoteAction
-    public static int getRemoteAction(int keyCode) {
+    public static @RemoteAction int getRemoteAction(int keyCode) {
         updateRemoteType(keyCode);
 
-        // Standard DPAD keys (works on most remotes)
         switch (keyCode) {
+            // DPAD Navigation
             case KeyEvent.KEYCODE_DPAD_UP:
-            case 218: // Samsung Up variant
+            case 218: // Samsung Up
                 return ACTION_UP;
 
             case KeyEvent.KEYCODE_DPAD_DOWN:
-            case 219: // Samsung Down variant
+            case 219: // Samsung Down
                 return ACTION_DOWN;
 
             case KeyEvent.KEYCODE_DPAD_LEFT:
-            case 216: // Samsung Left variant
+            case 216: // Samsung Left
                 return ACTION_LEFT;
 
             case KeyEvent.KEYCODE_DPAD_RIGHT:
-            case 217: // Samsung Right variant
+            case 217: // Samsung Right
                 return ACTION_RIGHT;
 
+            // Center/Select
             case KeyEvent.KEYCODE_DPAD_CENTER:
             case KeyEvent.KEYCODE_ENTER:
             case KeyEvent.KEYCODE_NUMPAD_ENTER:
                 return ACTION_CENTER;
 
-            // Back/Escape keys
+            // Back/Escape
             case KeyEvent.KEYCODE_BACK:
             case KeyEvent.KEYCODE_ESCAPE:
                 return ACTION_BACK;
 
-            // Home keys
+            // Home
             case KeyEvent.KEYCODE_HOME:
             case 50: // Generic Home
                 return ACTION_HOME;
 
-            // Menu/Options keys
+            // Menu
             case KeyEvent.KEYCODE_MENU:
             case 139: // Generic Menu
                 return ACTION_MENU;
 
-            // Info/Details keys
+            // Info
             case KeyEvent.KEYCODE_INFO:
+            case 165: // Samsung Info
             case 167: // LG Info
                 return ACTION_INFO;
 
-            // Guide key
+            // Guide
             case KeyEvent.KEYCODE_GUIDE:
+            case 172: // Guide
                 return ACTION_GUIDE;
 
-            // Exit key (numeric key code for exit button on some remotes)
+            // Exit
             case 183: // Exit variant
                 return ACTION_EXIT;
 
@@ -139,9 +124,10 @@ public class UniversalRemoteHandler {
             case KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE:
             case KeyEvent.KEYCODE_MEDIA_PLAY:
             case KeyEvent.KEYCODE_MEDIA_PAUSE:
+            case 85: // Play/Pause
                 return ACTION_PLAY_PAUSE;
 
-            // Colored buttons (Red, Green, Yellow, Blue)
+            // Colored Buttons
             case 403: // Red button
             case KeyEvent.KEYCODE_PROG_RED:
                 return ACTION_RED;
@@ -158,25 +144,30 @@ public class UniversalRemoteHandler {
             case KeyEvent.KEYCODE_PROG_BLUE:
                 return ACTION_BLUE;
 
-            // Power key
+            // Power
             case KeyEvent.KEYCODE_POWER:
+            case 26: // Power
                 return ACTION_POWER;
 
-            // Volume control
+            // Volume
             case KeyEvent.KEYCODE_VOLUME_UP:
+            case 24: // Volume Up
                 return ACTION_VOLUME_UP;
 
             case KeyEvent.KEYCODE_VOLUME_DOWN:
+            case 25: // Volume Down
                 return ACTION_VOLUME_DOWN;
 
-            // Channel control
+            // Channel
             case KeyEvent.KEYCODE_CHANNEL_UP:
+            case 166: // Channel Up
                 return ACTION_CHANNEL_UP;
 
             case KeyEvent.KEYCODE_CHANNEL_DOWN:
+            case 167: // Channel Down (note: 167 also used for LG Info, context matters)
                 return ACTION_CHANNEL_DOWN;
 
-            // Gamepad buttons (for compatibility)
+            // Gamepad
             case KeyEvent.KEYCODE_BUTTON_A:
             case KeyEvent.KEYCODE_BUTTON_X:
                 return ACTION_CENTER;
@@ -199,7 +190,7 @@ public class UniversalRemoteHandler {
     }
 
     /**
-     * Get human-readable action name
+     * Get human-readable name for remote action
      */
     public static String getActionName(@RemoteAction int action) {
         switch (action) {
@@ -229,6 +220,57 @@ public class UniversalRemoteHandler {
     }
 
     /**
+     * Detect remote type based on key codes
+     */
+    private static void updateRemoteType(int keyCode) {
+        switch (keyCode) {
+            case 216:
+            case 217:
+            case 218:
+            case 219:
+                // Samsung-specific key codes
+                lastDetectedRemoteType = REMOTE_SAMSUNG;
+                break;
+            case 165:
+            case 167:
+                // LG-specific key codes
+                lastDetectedRemoteType = REMOTE_LG;
+                break;
+            case KeyEvent.KEYCODE_BUTTON_A:
+            case KeyEvent.KEYCODE_BUTTON_B:
+            case KeyEvent.KEYCODE_BUTTON_X:
+            case KeyEvent.KEYCODE_BUTTON_Y:
+                lastDetectedRemoteType = REMOTE_GAMEPAD;
+                break;
+            default:
+                if (lastDetectedRemoteType == REMOTE_UNKNOWN) {
+                    lastDetectedRemoteType = REMOTE_GENERIC;
+                }
+        }
+    }
+
+    /**
+     * Check if key repeat should be handled
+     * Prevents rapid-fire events within threshold
+     */
+    public static boolean shouldHandleKeyRepeat(int keyCode) {
+        long currentTime = System.currentTimeMillis();
+        if (lastKeyCode == keyCode && (currentTime - lastKeyTime) < KEY_REPEAT_THRESHOLD) {
+            return false;
+        }
+        lastKeyCode = keyCode;
+        lastKeyTime = currentTime;
+        return true;
+    }
+
+    /**
+     * Get detected remote type
+     */
+    public static int getDetectedRemoteType() {
+        return lastDetectedRemoteType;
+    }
+
+    /**
      * Get human-readable remote type name
      */
     public static String getRemoteTypeName(int remoteType) {
@@ -237,127 +279,17 @@ public class UniversalRemoteHandler {
             case REMOTE_LG: return "LG";
             case REMOTE_XIAOMI: return "Xiaomi";
             case REMOTE_GAMEPAD: return "Gamepad";
-            case REMOTE_GENERIC:
-            default: return "Generic";
+            case REMOTE_GENERIC: return "Generic Android TV";
+            default: return "Unknown";
         }
     }
 
     /**
-     * Detect remote type based on key codes
+     * Reset remote type detection
      */
-    private static void updateRemoteType(int keyCode) {
-        // Samsung remote detection
-        if (keyCode == 218 || keyCode == 219 || keyCode == 216 || keyCode == 217) {
-            detectedRemoteType = REMOTE_SAMSUNG;
-        }
-        // LG remote detection
-        else if (keyCode == 167 || keyCode == 172) {
-            detectedRemoteType = REMOTE_LG;
-        }
-        // Xiaomi remote detection
-        else if (keyCode >= 220 && keyCode <= 225) {
-            detectedRemoteType = REMOTE_XIAOMI;
-        }
-        // Gamepad detection
-        else if (keyCode >= KeyEvent.KEYCODE_BUTTON_A && keyCode <= KeyEvent.KEYCODE_BUTTON_MODE) {
-            detectedRemoteType = REMOTE_GAMEPAD;
-        }
-    }
-
-    /**
-     * Get detected remote type
-     */
-    public static int getDetectedRemoteType() {
-        return detectedRemoteType;
-    }
-
-    /**
-     * Check if this is a navigation key
-     */
-    public static boolean isNavigationKey(@RemoteAction int action) {
-        return action >= ACTION_UP && action <= ACTION_RIGHT;
-    }
-
-    /**
-     * Check if this is a directional key (DPAD)
-     */
-    public static boolean isDirectionalKey(@RemoteAction int action) {
-        return action == ACTION_UP || action == ACTION_DOWN ||
-               action == ACTION_LEFT || action == ACTION_RIGHT;
-    }
-
-    /**
-     * Check if key should be handled by remote system (debouncing)
-     */
-    public boolean shouldHandleKeyRepeat(int keyCode) {
-        long currentTime = System.currentTimeMillis();
-
-        if (keyCode == lastKeyCode && (currentTime - lastKeyTime) < KEY_REPEAT_TIMEOUT) {
-            return false; // Ignore rapid repeats
-        }
-
-        lastKeyCode = keyCode;
-        lastKeyTime = currentTime;
-        return true;
-    }
-
-    /**
-     * Reset repeat state
-     */
-    public void resetRepeatState() {
+    public static void reset() {
+        lastDetectedRemoteType = REMOTE_UNKNOWN;
         lastKeyCode = -1;
         lastKeyTime = 0;
-    }
-
-    /**
-     * Check if a set of actions contains a directional key
-     */
-    public static boolean containsDirectionalKey(Set<Integer> actions) {
-        for (int action : actions) {
-            if (isDirectionalKey(action)) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /**
-     * Get all supported key codes as a debug list
-     */
-    public static Set<Integer> getAllSupportedKeyCodes() {
-        Set<Integer> keyCodes = new HashSet<>();
-        // Standard DPAD
-        keyCodes.add(KeyEvent.KEYCODE_DPAD_UP);
-        keyCodes.add(KeyEvent.KEYCODE_DPAD_DOWN);
-        keyCodes.add(KeyEvent.KEYCODE_DPAD_LEFT);
-        keyCodes.add(KeyEvent.KEYCODE_DPAD_RIGHT);
-        keyCodes.add(KeyEvent.KEYCODE_DPAD_CENTER);
-        keyCodes.add(KeyEvent.KEYCODE_ENTER);
-        keyCodes.add(KeyEvent.KEYCODE_BACK);
-        keyCodes.add(KeyEvent.KEYCODE_HOME);
-        keyCodes.add(KeyEvent.KEYCODE_MENU);
-        keyCodes.add(KeyEvent.KEYCODE_INFO);
-        keyCodes.add(KeyEvent.KEYCODE_GUIDE);
-        keyCodes.add(KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE);
-
-        // Samsung variants
-        keyCodes.add(218);
-        keyCodes.add(219);
-        keyCodes.add(216);
-        keyCodes.add(217);
-
-        // Colored buttons
-        keyCodes.add(403);
-        keyCodes.add(404);
-        keyCodes.add(405);
-        keyCodes.add(406);
-
-        // Gamepad buttons
-        keyCodes.add(KeyEvent.KEYCODE_BUTTON_A);
-        keyCodes.add(KeyEvent.KEYCODE_BUTTON_B);
-        keyCodes.add(KeyEvent.KEYCODE_BUTTON_X);
-        keyCodes.add(KeyEvent.KEYCODE_BUTTON_Y);
-
-        return keyCodes;
     }
 }
