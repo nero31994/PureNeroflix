@@ -131,7 +131,7 @@ public class UniversalRemoteHandler {
             case KeyEvent.KEYCODE_GUIDE:
                 return ACTION_GUIDE;
 
-            // Exit key
+            // Exit key (numeric key code for exit button on some remotes)
             case 183: // Exit variant
                 return ACTION_EXIT;
 
@@ -143,6 +143,7 @@ public class UniversalRemoteHandler {
 
             // Colored buttons (Red, Green, Yellow, Blue)
             case 403: // Red button
+            case KeyEvent.KEYCODE_PROG_RED:
                 return ACTION_RED;
 
             case 404: // Green button
