@@ -102,31 +102,4 @@ public abstract class RemoteActivity extends BaseTvActivity {
         }
     }
 
-    /**
-     * Convenience method for subclasses to get focus management utilities
-     */
-    protected RemoteNavigationHelper getRemoteHelper() {
-        return new RemoteNavigationHelper();
-    }
-
-    /**
-     * Helper to request smooth focus on a view
-     */
-    protected void requestFocusSmooth(android.view.View view) {
-        RemoteNavigationHelper.requestFocusSmooth(view);
-    }
-
-    /**
-     * Helper to request immediate focus on a view
-     */
-    protected void requestFocusImmediate(android.view.View view) {
-        RemoteNavigationHelper.requestFocusImmediate(view);
-    }
-
-    /**
-     * Helper to clear focus from a view
-     */
-    protected void clearFocus(android.view.View view) {
-        RemoteNavigationHelper.clearFocus(view);
-    }
 }
