@@ -745,8 +745,16 @@ if (!activityDestroyed) runOnUiThread(() -> {
         }
 
         if (sources.size() > 1) {
-            finalSource = new androidx.media3.exoplayer.source.MergingMediaSource(
-                sources.toArray(new androidx.media3.exoplayer.source.MediaSource[0]));
+            try {
+                // continuousPlayback=false, clipDurations=false — subtitles won't crash main stream
+                finalSource = new androidx.media3.exoplayer.source.MergingMediaSource(
+                    false, false,
+                    sources.toArray(new androidx.media3.exoplayer.source.MediaSource[0]));
+                android.util.Log.d("Yastream", "MergingMediaSource with " + (sources.size()-1) + " sub tracks");
+            } catch (Exception mergeErr) {
+                android.util.Log.w("Yastream", "MergingMediaSource failed, playing without subs: " + mergeErr.getMessage());
+                finalSource = hlsSource;
+            }
         } else {
             finalSource = hlsSource;
             android.util.Log.d("Yastream", "No subtitle — HLS only");
@@ -783,6 +791,27 @@ if (!activityDestroyed) runOnUiThread(() -> {
         }
 
         exoPlayer.addListener(new Player.Listener() {
+            @Override public void onPlayerError(androidx.media3.common.PlaybackException error) {
+                android.util.Log.e("Yastream", "Player error: " + error.getMessage());
+                // If error is subtitle-related, retry without subtitles
+                if (error.errorCode == androidx.media3.common.PlaybackException.ERROR_CODE_IO_NETWORK_CONNECTION_FAILED
+                    || error.errorCode == androidx.media3.common.PlaybackException.ERROR_CODE_IO_BAD_HTTP_STATUS
+                    || error.getMessage() != null && error.getMessage().contains("Source error")) {
+                    if (externalSubUrl != null && !externalSubUrl.isEmpty()) {
+                        android.util.Log.w("Yastream", "Retrying without subtitles");
+                        runOnUiThread(() -> {
+                            setStatus("Retrying without subtitles...");
+                            initExoPlayer(m3u8Url, null, null);
+                        });
+                        return;
+                    }
+                }
+                runOnUiThread(() -> {
+                    showLoading(false);
+                    showError("Playback error: " + error.getMessage());
+                });
+            }
+
             @Override public void onPlaybackStateChanged(int state) {
                 switch (state) {
                     case Player.STATE_BUFFERING: showLoading(true); break;
