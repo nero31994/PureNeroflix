@@ -56,6 +56,9 @@ import okhttp3.OkHttpClient;
 @OptIn(markerClass = UnstableApi.class)
 public class IPTVActivity extends BaseTvActivity {
 
+    // Import UniversalRemoteHandler for normalized key handling
+    private static final String TAG = "IPTVActivity";
+
     // XOR encrypted app key for M3U Worker (key=0x4E)
     private static final byte[] M3U_KEY_ENC = {
         (byte)0x20,(byte)0x2B,(byte)0x3C,(byte)0x21,(byte)0x28,(byte)0x22,
@@ -994,11 +997,244 @@ public class IPTVActivity extends BaseTvActivity {
     }
 
     @Override
-    public boolean onTouchEvent(MotionEvent e) {
+    protected boolean onRemoteAction(@UniversalRemoteHandler.RemoteAction int action,
+                                     int keyCode, KeyEvent event) {
+        // Use unified remote actions - handles all remote types uniformly
+        
         if (!sidebarVisible) {
-            showSidebar();
-            focusZone = FocusZone.CHANNELS;
+            // Player controls when sidebar is hidden
+            switch (action) {
+                case UniversalRemoteHandler.ACTION_UP:
+                case UniversalRemoteHandler.ACTION_DOWN:
+                    showSidebar();
+                    focusZone = FocusZone.CHANNELS;
+                    return true;
+                case UniversalRemoteHandler.ACTION_LEFT:
+                case UniversalRemoteHandler.ACTION_RIGHT:
+                    scrollFocusedEpgStrip();
+                    return true;
+                case UniversalRemoteHandler.ACTION_CENTER:
+                    showSidebar();
+                    focusZone = FocusZone.CHANNELS;
+                    return true;
+                case UniversalRemoteHandler.ACTION_BACK:
+                    finish();
+                    return true;
+                case UniversalRemoteHandler.ACTION_MENU:
+                    showSidebar();
+                    focusZone = FocusZone.SEARCH;
+                    return true;
+                case UniversalRemoteHandler.ACTION_INFO:
+                    showPipCard();
+                    return true;
+                case UniversalRemoteHandler.ACTION_GUIDE:
+                    showDpadTutorial();
+                    return true;
+            }
+            return false;
         }
+
+        // Sidebar visible — handle navigation between zones using universal actions
+        switch (focusZone) {
+            case PLAYER:
+                switch (action) {
+                    case UniversalRemoteHandler.ACTION_DOWN:
+                        focusZone = FocusZone.SEARCH;
+                        requestSearchFocus();
+                        return true;
+                    case UniversalRemoteHandler.ACTION_BACK:
+                        hideSidebar();
+                        focusZone = FocusZone.PLAYER;
+                        return true;
+                }
+                return false;
+
+            case CHANNELS:
+                switch (action) {
+                    case UniversalRemoteHandler.ACTION_UP:
+                        if (focusedChannelIndex > 0) {
+                            focusedChannelIndex--;
+                        } else {
+                            focusZone = FocusZone.SEARCH;
+                            requestSearchFocus();
+                            return true;
+                        }
+                        highlightChannel(focusedChannelIndex);
+                        return true;
+
+                    case UniversalRemoteHandler.ACTION_DOWN:
+                        if (focusedChannelIndex < adapter.getItemCount() - 1) {
+                            focusedChannelIndex++;
+                        }
+                        highlightChannel(focusedChannelIndex);
+                        return true;
+
+                    case UniversalRemoteHandler.ACTION_LEFT:
+                        focusZone = FocusZone.GROUPS;
+                        highlightChannel(-1);
+                        highlightGroup(focusedGroupIndex);
+                        return true;
+
+                    case UniversalRemoteHandler.ACTION_RIGHT:
+                        scrollFocusedEpgStrip();
+                        return true;
+
+                    case UniversalRemoteHandler.ACTION_CENTER:
+                        M3UParser.Channel ch = adapter.getAt(focusedChannelIndex);
+                        if (ch != null) {
+                            playChannel(ch);
+                            hideSidebar();
+                            focusZone = FocusZone.PLAYER;
+                        }
+                        return true;
+
+                    case UniversalRemoteHandler.ACTION_BACK:
+                        hideSidebar();
+                        focusZone = FocusZone.PLAYER;
+                        return true;
+
+                    case UniversalRemoteHandler.ACTION_INFO:
+                        showPipCard();
+                        return true;
+                }
+                return false;
+
+            case GROUPS:
+                switch (action) {
+                    case UniversalRemoteHandler.ACTION_UP:
+                        if (focusedGroupIndex > 0) {
+                            focusedGroupIndex--;
+                        } else {
+                            focusZone = FocusZone.SEARCH;
+                            requestSearchFocus();
+                            return true;
+                        }
+                        highlightGroup(focusedGroupIndex);
+                        return true;
+
+                    case UniversalRemoteHandler.ACTION_DOWN:
+                        if (groupAdapter != null && focusedGroupIndex < groupAdapter.getCount() - 1) {
+                            focusedGroupIndex++;
+                        } else if (groupAdapter != null) {
+                            focusZone = FocusZone.CHANNELS;
+                            highlightGroup(-1);
+                            focusedChannelIndex = 0;
+                            highlightChannel(0);
+                            return true;
+                        }
+                        highlightGroup(focusedGroupIndex);
+                        return true;
+
+                    case UniversalRemoteHandler.ACTION_RIGHT:
+                        focusZone = FocusZone.CHANNELS;
+                        highlightGroup(-1);
+                        highlightChannel(focusedChannelIndex);
+                        return true;
+
+                    case UniversalRemoteHandler.ACTION_CENTER:
+                        if (groupAdapter != null) {
+                            String key = groupAdapter.getKeyAt(focusedGroupIndex);
+                            activeGroup = key;
+                            if (adapter != null) adapter.filterByGroup(key);
+                            groupAdapter.setSelected(focusedGroupIndex);
+                        }
+                        focusZone = FocusZone.CHANNELS;
+                        focusedChannelIndex = 0;
+                        highlightGroup(-1);
+                        highlightChannel(0);
+                        return true;
+
+                    case UniversalRemoteHandler.ACTION_BACK:
+                        hideSidebar();
+                        focusZone = FocusZone.PLAYER;
+                        return true;
+                }
+                return true;
+
+            case SEARCH:
+                switch (action) {
+                    case UniversalRemoteHandler.ACTION_DOWN:
+                        focusZone = FocusZone.GROUPS;
+                        clearSearchFocus();
+                        highlightGroup(focusedGroupIndex);
+                        return true;
+
+                    case UniversalRemoteHandler.ACTION_UP:
+                        // Stay in search if already at top
+                        return true;
+
+                    case UniversalRemoteHandler.ACTION_CENTER:
+                        // OK while searching - jump to channels with current results
+                        focusZone = FocusZone.CHANNELS;
+                        clearSearchFocus();
+                        focusedChannelIndex = 0;
+                        highlightChannel(0);
+                        return true;
+
+                    case UniversalRemoteHandler.ACTION_BACK:
+                        // Clear search and go back to groups
+                        clearSearch();
+                        focusZone = FocusZone.GROUPS;
+                        highlightGroup(focusedGroupIndex);
+                        return true;
+
+                    case UniversalRemoteHandler.ACTION_LEFT:
+                    case UniversalRemoteHandler.ACTION_RIGHT:
+                        // Let cursor move inside EditText
+                        return false;
+                }
+                return false;
+        }
+
+        // Handle global actions
+        if (action == UniversalRemoteHandler.ACTION_BACK) {
+            finish();
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * Legacy fallback - uses old key codes but maps to new remote handler
+     */
+    @Override
+    protected boolean onTvKeyDown(int keyCode, KeyEvent event) {
+        // Convert to normalized action and delegate
+        @UniversalRemoteHandler.RemoteAction int action = 
+            UniversalRemoteHandler.getRemoteAction(keyCode);
+        return onRemoteAction(action, keyCode, event);
+    }
+
+    /**
+     * Helper methods for search field management
+     */
+    private void requestSearchFocus() {
+        EditText search = findViewById(R.id.iptv_search);
+        if (search != null) {
+            search.requestFocus();
+            search.post(() -> {
+                android.view.inputmethod.InputMethodManager imm =
+                    (android.view.inputmethod.InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
+                if (imm != null) imm.showSoftInput(search, 
+                    android.view.inputmethod.InputMethodManager.SHOW_FORCED);
+            });
+        }
+    }
+
+    private void clearSearchFocus() {
+        EditText search = findViewById(R.id.iptv_search);
+        if (search != null) search.clearFocus();
+    }
+
+    private void clearSearch() {
+        EditText search = findViewById(R.id.iptv_search);
+        if (search != null) {
+            search.setText("");
+            search.clearFocus();
+        }
+        if (adapter != null) adapter.filter("");
+    }
         resetAutoHide();
         return super.onTouchEvent(e);
     }

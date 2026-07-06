@@ -179,7 +179,17 @@
             android:exported="false"
             android:configChanges="orientation|screenSize|keyboardHidden"
             android:screenOrientation="landscape" />
-        <activity android:name=".activities.DonateActivity" android:theme="@style/Theme.AppCompat.NoActionBar" android:screenOrientation="landscape" />
+        <activity android:name=".activities.DonateActivity" 
+            android:exported="false"
+            android:theme="@style/Theme.AppCompat.NoActionBar" 
+            android:screenOrientation="landscape" />
+
+        <!-- Remote Settings Activity (Debug Tool) -->
+        <activity android:name=".activities.RemoteSettingsActivity"
+            android:exported="false"
+            android:configChanges="orientation|screenSize|keyboardHidden"
+            android:screenOrientation="landscape"
+            android:theme="@style/Theme.NeroFlix" />
     </application>
 
 </manifest>

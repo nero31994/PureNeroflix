@@ -116,7 +116,11 @@
                 android:background="@android:color/transparent"
                 android:maxLines="1"
                 android:imeOptions="actionSearch"
-                android:inputType="text" />
+                android:inputType="text"
+                android:focusable="true"
+                android:focusableInTouchMode="true"
+                android:nextFocusDown="@id/iptv_group_list"
+                android:nextFocusRight="@id/iptv_recycler" />
 
         </LinearLayout>
 
@@ -134,7 +138,11 @@
                 android:layout_height="match_parent"
                 android:background="#161616"
                 android:scrollbars="none"
-                android:paddingTop="8dp" />
+                android:paddingTop="8dp"
+                android:focusable="true"
+                android:nextFocusRight="@id/iptv_recycler"
+                android:nextFocusUp="@id/iptv_search"
+                android:nextFocusDown="@id/iptv_recycler" />
 
             <View
                 android:layout_width="1dp"
@@ -174,7 +182,10 @@
                         android:layout_height="0dp"
                         android:layout_weight="1"
                         android:scrollbars="none"
-                        android:clipToPadding="false" />
+                        android:clipToPadding="false"
+                        android:focusable="true"
+                        android:nextFocusLeft="@id/iptv_group_list"
+                        android:nextFocusUp="@id/iptv_search" />
 
                 </LinearLayout>
 
