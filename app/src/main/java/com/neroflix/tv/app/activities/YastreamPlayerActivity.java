@@ -968,12 +968,11 @@ if (!activityDestroyed) runOnUiThread(() -> {
                     exoPlayer.setTrackSelectionParameters(
                         exoPlayer.getTrackSelectionParameters()
                             .buildUpon()
-                            .setIgnoredTextSelectionFlags(
-                                androidx.media3.common.C.SELECTION_FLAG_DEFAULT)
                             .setPreferredTextLanguage("")
-                            .setDisabledTrackTypes(
-                                com.google.common.collect.ImmutableSet.of(
-                                    androidx.media3.common.C.TRACK_TYPE_TEXT))
+                            .setPreferredTextRoleFlags(0)
+                            .setIgnoredTextSelectionFlags(
+                                androidx.media3.common.C.SELECTION_FLAG_DEFAULT
+                                | androidx.media3.common.C.SELECTION_FLAG_FORCED)
                             .build());
                     setStatus("Subtitles OFF");
                 } else {
