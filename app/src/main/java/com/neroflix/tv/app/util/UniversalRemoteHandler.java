@@ -159,25 +159,20 @@ public class UniversalRemoteHandler {
 
             // Power key
             case KeyEvent.KEYCODE_POWER:
-            case 26: // Power
                 return ACTION_POWER;
 
             // Volume control
             case KeyEvent.KEYCODE_VOLUME_UP:
-            case 24: // Volume Up
                 return ACTION_VOLUME_UP;
 
             case KeyEvent.KEYCODE_VOLUME_DOWN:
-            case 25: // Volume Down
                 return ACTION_VOLUME_DOWN;
 
             // Channel control
             case KeyEvent.KEYCODE_CHANNEL_UP:
-            case 166: // Channel Up
                 return ACTION_CHANNEL_UP;
 
             case KeyEvent.KEYCODE_CHANNEL_DOWN:
-            case 167: // Channel Down
                 return ACTION_CHANNEL_DOWN;
 
             // Gamepad buttons (for compatibility)

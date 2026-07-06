@@ -906,9 +906,10 @@ public class IPTVActivity extends BaseTvActivity {
                         return true;
 
                     case UniversalRemoteHandler.ACTION_CENTER:
-                        M3UParser.Channel ch = adapter.getAt(focusedChannelIndex);
-                        if (ch != null) {
-                            playChannel(ch);
+                        if (adapter != null && focusedChannelIndex >= 0 && focusedChannelIndex < adapter.getItemCount()) {
+                            // The channel is selected via the channel list in the sidebar
+                            // The playChannel method is called via the adapter's OnClick listener
+                            adapter.setSelected(focusedChannelIndex);
                             hideSidebar();
                             focusZone = FocusZone.PLAYER;
                         }
