@@ -157,9 +157,14 @@ public class RemoteSettingsActivity extends AppCompatActivity {
      */
     private void showSupportedKeyCodes() {
         StringBuilder sb = new StringBuilder("Supported Key Codes:\n");
-        for (int keyCode : UniversalRemoteHandler.getAllSupportedKeyCodes()) {
-            sb.append(String.format("%d, ", keyCode));
-        }
+        sb.append("DPAD: UP(19), DOWN(20), LEFT(21), RIGHT(22)\n");
+        sb.append("Center: ENTER, DPAD_CENTER\n");
+        sb.append("Back: BACK, ESCAPE\n");
+        sb.append("Menu/Info: MENU(139), INFO(165), GUIDE\n");
+        sb.append("Media: PLAY_PAUSE, VOLUME_UP/DOWN\n");
+        sb.append("Channels: CHANNEL_UP, CHANNEL_DOWN(167)\n");
+        sb.append("Colors: PROG_RED, PROG_GREEN, PROG_YELLOW, PROG_BLUE\n");
+        sb.append("Gamepad: BUTTON_A, BUTTON_B, BUTTON_X, BUTTON_Y");
         addKeyEventToHistory(sb.toString());
     }
 }
