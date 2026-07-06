@@ -18,7 +18,9 @@ import androidx.appcompat.app.AppCompatActivity;
 
 import com.neroflix.tv.app.R;
 
-public class DownloadActivity extends BaseTvActivity {
+import com.neroflix.tv.app.util.RemoteNavigationHelper;
+
+public class DownloadActivity extends RemoteActivity {
 
     private WebView webView;
     private ProgressBar progressBar;
@@ -206,38 +208,51 @@ private void loadDownloadPage() {
     }
 
         @Override
-    protected boolean onTvKeyDown(int keyCode, KeyEvent event) {
-        switch (keyCode) {
-            case KeyEvent.KEYCODE_BACK:
-                if (webView.canGoBack()) webView.goBack();
-                else finish();
+    protected RemoteNavigationHelper.RemoteActionListener createRemoteActionListener() {
+        return new RemoteNavigationHelper.RemoteActionAdapter() {
+            @Override
+            public boolean onRemoteBack() {
+                if (webView.canGoBack()) {
+                    webView.goBack();
+                } else {
+                    finish();
+                }
                 return true;
-            case KeyEvent.KEYCODE_DPAD_UP:
+            }
+
+            @Override
+            public boolean onRemoteUp() {
                 webView.scrollBy(0, -150);
                 return true;
-            case KeyEvent.KEYCODE_DPAD_DOWN:
+            }
+
+            @Override
+            public boolean onRemoteDown() {
                 webView.scrollBy(0, 150);
                 return true;
-            case KeyEvent.KEYCODE_DPAD_LEFT:
+            }
+
+            @Override
+            public boolean onRemoteLeft() {
                 webView.scrollBy(-150, 0);
                 return true;
-            case KeyEvent.KEYCODE_DPAD_RIGHT:
+            }
+
+            @Override
+            public boolean onRemoteRight() {
                 webView.scrollBy(150, 0);
                 return true;
-            case KeyEvent.KEYCODE_DPAD_CENTER:
-            case KeyEvent.KEYCODE_ENTER:
+            }
+
+            @Override
+            public boolean onRemoteCenter() {
                 // Simulate click at center of screen
                 webView.evaluateJavascript(
                     "var el = document.elementFromPoint(window.innerWidth/2, window.innerHeight/2);" +
                     "if(el) el.click();", null);
                 return true;
-            case KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE:
-            case KeyEvent.KEYCODE_MEDIA_PLAY:
-                webView.evaluateJavascript(
-                    "var v=document.querySelector('video');if(v){if(v.paused)v.play();else v.pause();}", null);
-                return true;
-        }
-        return false; // fallback now handled by BaseTvActivity
+            }
+        };
     }
 
     @Override

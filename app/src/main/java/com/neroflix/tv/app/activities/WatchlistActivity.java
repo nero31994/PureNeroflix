@@ -16,7 +16,9 @@ import com.neroflix.tv.app.models.Movie;
 
 import java.util.List;
 
-public class WatchlistActivity extends BaseTvActivity {
+import com.neroflix.tv.app.util.RemoteNavigationHelper;
+
+public class WatchlistActivity extends RemoteActivity {
 
     private String mode; // "history" or "watchlist"
 
@@ -75,8 +77,13 @@ public class WatchlistActivity extends BaseTvActivity {
     }
 
         @Override
-    protected boolean onTvKeyDown(int keyCode, KeyEvent event) {
-        if (keyCode == KeyEvent.KEYCODE_BACK) { finish(); return true; }
-        return false; // fallback now handled by BaseTvActivity
+    protected RemoteNavigationHelper.RemoteActionListener createRemoteActionListener() {
+        return new RemoteNavigationHelper.RemoteActionAdapter() {
+            @Override
+            public boolean onRemoteBack() {
+                finish();
+                return true;
+            }
+        };
     }
 }
