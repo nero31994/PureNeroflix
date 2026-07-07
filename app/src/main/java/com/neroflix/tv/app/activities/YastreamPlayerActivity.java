@@ -1007,22 +1007,18 @@ if (!activityDestroyed) runOnUiThread(() -> {
                     String selectedLabel = labels.get(which);
                     android.util.Log.d("Yastream", "Switching sub to: " + selectedLang + " " + selectedUrl);
 
-                    // Get current stream URL
+                    // Switch subtitle track without rebuilding media source
+                    // All tracks are already merged in MergingMediaSource from initExoPlayer
                     try {
-                        org.json.JSONArray subs =
-                            streamList.getJSONObject(currentStreamIndex).optJSONArray("subtitles");
-                        String streamUrl = streamList.getJSONObject(currentStreamIndex).optString("url", "");
-                        if (!streamUrl.isEmpty()) {
-                            long pos = exoPlayer.getCurrentPosition();
-                            initExoPlayer(streamUrl, selectedUrl, subs);
-                            // Seek to previous position after reload
-                            new android.os.Handler(android.os.Looper.getMainLooper())
-                                .postDelayed(() -> {
-                                    if (exoPlayer != null) exoPlayer.seekTo(pos);
-                                }, 800);
-                        }
+                        exoPlayer.setTrackSelectionParameters(
+                            exoPlayer.getTrackSelectionParameters()
+                                .buildUpon()
+                                .setPreferredTextLanguage(selectedLang)
+                                .setIgnoredTextSelectionFlags(0)
+                                .build());
+                        android.util.Log.d("Yastream", "Switched sub via track selection: " + selectedLang);
                     } catch (Exception e) {
-                        android.util.Log.w("Yastream", "Sub switch failed: " + e.getMessage());
+                        android.util.Log.w("Yastream", "Sub track switch failed: " + e.getMessage());
                     }
                     setStatus("Subtitle: " + selectedLabel);
                 }
