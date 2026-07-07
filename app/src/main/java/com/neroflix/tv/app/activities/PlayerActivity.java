@@ -233,12 +233,33 @@ public class PlayerActivity extends BaseTvActivity {
                     }
                 }, 6000);
 
-                // Timeout fallback for old devices that can't sniff stream
-                // After 20s with no m3u8 found, go directly to yastream
+                // Timeout fallback — countdown visible to user
+                final android.widget.TextView statusView2 =
+                    findViewById(R.id.player_loading_status);
+                final android.os.Handler countHandler =
+                    new android.os.Handler(android.os.Looper.getMainLooper());
+                final int[] secondsLeft = {20};
+                final Runnable[] countTick = {null};
+                countTick[0] = () -> {
+                    if (isFinishing() || isDestroyed() || streamHandedOff) return;
+                    if (statusView2 != null) {
+                        if (secondsLeft[0] > 0) {
+                            statusView2.setText("Loading stream... trying alternate in "
+                                + secondsLeft[0] + "s");
+                            statusView2.setVisibility(android.view.View.VISIBLE);
+                        }
+                    }
+                    if (secondsLeft[0]-- > 0)
+                        countHandler.postDelayed(countTick[0], 1000);
+                };
+                countHandler.postDelayed(countTick[0], 1000);
+
                 new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
                     if (!isFinishing() && !isDestroyed() && !streamHandedOff) {
                         android.util.Log.w("StreamSniff", "20s timeout — falling back to yastream direct");
                         streamHandedOff = true;
+                        if (statusView2 != null)
+                            statusView2.setText("Switching to alternate source...");
                         android.content.Intent i = new android.content.Intent(
                             PlayerActivity.this,
                             com.neroflix.tv.app.activities.YastreamPlayerActivity.class);
