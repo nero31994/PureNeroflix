@@ -200,7 +200,6 @@ public class YastreamPlayerActivity extends BaseTvActivity {
             backBtn.setOnClickListener(v -> finish());
 
         // Large subtitle button for phone touch users
-        View subBtn = findViewById(R.id.yastream_subtitle_btn);
         if (subBtn != null)
             subBtn.setOnClickListener(v -> toggleSubtitles());
 
