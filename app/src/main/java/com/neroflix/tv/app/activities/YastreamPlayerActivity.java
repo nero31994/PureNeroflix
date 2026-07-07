@@ -216,7 +216,6 @@ public class YastreamPlayerActivity extends BaseTvActivity {
 
         // Tap anywhere on player to toggle top bar
         if (playerView != null) {
-            playerView.setOnClickListener(v -> toggleTopBar());
         } else {
             android.util.Log.e("YastreamPlayer", "playerView is NULL after setupViews() — layout may not have inflated correctly");
         }
