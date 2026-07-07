@@ -161,18 +161,15 @@ public class PlayerActivity extends BaseTvActivity {
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 String url = request.getUrl().toString();
                 if (url.startsWith("about:")) return false;
-                // Allow embed domains — block everything else
-                if (url.contains("ythd.org"))           return false;
-                if (url.contains("vidfast.pro"))         return false;
-                if (url.contains("vaplayer.ru"))         return false;
-                if (url.contains("vidcore.net"))         return false;
-                if (url.contains("vidsrc.pm"))           return false;
-                if (url.contains("peachify.top"))        return false;
-                if (url.contains("cinesrc.st"))          return false;
-                if (url.contains("anyembed.xyz"))        return false;
-                if (url.contains("vidsrc.wtf"))          return false;
-                if (url.contains("vidsrc-embed.ru"))     return false;
-                return true;
+                // Block ads/trackers only — allow all other domains
+                // vidsrc changes intermediate domains frequently so whitelist breaks
+                String lower = url.toLowerCase();
+                if (lower.contains("doubleclick") || lower.contains("googlesyndication") ||
+                    lower.contains("adservice")   || lower.contains("moatads") ||
+                    lower.contains("google-analytics")) {
+                    return true;
+                }
+                return false;
             }
             @Override
             public void onPageFinished(WebView view, String url) {
