@@ -431,7 +431,7 @@ public class DetailActivity extends BaseTvActivity {
                     if (finalSubUrl != null && !finalSubUrl.isEmpty())
                         intent.putExtra("direct_subtitle_url", finalSubUrl);
                     startActivity(intent);
-                    overridePendingTransition(R.anim.fade_in, R.anim.fade_out);
+                    overridePendingTransition(0, 0); // no transition — player starts black
                 });
             }).start();
             return;
