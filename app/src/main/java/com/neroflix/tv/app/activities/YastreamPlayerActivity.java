@@ -912,9 +912,7 @@ if (!activityDestroyed) runOnUiThread(() -> {
                     exoPlayer.seekTo(Math.max(pos - 10000, 0));
                 }
                 return true;
-            case KeyEvent.KEYCODE_DPAD_DOWN:
-                toggleSubtitles();
-                return true;
+            // DPAD_DOWN unbound — CC button handles subtitles now
             case KeyEvent.KEYCODE_MENU:
             case KeyEvent.KEYCODE_DPAD_UP:
                 showStreamPicker();
