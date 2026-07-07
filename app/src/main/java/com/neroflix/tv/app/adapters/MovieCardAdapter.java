@@ -47,7 +47,7 @@ public class MovieCardAdapter extends RecyclerView.Adapter<MovieCardAdapter.Movi
                 .diskCacheStrategy(DiskCacheStrategy.ALL)
                 .centerCrop()
                 .override(160, 240)   // fixed size — Glide skips measuring
-                .format(android.graphics.Bitmap.Config.RGB_565);  // 50% less memory than ARGB_8888
+                .format(com.bumptech.glide.load.DecodeFormat.PREFER_RGB_565);
         }
     }
 
