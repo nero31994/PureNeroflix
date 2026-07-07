@@ -142,26 +142,17 @@ public class PlayerActivity extends BaseTvActivity {
                     streamHandedOff = true;
                     final String streamUrl = url;
                     android.util.Log.d("StreamSniff", "Captured stream: " + streamUrl);
-                    // UI updates must run on main thread — shouldInterceptRequest
-                    // fires on a background thread
                     new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
                         android.widget.TextView statusView = findViewById(R.id.player_loading_status);
                         if (statusView != null) statusView.setText("Stream found! Starting player...");
                         stopPulseAnimation();
+                        // Delay launch slightly — let WebView establish CDN session first
+                        new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                            if (!isFinishing() && !isDestroyed()) launchExoPlayer(streamUrl);
+                        }, 800);
                     });
-
-                    // Must launch ExoPlayer on the main thread
-                    new android.os.Handler(android.os.Looper.getMainLooper()).post(() -> {
-                        if (!isFinishing() && !isDestroyed()) {
-                            launchExoPlayer(streamUrl);
-                        }
-                    });
-
-                    // Return empty response — WebView doesn't need to
-                    // actually fetch this stream since ExoPlayer will.
-                    return new android.webkit.WebResourceResponse(
-                        "application/octet-stream", "utf-8",
-                        new java.io.ByteArrayInputStream(new byte[0]));
+                    // Pass through — WebView fetches normally, establishing CDN session
+                    // ExoPlayer re-fetches with same cookies after 800ms delay
                 }
                 return super.shouldInterceptRequest(view, request);
             }
