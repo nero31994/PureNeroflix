@@ -199,9 +199,6 @@ public class YastreamPlayerActivity extends BaseTvActivity {
         if (backBtn != null)
             backBtn.setOnClickListener(v -> finish());
 
-        // Large subtitle button for phone touch users
-        if (subBtn != null)
-            subBtn.setOnClickListener(v -> toggleSubtitles());
 
         View retryBtn = findViewById(R.id.yastream_retry_btn);
         if (retryBtn != null)
