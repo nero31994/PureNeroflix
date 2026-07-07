@@ -120,7 +120,7 @@ public class PlayerActivity extends BaseTvActivity {
         settings.setUseWideViewPort(true);
         settings.setCacheMode(WebSettings.LOAD_DEFAULT);
         trimWebViewCacheIfLarge();
-        settings.setUserAgentString(android.webkit.WebSettings.getDefaultUserAgent(this));
+        settings.setUserAgentString("Mozilla/5.0 (Linux; Android 14; Pixel 8 Build/UQ1A.240105.004) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Mobile Safari/537.36");
 
         // Avoid forcing hardware layer — many budget Android TV GPUs
         // (Allwinner/Amlogic low-end SoCs) have broken WebView hardware
