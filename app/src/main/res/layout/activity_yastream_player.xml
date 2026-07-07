@@ -209,17 +209,4 @@
 
 
     <!-- Subtitle button — large touch target for phone users -->
-    <ImageButton
-        android:id="@+id/yastream_subtitle_btn"
-        android:layout_width="48dp"
-        android:layout_height="48dp"
-        android:layout_gravity="bottom|end"
-        android:layout_margin="72dp"
-        android:background="@android:color/transparent"
-        android:padding="8dp"
-        android:src="@drawable/ic_subtitles"
-        android:contentDescription="Subtitles"
-        android:tint="#FFFFFF"
-        android:alpha="0.85"
-        android:focusable="true" />
 </FrameLayout>
