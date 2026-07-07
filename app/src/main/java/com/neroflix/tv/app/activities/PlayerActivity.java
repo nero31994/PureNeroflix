@@ -191,16 +191,33 @@ public class PlayerActivity extends BaseTvActivity {
                     "window.open=function(){return null;};" +
                     "window.alert=function(){};" +
                     "window.confirm=function(){return true;};" +
-                    // Force autoplay — clicks any play button immediately
+                    // Intercept XHR
+                    "(function(){var _o=XMLHttpRequest.prototype.open;" +
+                    "XMLHttpRequest.prototype.open=function(m,u){" +
+                    "if(u&&(u.indexOf('.m3u8')>=0||u.indexOf('/hls/')>=0)){" +
+                    "try{window.StreamBridge.onStreamUrl(u);}catch(e){}}" +
+                    "return _o.apply(this,arguments)};})();" +
+                    // Intercept fetch
+                    "(function(){var _f=window.fetch;" +
+                    "window.fetch=function(input,init){" +
+                    "var u=typeof input==='string'?input:(input&&input.url?input.url:'');" +
+                    "if(u&&(u.indexOf('.m3u8')>=0||u.indexOf('/hls/')>=0)){" +
+                    "try{window.StreamBridge.onStreamUrl(u);}catch(e){}}" +
+                    "return _f.apply(this,arguments)};})();" +
+                    // Watch video src changes
+                    "(function(){function c(v){if(v&&v.src&&v.src.indexOf('.m3u8')>=0)" +
+                    "{try{window.StreamBridge.onStreamUrl(v.src);}catch(e){}}}" +
+                    "var o=new MutationObserver(function(ms){ms.forEach(function(m){" +
+                    "if(m.target&&m.target.tagName==='VIDEO')c(m.target);" +
+                    "m.addedNodes.forEach(function(n){if(n.tagName==='VIDEO')c(n);});});});" +
+                    "o.observe(document,{childList:true,subtree:true,attributes:true,attributeFilter:['src']});" +
+                    "document.querySelectorAll('video').forEach(c);})();" +
+                    // Force autoplay
                     "setTimeout(function(){" +
                     "  var btns=document.querySelectorAll('button,iframe,[role=button],[class*=play]');" +
-                    "  for(var i=0;i<btns.length;i++){" +
-                    "    try{btns[i].click();}catch(e){}" +
-                    "  }" +
+                    "  for(var i=0;i<btns.length;i++){try{btns[i].click();}catch(e){}}" +
                     "  var vids=document.querySelectorAll('video');" +
-                    "  for(var i=0;i<vids.length;i++){" +
-                    "    try{vids[i].play();}catch(e){}" +
-                    "  }" +
+                    "  for(var i=0;i<vids.length;i++){try{vids[i].play();}catch(e){}}" +
                     "},500);", null);
 
                 // Watchdog: on some budget Android TV GPUs, the embed page
@@ -215,6 +232,26 @@ public class PlayerActivity extends BaseTvActivity {
                         webView.invalidate();
                     }
                 }, 6000);
+
+                // Timeout fallback for old devices that can't sniff stream
+                // After 20s with no m3u8 found, go directly to yastream
+                new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                    if (!isFinishing() && !isDestroyed() && !streamHandedOff) {
+                        android.util.Log.w("StreamSniff", "20s timeout — falling back to yastream direct");
+                        streamHandedOff = true;
+                        android.content.Intent i = new android.content.Intent(
+                            PlayerActivity.this,
+                            com.neroflix.tv.app.activities.YastreamPlayerActivity.class);
+                        i.putExtra("movie_id",     movieId);
+                        i.putExtra("media_type",   mediaType);
+                        i.putExtra("movie_title",  movieTitle);
+                        i.putExtra("season",       season);
+                        i.putExtra("episode",      episode);
+                        i.putExtra("movie_poster", getIntent().getStringExtra("movie_poster"));
+                        startActivity(i);
+                        finish();
+                    }
+                }, 20000);
             }
             @Override
             public void onReceivedError(WebView view, int errorCode, String desc, String url) {
