@@ -672,7 +672,7 @@ public class MainActivity extends BaseTvActivity {
         if (heroYear     != null) heroYear.setText(movie.getYear());
         if (heroBackdrop != null && movie.getBackdropPath() != null && !movie.getBackdropPath().isEmpty()) {
             com.bumptech.glide.Glide.with(this)
-                .load("https://image.tmdb.org/t/p/w1280" + movie.getBackdropPath())
+                .load("https://image.tmdb.org/t/p/w780" + movie.getBackdropPath())
                 .placeholder(android.R.color.black)
                 .into(heroBackdrop);
         }

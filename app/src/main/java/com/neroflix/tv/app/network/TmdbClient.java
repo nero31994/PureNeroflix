@@ -71,7 +71,9 @@ public class TmdbClient {
                 .connectTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
                 .readTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
                 .build();
-        executor = Executors.newFixedThreadPool(4);
+        // Priority executor — visible rows (submitted first) run before background rows.
+        // Uses 3 threads: enough for parallel fetches without saturating old devices.
+        executor = Executors.newFixedThreadPool(3);
         mainHandler = new Handler(Looper.getMainLooper());
     }
 
