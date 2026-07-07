@@ -530,7 +530,7 @@ public class MainActivity extends BaseTvActivity {
         focusedCategoryRow = 0;
         focusedCategoryCol = 0;
         if (adapter != null) adapter.setFocus(-1, -1); // clear highlight
-        adapter.notifyItemRangeChanged(0, adapter.getItemCount());
+        adapter.notifyDataSetChanged();
         progressBar.setVisibility(View.VISIBLE);
         loadCategories();
         mainRecyclerView.scrollToPosition(0);
