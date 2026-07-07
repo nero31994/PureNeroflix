@@ -77,6 +77,7 @@ public class YastreamPlayerActivity extends BaseTvActivity {
     private boolean directPlayMode       = false;
     private String  directStreamReferrer = "";
     private String  directSubtitleUrl    = null;
+    private org.json.JSONArray currentAllSubs = null; // all subtitle tracks loaded in player
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -659,6 +660,9 @@ if (!activityDestroyed) runOnUiThread(() -> {
         // ── Smart codec detection — picks correct source factory per URL ─────
         // Supports: HLS (.m3u8), DASH (.mpd), SmoothStreaming (.ism),
         //           Progressive MP4/MKV/AVI/WebM, RTSP, Widevine DRM
+        // Save allSubs for use in toggleSubtitles()
+        currentAllSubs = allSubs;
+
         androidx.media3.exoplayer.source.MediaSource hlsSource =
             buildSmartMediaSource(m3u8Url, dataSourceFactory);
 
@@ -674,7 +678,7 @@ if (!activityDestroyed) runOnUiThread(() -> {
             return androidx.media3.common.MimeTypes.TEXT_VTT; // default VTT
         };
 
-        // Helper to detect language label
+        // Detect language from URL — fallback only
         java.util.function.Function<String, String[]> getLangLabel = (url) -> {
             if (url.contains("tgl") || url.contains("fil")) return new String[]{"tgl", "Filipino"};
             if (url.contains("kor"))                         return new String[]{"kor", "Korean"};
@@ -684,6 +688,29 @@ if (!activityDestroyed) runOnUiThread(() -> {
             return new String[]{"eng", "English"};
         };
 
+        // Prefer lang from allSubs JSON for a given URL (more accurate than URL sniffing)
+        java.util.function.Function<String, String[]> getLangFromJson = (url) -> {
+            if (allSubs != null) {
+                for (int _i = 0; _i < allSubs.length(); _i++) {
+                    try {
+                        org.json.JSONObject _s = allSubs.getJSONObject(_i);
+                        if (url.equals(_s.optString("url", ""))) {
+                            String _lang  = _s.optString("lang",  "eng");
+                            String _label = _s.optString("label", _lang);
+                            if ("tgl".equals(_lang) || "fil".equals(_lang)) _label = "Filipino";
+                            else if ("eng".equals(_lang)) _label = "English";
+                            else if ("kor".equals(_lang)) _label = "Korean";
+                            else if ("zho".equals(_lang) || "chi".equals(_lang)) _label = "Chinese";
+                            else if ("jpn".equals(_lang)) _label = "Japanese";
+                            else if ("tha".equals(_lang)) _label = "Thai";
+                            return new String[]{_lang, _label};
+                        }
+                    } catch (Exception ignored) {}
+                }
+            }
+            return getLangLabel.apply(url); // fallback
+        };
+
         try {
             // Add all available subtitle tracks from allSubs
             java.util.Set<String> addedUrls = new java.util.HashSet<>();
@@ -691,7 +718,7 @@ if (!activityDestroyed) runOnUiThread(() -> {
             if (allSubs != null && allSubs.length() > 0) {
                 // First pass — add auto-selected (default) sub
                 if (externalSubUrl != null && !externalSubUrl.isEmpty()) {
-                    String[] ll = getLangLabel.apply(externalSubUrl);
+                    String[] ll = getLangFromJson.apply(externalSubUrl);
                     MediaItem.SubtitleConfiguration defConfig =
                         new MediaItem.SubtitleConfiguration.Builder(android.net.Uri.parse(externalSubUrl))
                             .setMimeType(getMime.apply(externalSubUrl))
@@ -940,28 +967,24 @@ if (!activityDestroyed) runOnUiThread(() -> {
         subUrls.add("");
         subLangs.add("");
 
+        // Use currentAllSubs — same tracks loaded in initExoPlayer
         try {
-            if (streamList != null && currentStreamIndex < streamList.length()) {
-                org.json.JSONArray subs =
-                    streamList.getJSONObject(currentStreamIndex).optJSONArray("subtitles");
-                if (subs != null) {
-                    for (int i = 0; i < subs.length(); i++) {
-                        org.json.JSONObject sub = subs.getJSONObject(i);
-                        String url   = sub.optString("url",   "");
-                        String lang  = sub.optString("lang",  "und");
-                        String label = sub.optString("label", lang);
-                        if (url.isEmpty()) continue;
-                        // Make label human readable
-                        if ("tgl".equals(lang) || "fil".equals(lang)) label = "Filipino";
-                        else if ("eng".equals(lang))                    label = "English";
-                        else if ("kor".equals(lang))                    label = "Korean";
-                        else if ("zho".equals(lang) || "chi".equals(lang)) label = "Chinese";
-                        else if ("jpn".equals(lang))                    label = "Japanese";
-                        else if ("tha".equals(lang))                    label = "Thai";
-                        labels.add(label + " (" + lang + ")");
-                        subUrls.add(url);
-                        subLangs.add(lang);
-                    }
+            if (currentAllSubs != null && currentAllSubs.length() > 0) {
+                for (int i = 0; i < currentAllSubs.length(); i++) {
+                    org.json.JSONObject sub = currentAllSubs.getJSONObject(i);
+                    String url   = sub.optString("url",   "");
+                    String lang  = sub.optString("lang",  "und");
+                    String label = sub.optString("label", lang);
+                    if (url.isEmpty()) continue;
+                    if ("tgl".equals(lang) || "fil".equals(lang)) label = "Filipino";
+                    else if ("eng".equals(lang))                    label = "English";
+                    else if ("kor".equals(lang))                    label = "Korean";
+                    else if ("zho".equals(lang) || "chi".equals(lang)) label = "Chinese";
+                    else if ("jpn".equals(lang))                    label = "Japanese";
+                    else if ("tha".equals(lang))                    label = "Thai";
+                    labels.add(label + " (" + lang + ")");
+                    subUrls.add(url);
+                    subLangs.add(lang);
                 }
             }
         } catch (Exception ignored) {}
