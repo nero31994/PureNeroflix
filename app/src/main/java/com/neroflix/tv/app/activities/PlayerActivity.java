@@ -452,27 +452,68 @@ public class PlayerActivity extends BaseTvActivity {
                     while ((ln = br1.readLine()) != null) sb1.append(ln);
                     String imdbId = new org.json.JSONObject(sb1.toString()).optString("imdb_id", "");
                     if (!imdbId.isEmpty()) {
-                        String stType = "movie".equals(mediaType) ? "movie" : "series";
-                        String stId = imdbId;
+                        String yasType = "movie".equals(mediaType) ? "movie" : "series";
+                        String yasId = imdbId;
                         if (!"movie".equals(mediaType) && season > 0 && episode > 0)
-                            stId += ":" + season + ":" + episode;
-                        String stUrl = "https://opensubtitles-v3.strem.io/subtitles/" + stType + "/" + stId + ".json";
-                        java.net.HttpURLConnection c2 = (java.net.HttpURLConnection) new java.net.URL(stUrl).openConnection();
-                        c2.setConnectTimeout(5000); c2.setReadTimeout(5000);
-                        java.io.BufferedReader br2 = new java.io.BufferedReader(new java.io.InputStreamReader(c2.getInputStream()));
-                        StringBuilder sb2 = new StringBuilder();
-                        while ((ln = br2.readLine()) != null) sb2.append(ln);
-                        org.json.JSONArray arr = new org.json.JSONObject(sb2.toString()).optJSONArray("subtitles");
-                        if (arr != null) {
-                            // Pick English subtitle with highest "g" (rating) score
-                            int bestG = -1;
-                            for (int si = 0; si < arr.length(); si++) {
-                                org.json.JSONObject s = arr.getJSONObject(si);
-                                if ("eng".equals(s.optString("lang", ""))) {
-                                    int g = 0;
-                                    try { g = Integer.parseInt(s.optString("g", "0")); } catch (Exception ignored) {}
-                                    if (g > bestG) { bestG = g; subUrl = s.optString("url", ""); }
+                            yasId += ":" + season + ":" + episode;
+
+                        // 1. Try yastream subtitles first (path-style, same config as DetailActivity)
+                        try {
+                            String yasConfig = "eyJjYXRhbG9ncyI6WyJraXNza2guc2VyaWVzLktvcmVhbiIsImtpc3NraC5tb3ZpZS5Lb3JlYW4iLCJraXNza2gubW92aWUuQ2hpbmVzZSIsImtpc3NraC5zZXJpZXMuQ2hpbmVzZSIsImtpc3NraC5tb3ZpZS5VUyIsImtpc3NraC5zZXJpZXMuVVMiLCJraXNza2gubW92aWUuVGhhaSIsImtpc3NraC5zZXJpZXMuVGhhaSIsImtpc3NraC5tb3ZpZS5QaGlsaXBwaW5lIiwia2lzc2toLnNlcmllcy5QaGlsaXBwaW5lIiwia2lzc2toLm1vdmllLkphcGFuZXNlIiwia2lzc2toLnNlcmllcy5KYXBhbmVzZSIsImtpc3NraC5tb3ZpZS5Ib25na29uZyIsImtpc3NraC5zZXJpZXMuSG9uZ2tvbmciLCJraXNza2gubW92aWUuVGFpd2FuZXNlIiwia2lzc2toLnNlcmllcy5UYWl3YW5lc2UiLCJvbmV0b3VjaHR2LnNlcmllcy5Lb3JlYW4iLCJvbmV0b3VjaHR2LnNlcmllcy5Qb3B1bGFyIiwib25ldG91Y2h0di5zZXJpZXMuQ2hpbmVzZSIsIm9uZXRvdWNodHYuc2VyaWVzLlRoYWkiLCJraXNza2guc2VyaWVzLlNlYXJjaCIsImtpc3NraC5tb3ZpZS5TZWFyY2giLCJvbmV0b3VjaHR2LnNlcmllcy5TZWFyY2giLCJpZHJhbWEuc2VyaWVzLmlEcmFtYSIsImlkcmFtYS5zZXJpZXMuU2VhcmNoIl0sImNhdGFsb2ciOlsia2lzc2toIiwib25ldG91Y2h0diIsImlkcmFtYSJdLCJzdHJlYW0iOlsia2lzc2toIiwib25ldG91Y2h0diIsImlkcmFtYSIsImtrcGhpbSJdLCJuc2Z3IjpmYWxzZSwiaW5mbyI6ZmFsc2UsInBvc3RlciI6InJwZGIiLCJtZnBVcmwiOiIiLCJ0YktleSI6IiIsIm1mcFBhc3MiOiIifQ==";
+                            String yasUrl = "https://yastream.tamthai.de/" + yasConfig
+                                + "/subtitles/" + yasType + "/" + yasId + ".json";
+                            java.net.HttpURLConnection c2 = (java.net.HttpURLConnection) new java.net.URL(yasUrl).openConnection();
+                            c2.setConnectTimeout(6000); c2.setReadTimeout(6000);
+                            java.io.BufferedReader br2 = new java.io.BufferedReader(new java.io.InputStreamReader(c2.getInputStream()));
+                            StringBuilder sb2 = new StringBuilder();
+                            while ((ln = br2.readLine()) != null) sb2.append(ln);
+                            org.json.JSONArray arr = new org.json.JSONObject(sb2.toString()).optJSONArray("subtitles");
+                            if (arr != null && arr.length() > 0) {
+                                // Prefer tgl (Filipino), then eng
+                                for (int si = 0; si < arr.length(); si++) {
+                                    org.json.JSONObject s = arr.getJSONObject(si);
+                                    if ("tgl".equals(s.optString("lang", ""))) {
+                                        subUrl = s.optString("url", ""); break;
+                                    }
                                 }
+                                if (subUrl == null || subUrl.isEmpty()) {
+                                    for (int si = 0; si < arr.length(); si++) {
+                                        org.json.JSONObject s = arr.getJSONObject(si);
+                                        if ("eng".equals(s.optString("lang", ""))) {
+                                            subUrl = s.optString("url", ""); break;
+                                        }
+                                    }
+                                }
+                                android.util.Log.d("StreamSniff", "Yastream sub found: " + subUrl);
+                            }
+                        } catch (Exception yasErr) {
+                            android.util.Log.w("StreamSniff", "Yastream subtitle failed: " + yasErr.getMessage());
+                        }
+
+                        // 2. Fallback to OpenSubtitles if yastream returned nothing
+                        if (subUrl == null || subUrl.isEmpty()) {
+                            try {
+                                String stUrl = "https://opensubtitles-v3.strem.io/subtitles/" + yasType + "/" + yasId + ".json";
+                                java.net.HttpURLConnection c3 = (java.net.HttpURLConnection) new java.net.URL(stUrl).openConnection();
+                                c3.setConnectTimeout(5000); c3.setReadTimeout(5000);
+                                java.io.BufferedReader br3 = new java.io.BufferedReader(new java.io.InputStreamReader(c3.getInputStream()));
+                                StringBuilder sb3 = new StringBuilder();
+                                while ((ln = br3.readLine()) != null) sb3.append(ln);
+                                org.json.JSONArray arr2 = new org.json.JSONObject(sb3.toString()).optJSONArray("subtitles");
+                                if (arr2 != null) {
+                                    int bestG = -1;
+                                    for (int si = 0; si < arr2.length(); si++) {
+                                        org.json.JSONObject s = arr2.getJSONObject(si);
+                                        if ("eng".equals(s.optString("lang", ""))) {
+                                            int g = 0;
+                                            try { g = Integer.parseInt(s.optString("g", "0")); } catch (Exception ignored) {}
+                                            if (g > bestG) { bestG = g; subUrl = s.optString("url", ""); }
+                                        }
+                                    }
+                                    android.util.Log.d("StreamSniff", "OpenSubs fallback: " + subUrl);
+                                }
+                            } catch (Exception stErr) {
+                                android.util.Log.w("StreamSniff", "OpenSubs fallback failed: " + stErr.getMessage());
                             }
                         }
                     }
