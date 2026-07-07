@@ -44,9 +44,10 @@ public class MovieCardAdapter extends RecyclerView.Adapter<MovieCardAdapter.Movi
             glideOptions = new RequestOptions()
                 .placeholder(R.drawable.placeholder_poster)
                 .error(R.drawable.placeholder_poster)
-                .diskCacheStrategy(DiskCacheStrategy.ALL)  // cache decoded bitmap to disk
+                .diskCacheStrategy(DiskCacheStrategy.ALL)
                 .centerCrop()
-                .override(160, 240);  // fixed size — Glide skips measuring
+                .override(160, 240)   // fixed size — Glide skips measuring
+                .format(android.graphics.Bitmap.Config.RGB_565);  // 50% less memory than ARGB_8888
         }
     }
 
@@ -145,7 +146,8 @@ public class MovieCardAdapter extends RecyclerView.Adapter<MovieCardAdapter.Movi
                     focusOverlay.setVisibility(hasFocus ? View.VISIBLE : View.GONE);
                 // Use setScaleX/Y directly — no new Animator object allocation per focus event
                 float scale = hasFocus ? 1.08f : 1.0f;
-                itemView.animate().scaleX(scale).scaleY(scale).setDuration(120).start();
+                itemView.animate().cancel();
+                itemView.animate().scaleX(scale).scaleY(scale).setDuration(100).start();
                 itemView.setElevation(hasFocus ? 12f : 2f);
             });
         }
@@ -155,7 +157,7 @@ public class MovieCardAdapter extends RecyclerView.Adapter<MovieCardAdapter.Movi
             ratingText.setText("★ " + movie.getRatingFormatted());
             yearText.setText(movie.getYear());
 
-            String posterUrl = movie.getFullPosterUrl("w342");
+            String posterUrl = movie.getFullPosterUrl("w185");
             if (posterUrl != null) {
                 Glide.with(context)
                     .load(posterUrl)

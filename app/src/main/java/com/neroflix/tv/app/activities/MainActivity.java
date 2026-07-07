@@ -184,7 +184,13 @@ public class MainActivity extends BaseTvActivity {
         setupFilterBar();
         setupHeroButtons();
 
-        mainRecyclerView.setHasFixedSize(false);
+        mainRecyclerView.setHasFixedSize(true);
+        // Share view pool across all inner movie-row RecyclerViews
+        // Cards recycled from one row can be reused by another
+        final androidx.recyclerview.widget.RecyclerView.RecycledViewPool sharedPool =
+            new androidx.recyclerview.widget.RecyclerView.RecycledViewPool();
+        sharedPool.setMaxRecycledViews(0, 20);
+        mainRecyclerView.setRecycledViewPool(sharedPool);
         mainRecyclerView.setItemViewCacheSize(6);
         // CRITICAL: must enable nested scrolling for programmatic scroll to work
         mainRecyclerView.setNestedScrollingEnabled(true);
@@ -524,7 +530,7 @@ public class MainActivity extends BaseTvActivity {
         focusedCategoryRow = 0;
         focusedCategoryCol = 0;
         if (adapter != null) adapter.setFocus(-1, -1); // clear highlight
-        adapter.notifyDataSetChanged();
+        adapter.notifyItemRangeChanged(0, adapter.getItemCount());
         progressBar.setVisibility(View.VISIBLE);
         loadCategories();
         mainRecyclerView.scrollToPosition(0);
