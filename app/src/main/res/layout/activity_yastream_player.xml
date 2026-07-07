@@ -5,7 +5,7 @@
     android:layout_height="match_parent"
     android:background="#000000">
 
-    <!-- ExoPlayer surface — full screen -->
+    <!-- ExoPlayer surface — full screen, native controller enabled -->
     <androidx.media3.ui.PlayerView
         android:id="@+id/yastream_player_view"
         android:layout_width="match_parent"
@@ -26,73 +26,27 @@
         android:visibility="gone"
         android:indeterminateTint="#E50914" />
 
-            <!-- Title -->
-            <TextView
-                android:id="@+id/yastream_title"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:textColor="#FFFFFF"
-                android:textSize="15sp"
-                android:textStyle="bold"
-                android:ellipsize="end"
-                android:singleLine="true"
-                android:paddingStart="16dp"
-                android:paddingEnd="16dp"
-                android:shadowColor="#000000"
-                android:shadowDx="1"
-                android:shadowDy="1"
-                android:shadowRadius="4" />
-
-            <!-- CC button -->
-            <LinearLayout
-                android:id="@+id/yastream_cc_btn"
-                android:layout_width="wrap_content"
-                android:layout_height="36dp"
-                android:orientation="horizontal"
-                android:gravity="center"
-                android:focusable="true"
-                android:background="@drawable/player_btn_bg"
-                android:paddingStart="12dp"
-                android:paddingEnd="12dp"
-                android:layout_marginEnd="10dp">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="CC"
-                    android:textColor="#FFFFFF"
-                    android:textSize="12sp"
-                    android:textStyle="bold" />
-
-            </LinearLayout>
-
-            <!-- Change Source button -->
-            <LinearLayout
-                android:id="@+id/yastream_change_source"
-                android:layout_width="wrap_content"
-                android:layout_height="36dp"
-                android:orientation="horizontal"
-                android:gravity="center"
-                android:focusable="true"
-                android:background="@drawable/player_source_btn_bg"
-                android:paddingStart="14dp"
-                android:paddingEnd="14dp">
-
-                <TextView
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="⇄  Source"
-                    android:textColor="#FFFFFF"
-                    android:textSize="12sp"
-                    android:textStyle="bold" />
-
-            </LinearLayout>
-
-        </LinearLayout>
-
+    <!-- Floating Source button — top right -->
+    <LinearLayout
+        android:id="@+id/yastream_change_source"
+        android:layout_width="wrap_content"
+        android:layout_height="36dp"
+        android:layout_gravity="top|end"
+        android:layout_margin="12dp"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:focusable="true"
+        android:background="@drawable/player_source_btn_bg"
+        android:paddingStart="14dp"
+        android:paddingEnd="14dp">
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="⇄  Source"
+            android:textColor="#FFFFFF"
+            android:textSize="12sp"
+            android:textStyle="bold" />
     </LinearLayout>
-
 
     <!-- Status text (buffering) -->
     <TextView
@@ -151,31 +105,6 @@
             android:focusable="true"
             android:clickable="true" />
 
-    </LinearLayout>
-
-
-    <!-- Subtitle button — large touch target for phone users -->
-
-    <!-- Floating source switcher — kept from custom UI -->
-    <LinearLayout
-        android:id="@+id/yastream_change_source"
-        android:layout_width="wrap_content"
-        android:layout_height="36dp"
-        android:layout_gravity="top|end"
-        android:layout_margin="12dp"
-        android:orientation="horizontal"
-        android:gravity="center"
-        android:focusable="true"
-        android:background="@drawable/player_source_btn_bg"
-        android:paddingStart="14dp"
-        android:paddingEnd="14dp">
-        <TextView
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="⇄  Source"
-            android:textColor="#FFFFFF"
-            android:textSize="12sp"
-            android:textStyle="bold" />
     </LinearLayout>
 
 </FrameLayout>
