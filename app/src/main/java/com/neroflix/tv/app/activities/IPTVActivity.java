@@ -312,7 +312,7 @@ public class IPTVActivity extends BaseTvActivity {
         // Reuse the existing OkHttpClient if referrer hasn't changed — avoids thread pool leaks
         if (sharedOkHttpClient == null || !ref.equals(sharedOkHttpReferrer)) {
             sharedOkHttpReferrer = ref;
-            sharedOkHttpClient = new OkHttpClient.Builder()
+            sharedOkHttpClient = trustAllBuilder()
                 .addInterceptor(chain -> {
                     okhttp3.Request.Builder rb = chain.request().newBuilder()
                         .header("User-Agent", "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36");
@@ -441,6 +441,7 @@ public class IPTVActivity extends BaseTvActivity {
         new Thread(() -> {
             try {
                 HttpURLConnection conn = (HttpURLConnection) new URL(url).openConnection();
+                trustAllConnection(conn);
                 conn.setConnectTimeout(10000);
                 conn.setReadTimeout(15000);
                 conn.setRequestProperty("User-Agent", "Mozilla/5.0");
@@ -1082,7 +1083,7 @@ public class IPTVActivity extends BaseTvActivity {
             player.stop();
             player.release();
         }
-        OkHttpClient okHttpClient = new OkHttpClient.Builder()
+        OkHttpClient okHttpClient = trustAllBuilder()
             .addInterceptor(chain -> {
                 okhttp3.Request.Builder rb = chain.request().newBuilder()
                     .header("User-Agent", "Mozilla/5.0 (Linux; Android 10) AppleWebKit/537.36");
@@ -1114,4 +1115,45 @@ public class IPTVActivity extends BaseTvActivity {
             | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
             | View.SYSTEM_UI_FLAG_LAYOUT_STABLE);
     }
+    // ── SSL helper for old Android devices (API < 24) ─────────────────────────
+    // Devices with outdated trust stores reject modern certs (Let's Encrypt etc.)
+    // This creates a trust-all SSL context as a fallback.
+    private static javax.net.ssl.SSLSocketFactory trustAllSslFactory;
+    private static javax.net.ssl.X509TrustManager  trustAllManager;
+
+    private static void initTrustAll() {
+        if (trustAllSslFactory != null) return;
+        try {
+            trustAllManager = new javax.net.ssl.X509TrustManager() {
+                public void checkClientTrusted(java.security.cert.X509Certificate[] c, String a) {}
+                public void checkServerTrusted(java.security.cert.X509Certificate[] c, String a) {}
+                public java.security.cert.X509Certificate[] getAcceptedIssuers() { return new java.security.cert.X509Certificate[0]; }
+            };
+            javax.net.ssl.SSLContext ctx = javax.net.ssl.SSLContext.getInstance("TLS");
+            ctx.init(null, new javax.net.ssl.TrustManager[]{trustAllManager}, new java.security.SecureRandom());
+            trustAllSslFactory = ctx.getSocketFactory();
+        } catch (Exception e) {
+            android.util.Log.w("IPTVActivity", "initTrustAll failed: " + e.getMessage());
+        }
+    }
+
+    private static OkHttpClient.Builder trustAllBuilder() {
+        initTrustAll();
+        OkHttpClient.Builder b = new OkHttpClient.Builder();
+        if (trustAllSslFactory != null) {
+            b.sslSocketFactory(trustAllSslFactory, trustAllManager);
+            b.hostnameVerifier((h, s) -> true);
+        }
+        return b;
+    }
+
+    private static void trustAllConnection(java.net.URLConnection conn) {
+        initTrustAll();
+        if (trustAllSslFactory != null && conn instanceof javax.net.ssl.HttpsURLConnection) {
+            javax.net.ssl.HttpsURLConnection https = (javax.net.ssl.HttpsURLConnection) conn;
+            https.setSSLSocketFactory(trustAllSslFactory);
+            https.setHostnameVerifier((h, s) -> true);
+        }
+    }
+
 }
