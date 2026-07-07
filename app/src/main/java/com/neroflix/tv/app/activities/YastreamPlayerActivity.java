@@ -223,9 +223,7 @@ public class YastreamPlayerActivity extends BaseTvActivity {
         if (changeSourceBtn != null)
             changeSourceBtn.setOnClickListener(v -> showStreamPicker());
 
-        View backBtn = findViewById(R.id.yastream_back_btn);
-        if (backBtn != null)
-            backBtn.setOnClickListener(v -> finish());
+        // Back handled by system back button
 
 
         View retryBtn = findViewById(R.id.yastream_retry_btn);
@@ -238,9 +236,7 @@ public class YastreamPlayerActivity extends BaseTvActivity {
                     fetchAndPlay();
             });
 
-        // Tap anywhere on player to toggle top bar
         if (playerView != null) {
-            playerView.setOnClickListener(v -> toggleTopBar());
 
         } else {
             android.util.Log.e("YastreamPlayer", "playerView is NULL after setupViews() — layout may not have inflated correctly");
