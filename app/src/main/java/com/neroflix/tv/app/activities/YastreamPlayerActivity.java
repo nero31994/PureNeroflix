@@ -242,20 +242,6 @@ public class YastreamPlayerActivity extends BaseTvActivity {
         if (playerView != null) {
             playerView.setOnClickListener(v -> toggleTopBar());
 
-            // Hook ExoPlayer's built-in CC button to our subtitle picker
-            // Must run after setPlayer() is called, so post to next frame
-            playerView.post(() -> {
-                android.view.View ccBtn = playerView.findViewById(
-                    androidx.media3.ui.R.id.exo_subtitles);
-                if (ccBtn != null) {
-                    // Larger touch target for phone users
-                    ccBtn.setPadding(24, 24, 24, 24);
-                    ccBtn.setOnClickListener(v -> toggleSubtitles());
-                    android.util.Log.d("YastreamPlayer", "CC button hooked");
-                } else {
-                    android.util.Log.w("YastreamPlayer", "CC button not found in PlayerView");
-                }
-            });
         } else {
             android.util.Log.e("YastreamPlayer", "playerView is NULL after setupViews() — layout may not have inflated correctly");
         }
@@ -817,6 +803,11 @@ if (!activityDestroyed) runOnUiThread(() -> {
         exoPlayer = new ExoPlayer.Builder(this, rf)
             .build();
         playerView.setPlayer(exoPlayer);
+        // Hook CC button here — after setPlayer() so exo_subtitles view exists
+        android.view.View ccBtn = playerView.findViewById(androidx.media3.ui.R.id.exo_subtitles);
+        if (ccBtn != null) {
+            ccBtn.setOnClickListener(v -> toggleSubtitles());
+        }
         exoPlayer.setMediaSource(finalSource);
         exoPlayer.prepare();
         exoPlayer.setPlayWhenReady(true);
