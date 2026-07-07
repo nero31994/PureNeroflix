@@ -113,7 +113,35 @@ public class YastreamPlayerActivity extends BaseTvActivity {
         setupViews();
         hideSystemUi(); // true fullscreen — hide nav bar + status bar
         if (directPlayMode) {
-            initExoPlayer(getIntent().getStringExtra("direct_stream_url"), directSubtitleUrl, null);
+            // Fetch all subtitle tracks from yastream so CC button appears
+            final String directUrl2 = getIntent().getStringExtra("direct_stream_url");
+            new Thread(() -> {
+                org.json.JSONArray allSubs = null;
+                try {
+                    String extType = "movie".equals(mediaType) ? "movie" : "tv";
+                    String extUrl = "https://api.themoviedb.org/3/" + extType + "/" + tmdbId
+                        + "/external_ids?api_key=" + com.neroflix.tv.app.BuildConfig.TMDB_API_KEY;
+                    org.json.JSONObject extJson = new org.json.JSONObject(fetchUrl(extUrl));
+                    String imdbId = extJson.optString("imdb_id", "");
+                    if (!imdbId.isEmpty()) {
+                        String yasType = "movie".equals(mediaType) ? "movie" : "series";
+                        String yasId = imdbId;
+                        if (!"movie".equals(mediaType) && season > 0 && episode > 0)
+                            yasId += ":" + season + ":" + episode;
+                        String subsUrl = YASTREAM_BASE + "/" + YASTREAM_CONFIG
+                            + "/subtitles/" + yasType + "/" + yasId + ".json";
+                        org.json.JSONObject subsJson = new org.json.JSONObject(fetchUrl(subsUrl));
+                        allSubs = subsJson.optJSONArray("subtitles");
+                        android.util.Log.d("YastreamPlayer", "directPlay allSubs: "
+                            + (allSubs != null ? allSubs.length() : 0));
+                    }
+                } catch (Exception e) {
+                    android.util.Log.w("YastreamPlayer", "directPlay subtitle fetch: " + e.getMessage());
+                }
+                final org.json.JSONArray finalAllSubs = allSubs;
+                if (!activityDestroyed) runOnUiThread(() ->
+                    initExoPlayer(directUrl2, directSubtitleUrl, finalAllSubs));
+            }).start();
         } else {
             fetchAndPlay();
         }
