@@ -178,11 +178,6 @@ public class YastreamPlayerActivity extends BaseTvActivity {
         }
     }
 
-    private final Runnable hideTopBar = () -> {
-    }
-
-
-
 
     private androidx.media3.exoplayer.source.MediaSource buildSmartMediaSource(
             String url,
