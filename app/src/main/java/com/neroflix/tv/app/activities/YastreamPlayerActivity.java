@@ -817,6 +817,14 @@ if (!activityDestroyed) runOnUiThread(() -> {
         exoPlayer.setMediaSource(finalSource);
         exoPlayer.prepare();
         exoPlayer.setPlayWhenReady(true);
+
+        // Add to watch history
+        if (tmdbId > 0 && movieTitle != null && !movieTitle.isEmpty()) {
+            com.neroflix.tv.app.models.Movie h = new com.neroflix.tv.app.models.Movie(
+                tmdbId, movieTitle, "", "", "", "", 0, mediaType);
+            com.neroflix.tv.app.WatchManager.addToHistory(YastreamPlayerActivity.this, h);
+        }
+
         playerView.setUseController(true);
         playerView.setControllerAutoShow(true);
         playerView.setControllerHideOnTouch(true);
