@@ -68,38 +68,7 @@
         </LinearLayout>
     </LinearLayout>
 
-    <LinearLayout
-        android:id="@+id/splash_spinner_block"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_below="@id/splash_center"
-        android:layout_centerHorizontal="true"
-        android:layout_marginTop="40dp"
-        android:orientation="vertical"
-        android:gravity="center">
-
-        <ProgressBar
-            android:id="@+id/splash_progress"
-            android:layout_width="32dp"
-            android:layout_height="32dp"
-            android:indeterminateTint="#CCCCCC"/>
-
-        <TextView
-            android:id="@+id/splash_version"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:textColor="#CCCCCC"
-            android:textSize="14sp"/>
-
-    </LinearLayout>
-
-    <TextView
-        android:id="@+id/splash_status"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:visibility="gone"/>
-
+    <!-- Footer pinned to bottom -->
     <LinearLayout
         android:id="@+id/splash_footer"
         android:layout_width="match_parent"
@@ -139,5 +108,38 @@
             android:layout_marginTop="4dp"/>
 
     </LinearLayout>
+
+    <!-- Spinner block above footer, never overlaps -->
+    <LinearLayout
+        android:id="@+id/splash_spinner_block"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_above="@id/splash_footer"
+        android:layout_centerHorizontal="true"
+        android:layout_marginBottom="16dp"
+        android:orientation="vertical"
+        android:gravity="center">
+
+        <ProgressBar
+            android:id="@+id/splash_progress"
+            android:layout_width="32dp"
+            android:layout_height="32dp"
+            android:indeterminateTint="#CCCCCC"/>
+
+        <TextView
+            android:id="@+id/splash_version"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="12dp"
+            android:textColor="#CCCCCC"
+            android:textSize="14sp"/>
+
+    </LinearLayout>
+
+    <TextView
+        android:id="@+id/splash_status"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:visibility="gone"/>
 
 </RelativeLayout>
