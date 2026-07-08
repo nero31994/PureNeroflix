@@ -428,6 +428,8 @@ public class DetailActivity extends BaseTvActivity {
                     intent.putExtra("movie_title",    subTitle);
                     intent.putExtra("season",         subSeason);
                     intent.putExtra("episode",        subEpisode);
+                    intent.putExtra("movie_poster",   getIntent().getStringExtra("movie_poster"));
+                    intent.putExtra("vote_average",   getIntent().getFloatExtra("vote_average", 0f));
                     if (finalSubUrl != null && !finalSubUrl.isEmpty())
                         intent.putExtra("direct_subtitle_url", finalSubUrl);
                     startActivity(intent);
