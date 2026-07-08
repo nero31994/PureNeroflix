@@ -643,16 +643,30 @@ if (!activityDestroyed) runOnUiThread(() -> {
             headers.put("Sec-Fetch-Dest",  "empty");
             headers.put("Accept",          "*/*");
             headers.put("Accept-Language", "en-US,en;q=0.9");
-            // Cookie fetching is fast (in-memory) but do it safely
+            // Cookie fetching — get cookies from m3u8 CDN, origin, AND referrer
+            // vidsrc.pm sets streamembed_session on the embed domain, not the CDN
             try {
                 android.webkit.CookieManager cm = android.webkit.CookieManager.getInstance();
-                String allCookies = "";
-                String c1 = cm.getCookie(m3u8Url);
-                String c2 = cm.getCookie(origin);
-                if (c1 != null) allCookies += c1 + "; ";
-                if (c2 != null) allCookies += c2;
-                if (!allCookies.trim().isEmpty())
-                    headers.put("Cookie", allCookies.trim());
+                java.util.LinkedHashMap<String,String> cookieMap = new java.util.LinkedHashMap<>();
+                // Parse and merge cookies from all relevant domains
+                for (String domain : new String[]{m3u8Url, origin, directStreamReferrer}) {
+                    if (domain == null || domain.isEmpty()) continue;
+                    String c = cm.getCookie(domain);
+                    if (c == null || c.isEmpty()) continue;
+                    for (String pair : c.split(";")) {
+                        String[] kv = pair.trim().split("=", 2);
+                        if (kv.length == 2) cookieMap.put(kv[0].trim(), kv[1].trim());
+                    }
+                }
+                if (!cookieMap.isEmpty()) {
+                    StringBuilder sb = new StringBuilder();
+                    for (java.util.Map.Entry<String,String> e : cookieMap.entrySet()) {
+                        if (sb.length() > 0) sb.append("; ");
+                        sb.append(e.getKey()).append("=").append(e.getValue());
+                    }
+                    headers.put("Cookie", sb.toString());
+                    android.util.Log.d("YastreamPlayer", "Cookies: " + sb);
+                }
             } catch (Exception ignored) {}
             dataSourceFactory.setDefaultRequestProperties(headers);
         }
