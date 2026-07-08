@@ -828,10 +828,13 @@ if (!activityDestroyed) runOnUiThread(() -> {
         exoPlayer.prepare();
         exoPlayer.setPlayWhenReady(true);
 
-        // Add to watch history
+        // Add to watch history with full movie data
         if (tmdbId > 0 && movieTitle != null && !movieTitle.isEmpty()) {
+            String posterPath = getIntent().getStringExtra("movie_poster");
+            float rating = getIntent().getFloatExtra("vote_average", 0f);
             com.neroflix.tv.app.models.Movie h = new com.neroflix.tv.app.models.Movie(
-                tmdbId, movieTitle, "", "", "", "", 0, mediaType);
+                tmdbId, movieTitle, "", posterPath != null ? posterPath : "",
+                "", "", rating, mediaType);
             com.neroflix.tv.app.WatchManager.addToHistory(YastreamPlayerActivity.this, h);
         }
 
