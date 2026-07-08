@@ -174,10 +174,6 @@ public class PlayerActivity extends BaseTvActivity {
             @Override
             public void onPageFinished(WebView view, String url) {
                 super.onPageFinished(view, url);
-                android.util.Log.d("WebNavigation", "Page: " + url);
-                android.widget.Toast.makeText(PlayerActivity.this,
-                    "Nav: " + url.substring(0, Math.min(60, url.length())),
-                    android.widget.Toast.LENGTH_SHORT).show();
                 // Keep overlay visible — we never want the WebView visible
                 // to the user. Overlay stays up until stream is sniffed
                 // and we hand off to YastreamPlayerActivity.
