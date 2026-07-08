@@ -105,8 +105,8 @@ public class DetailActivity extends BaseTvActivity {
             updateWatchlistBtn(watchlistBtn);
             watchlistBtn.setOnClickListener(v -> {
                 if (movie != null) {
-                    com.neroflix.tv.app.WatchManager.toggleWatchlist(this, movie);
-                    updateWatchlistBtn(watchlistBtn);
+                    com.neroflix.tv.app.WatchManager.toggleWatchlist(this, movie,
+                        () -> updateWatchlistBtn(watchlistBtn));
                 }
             });
             setFocusAnimation(watchlistBtn);
@@ -114,8 +114,8 @@ public class DetailActivity extends BaseTvActivity {
                 if (event.getAction() == KeyEvent.ACTION_DOWN
                         && (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER)) {
                     if (movie != null) {
-                        com.neroflix.tv.app.WatchManager.toggleWatchlist(this, movie);
-                        updateWatchlistBtn(watchlistBtn);
+                        com.neroflix.tv.app.WatchManager.toggleWatchlist(this, movie,
+                            () -> updateWatchlistBtn(watchlistBtn));
                     }
                     return true;
                 }
