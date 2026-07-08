@@ -340,42 +340,14 @@ public class PlayerActivity extends BaseTvActivity {
         currentServerUrl   = serverUrl;
         currentServerUrlTv = serverUrlTv != null ? serverUrlTv : serverUrl;
 
-        String html = "<!DOCTYPE html><html><head>"
-            + "<meta name='viewport' content='width=device-width,initial-scale=1'>"
-            + "<style>"
-            + "*{margin:0;padding:0;box-sizing:border-box}"
-            + "html,body{width:100%;height:100%;background:#000;overflow:hidden}"
-            + "iframe{width:100%;height:100%;border:none;display:block}"
-            + "</style></head><body>"
-            + "<iframe id='embedFrame' src='" + embedUrl + "' "
-            + "allowfullscreen allow='autoplay;fullscreen;picture-in-picture' "
-            + "scrolling='no'></iframe>"
-            + "<script>"
-            + "window.open=function(){return{focus:function(){},blur:function(){}}};"
-            + "window.alert=function(){};"
-            + "window.confirm=function(){return true;};"
-            + "document.addEventListener('keydown',function(e){"
-            + "  var f=document.getElementById('embedFrame');"
-            + "  if(!f||!f.contentWindow)return;"
-            + "  var act=null;"
-            + "  if(e.keyCode===13||e.keyCode===179){act='playpause';}"
-            + "  else if(e.keyCode===39||e.keyCode===228){act='seekforward';}"
-            + "  else if(e.keyCode===37||e.keyCode===227){act='seekback';}"
-            + "  else if(e.keyCode===32){act='playpause';}"
-            + "  else if(e.keyCode===70){act='fullscreen';}"
-            + "  if(act){"
-            + "    f.contentWindow.postMessage({action:act},'*');"
-            + "    try{f.contentWindow.document.dispatchEvent("
-            + "      new KeyboardEvent('keydown',{keyCode:e.keyCode,which:e.keyCode,bubbles:true})"
-            + "    );}catch(ex){}"
-            + "    e.preventDefault();"
-            + "  }"
-            + "});"
-            + "</script></body></html>";
+        // Load embed URL directly instead of via iframe
+        // This allows JS injection and shouldInterceptRequest to work inside the player page
+        // Previously wrapped in iframe which blocked JS injection from reaching the player
 
         // Store embed URL as referrer for ExoPlayer stream sniff handoff
         currentEmbedReferrer = embedUrl;
-        webView.loadDataWithBaseURL("https://neroflix.local/", html, "text/html", "UTF-8", null);
+        // Load directly so our JS intercepts run inside the player page
+        webView.loadUrl(embedUrl);
     }
     // Server switcher — re-contacts Worker to get fresh server list
     private void showServerPicker() {
