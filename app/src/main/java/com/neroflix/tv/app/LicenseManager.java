@@ -2,7 +2,6 @@ package com.neroflix.tv.app;
 
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.content.pm.PackageManager;
 import android.provider.Settings;
 import android.util.Log;
 

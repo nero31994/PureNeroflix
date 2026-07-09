@@ -6,7 +6,6 @@ import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
-import android.content.SharedPreferences;
 import android.net.Uri;
 import android.os.Bundle;
 import android.provider.Settings;
@@ -16,7 +15,6 @@ import android.widget.TextView;
 import android.widget.Toast;
 import android.widget.ProgressBar;
 
-import androidx.appcompat.app.AppCompatActivity;
 
 import com.neroflix.tv.app.LicenseManager;
 import com.neroflix.tv.app.R;

@@ -19,7 +19,6 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.OptIn;
-import androidx.appcompat.app.AppCompatActivity;
 import androidx.media3.common.C;
 import androidx.media3.common.MediaItem;
 import androidx.media3.common.MimeTypes;
@@ -39,7 +38,6 @@ import com.neroflix.tv.app.R;
 import com.neroflix.tv.app.adapters.IPTVChannelAdapter;
 import com.neroflix.tv.app.iptv.M3UParser;
 
-import org.json.JSONObject;
 
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
