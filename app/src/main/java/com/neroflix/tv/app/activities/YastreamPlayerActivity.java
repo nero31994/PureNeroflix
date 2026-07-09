@@ -121,9 +121,10 @@ public class YastreamPlayerActivity extends BaseTvActivity {
                 // Already have a subtitle URL passed in — use it directly
                 initExoPlayer(_directUrl, _existingSub, null);
             } else if (tmdbId > 0) {
-                // Fetch yastream subtitles the same way as yastream mode
+                // Fetch full yastream subtitle JSON — same as yastream mode
                 new Thread(() -> {
                     String subUrl = null;
+                    org.json.JSONArray allSubsArr = null;
                     try {
                         String extType = "movie".equals(mediaType) ? "movie" : "tv";
                         String extUrl = "https://api.themoviedb.org/3/" + extType + "/" + tmdbId
@@ -149,8 +150,9 @@ public class YastreamPlayerActivity extends BaseTvActivity {
                             StringBuilder sb2 = new StringBuilder();
                             while ((ln = br2.readLine()) != null) sb2.append(ln);
                             org.json.JSONArray arr = new org.json.JSONObject(sb2.toString()).optJSONArray("subtitles");
-                            if (arr != null) {
-                                // Prefer tgl, fallback eng
+                            if (arr != null && arr.length() > 0) {
+                                allSubsArr = arr;
+                                // Default: prefer tgl, fallback eng, fallback first
                                 for (int si = 0; si < arr.length(); si++) {
                                     org.json.JSONObject s = arr.getJSONObject(si);
                                     if ("tgl".equals(s.optString("lang", ""))) { subUrl = s.optString("url", ""); break; }
@@ -161,19 +163,16 @@ public class YastreamPlayerActivity extends BaseTvActivity {
                                         if ("eng".equals(s.optString("lang", ""))) { subUrl = s.optString("url", ""); break; }
                                     }
                                 }
-                                directSubtitleUrl = subUrl;
+                                if (subUrl == null || subUrl.isEmpty())
+                                    subUrl = arr.getJSONObject(0).optString("url", "");
                             }
                         }
                     } catch (Exception e) {
                         android.util.Log.w("Player", "Direct sub fetch failed: " + e.getMessage());
                     }
                     final String finalSub = subUrl;
-                    runOnUiThread(() -> {
-                        android.widget.Toast.makeText(YastreamPlayerActivity.this,
-                            "Sub: " + (finalSub != null ? finalSub.substring(0, Math.min(80, finalSub.length())) : "NULL"),
-                            android.widget.Toast.LENGTH_LONG).show();
-                        initExoPlayer(_directUrl, finalSub, null);
-                    });
+                    final org.json.JSONArray finalAllSubs = allSubsArr;
+                    runOnUiThread(() -> initExoPlayer(_directUrl, finalSub, finalAllSubs));
                 }).start();
             } else {
                 initExoPlayer(_directUrl, null, null);
