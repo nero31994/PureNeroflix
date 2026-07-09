@@ -126,10 +126,10 @@ public class TmdbClient {
                                 String sep = url.contains("?") ? "&" : "?";
                                 try { fresh.addAll(parseMovieList(fetchUrl(url + sep + "page=2"), mediaType)); } catch (Exception ignored2) {}
                             }
-                            fresh = dedup(fresh);
-                            movieCache.put(url, fresh);
-                            MovieCache.save(context, url, fresh);
-                            mainHandler.post(() -> callback.onSuccess(fresh));
+                            List<Movie> freshFinal = dedup(fresh);
+                            movieCache.put(url, freshFinal);
+                            MovieCache.save(context, url, freshFinal);
+                            mainHandler.post(() -> callback.onSuccess(freshFinal));
                         } catch (Exception ignored) {
                             // Network failed — cached version already shown, that's fine
                         }
@@ -145,9 +145,9 @@ public class TmdbClient {
                                 String sep = url.contains("?") ? "&" : "?";
                                 try { movies.addAll(parseMovieList(fetchUrl(url + sep + "page=2"), mediaType)); } catch (Exception ignored) {}
                             }
-                            movies = dedup(movies);
-                            movieCache.put(url, movies);
-                            MovieCache.save(context, url, movies);
+                            List<Movie> moviesFinal = dedup(movies);
+                            movieCache.put(url, moviesFinal);
+                            MovieCache.save(context, url, moviesFinal);
                             mainHandler.post(() -> callback.onSuccess(movies));
                         } catch (Exception e) {
                             mainHandler.post(() -> callback.onError(e.getMessage()));
