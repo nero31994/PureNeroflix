@@ -882,6 +882,16 @@ if (!activityDestroyed) runOnUiThread(() -> {
         exoPlayer = new ExoPlayer.Builder(this, rf)
             .build();
         playerView.setPlayer(exoPlayer);
+        // In direct mode with injected subs, disable embedded HLS text tracks
+        // so only our yastream subtitles show in the CC menu
+        if (directPlayMode && externalSubUrl != null && !externalSubUrl.isEmpty()) {
+            exoPlayer.setTrackSelectionParameters(
+                exoPlayer.getTrackSelectionParameters().buildUpon()
+                    .setTrackTypeDisabled(androidx.media3.common.C.TRACK_TYPE_TEXT, false)
+                    .setPreferredTextLanguage("tgl")
+                    .setSelectUndeterminedTextLanguage(false)
+                    .build());
+        }
         exoPlayer.setMediaSource(finalSource);
         exoPlayer.prepare();
         exoPlayer.setPlayWhenReady(true);
