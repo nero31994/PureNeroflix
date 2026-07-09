@@ -119,8 +119,11 @@ public class TmdbClient {
                     // Expired — refresh silently in background, update UI when done
                     executor.execute(() -> {
                         try {
-                            String json = fetchUrl(url);
-                            List<Movie> fresh = parseMovieList(json, mediaType);
+                            String sep2 = url.contains("?") ? "&" : "?";
+                            String j1 = fetchUrl(url + sep2 + "page=1");
+                            String j2 = fetchUrl(url + sep2 + "page=2");
+                            List<Movie> fresh = parseMovieList(j1, mediaType);
+                            fresh.addAll(parseMovieList(j2, mediaType));
                             movieCache.put(url, fresh);
                             MovieCache.save(context, url, fresh);
                             mainHandler.post(() -> callback.onSuccess(fresh));
@@ -150,8 +153,11 @@ public class TmdbClient {
             // No context (fallback) — network only
             executor.execute(() -> {
                 try {
-                    String json = fetchUrl(url);
-                    List<Movie> movies = parseMovieList(json, mediaType);
+                    String sep3 = url.contains("?") ? "&" : "?";
+                    String ja = fetchUrl(url + sep3 + "page=1");
+                    String jb = fetchUrl(url + sep3 + "page=2");
+                    List<Movie> movies = parseMovieList(ja, mediaType);
+                    movies.addAll(parseMovieList(jb, mediaType));
                     movieCache.put(url, movies);
                     mainHandler.post(() -> callback.onSuccess(movies));
                 } catch (Exception e) {
