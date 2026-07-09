@@ -489,8 +489,8 @@ public class MainActivity extends BaseTvActivity {
     }
 
     private void switchFilter(String filter) {
-        int[] ids = {R.id.filter_popular, R.id.filter_top_rated, R.id.filter_now_playing, R.id.filter_upcoming};
-        String[] keys = {"popular","top_rated","now_playing","upcoming"};
+        int[] ids = {R.id.filter_popular, R.id.filter_top_rated, R.id.filter_now_playing, R.id.filter_upcoming, R.id.filter_asian};
+        String[] keys = {"popular","top_rated","now_playing","upcoming","asian"};
         for (int i = 0; i < ids.length; i++) {
             View btn = findViewById(ids[i]);
             if (btn instanceof TextView) {
@@ -519,6 +519,16 @@ public class MainActivity extends BaseTvActivity {
             default:
                 defs = CATEGORY_DEFS; break;
         }
+            case "asian":
+                loadCategories(new String[][]{
+                    {"🎭 Popular K-Drama",    "/discover/tv?with_genres=18&with_origin_country=KR&sort_by=popularity.desc&vote_count.gte=50",       "tv"},
+                    {"⭐ Top Rated K-Drama",  "/discover/tv?with_genres=18&with_origin_country=KR&sort_by=vote_average.desc&vote_count.gte=100",     "tv"},
+                    {"🇨🇳 C-Drama",           "/discover/tv?with_genres=18&with_origin_country=CN&sort_by=popularity.desc&vote_count.gte=50",        "tv"},
+                    {"🇯🇵 J-Drama",           "/discover/tv?with_genres=18&with_origin_country=JP&sort_by=popularity.desc&vote_count.gte=50",        "tv"},
+                    {"🇹🇭 Thai Drama",        "/discover/tv?with_genres=18&with_origin_country=TH&sort_by=popularity.desc&vote_count.gte=50",        "tv"},
+                    {"🇵🇭 Filipino Drama",    "/discover/tv?with_genres=18&with_origin_country=PH&sort_by=popularity.desc&vote_count.gte=20",        "tv"},
+                });
+                break;
         currentMode = "filter_" + filter;
         reloadWithDefs(defs);
     }
