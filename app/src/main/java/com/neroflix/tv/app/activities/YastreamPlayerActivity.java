@@ -168,8 +168,7 @@ public class YastreamPlayerActivity extends BaseTvActivity {
                         android.util.Log.w("Player", "Direct sub fetch failed: " + e.getMessage());
                     }
                     final String finalSub = subUrl;
-                    final org.json.JSONArray finalArr = arr;
-                    runOnUiThread(() -> initExoPlayer(_directUrl, finalSub, finalArr));
+                    runOnUiThread(() -> initExoPlayer(_directUrl, finalSub, null));
                 }).start();
             } else {
                 initExoPlayer(_directUrl, null, null);
