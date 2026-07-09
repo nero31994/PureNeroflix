@@ -67,10 +67,14 @@ public class DetailActivity extends BaseTvActivity {
     private void updatePlayButton() {
         long pos = com.neroflix.tv.app.WatchManager.getPosition(this, movieId);
         if (pos > 5000) {
-            long minutes = (pos / 1000) / 60;
-            long seconds = (pos / 1000) % 60;
-            ((android.widget.Button) playButton).setText(
-                String.format("⏵  RESUME %d:%02d", minutes, seconds));
+            long totalSec = pos / 1000;
+            long hours = totalSec / 3600;
+            long minutes = (totalSec % 3600) / 60;
+            long seconds = totalSec % 60;
+            String timestamp = hours > 0
+                ? String.format("%d:%02d:%02d", hours, minutes, seconds)
+                : String.format("%d:%02d", minutes, seconds);
+            ((ndroid.widget.Button) playButton).setText("⏵  RESUME " + timestamp);
         } else {
             ((android.widget.Button) playButton).setText("▶  PLAY NOW");
         }
