@@ -516,9 +516,6 @@ public class MainActivity extends BaseTvActivity {
                     {"🚀 Upcoming Movies", "/movie/upcoming",  "movie"},
                     {"📅 Airing Today",    "/tv/airing_today", "tv"},
                 }; break;
-            default:
-                defs = CATEGORY_DEFS; break;
-        }
             case "asian":
                 loadCategories(new String[][]{
                     {"🎭 Popular K-Drama",    "/discover/tv?with_genres=18&with_origin_country=KR&sort_by=popularity.desc&vote_count.gte=50",       "tv"},
@@ -529,6 +526,9 @@ public class MainActivity extends BaseTvActivity {
                     {"🇵🇭 Filipino Drama",    "/discover/tv?with_genres=18&with_origin_country=PH&sort_by=popularity.desc&vote_count.gte=20",        "tv"},
                 });
                 break;
+            default:
+                defs = CATEGORY_DEFS; break;
+        }
         currentMode = "filter_" + filter;
         reloadWithDefs(defs);
     }
