@@ -132,8 +132,11 @@ public class TmdbClient {
                     // No disk cache — fetch from network normally
                     executor.execute(() -> {
                         try {
-                            String json = fetchUrl(url);
-                            List<Movie> movies = parseMovieList(json, mediaType);
+                            String sep = url.contains("?") ? "&" : "?";
+                            String json1 = fetchUrl(url + sep + "page=1");
+                            String json2 = fetchUrl(url + sep + "page=2");
+                            List<Movie> movies = parseMovieList(json1, mediaType);
+                            movies.addAll(parseMovieList(json2, mediaType));
                             movieCache.put(url, movies);
                             MovieCache.save(context, url, movies);
                             mainHandler.post(() -> callback.onSuccess(movies));
