@@ -121,6 +121,11 @@ public class TmdbClient {
                         try {
                             String json = fetchUrl(url);
                             List<Movie> fresh = parseMovieList(json, mediaType);
+                            boolean pageable2 = !url.contains("with_companies") && !url.contains("with_networks") && !url.contains("/person/") && !url.contains("append_to_response");
+                            if (pageable2) {
+                                String sep = url.contains("?") ? "&" : "?";
+                                try { fresh.addAll(parseMovieList(fetchUrl(url + sep + "page=2"), mediaType)); } catch (Exception ignored2) {}
+                            }
                             movieCache.put(url, fresh);
                             MovieCache.save(context, url, fresh);
                             mainHandler.post(() -> callback.onSuccess(fresh));
