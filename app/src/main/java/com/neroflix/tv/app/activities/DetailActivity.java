@@ -425,15 +425,16 @@ public class DetailActivity extends BaseTvActivity {
                                 // Prefer English from OpenSubtitles
                                 for (int si = 0; si < osArr.length(); si++) {
                                     org.json.JSONObject s = osArr.getJSONObject(si);
-                                    if ("eng".equals(s.optString("lang", ""))) {
+                                    String sLang = s.optString("lang", "");
+                                    if ("eng".equals(sLang) || "en".equals(sLang) || "English".equalsIgnoreCase(sLang)) {
                                         if (subtitleUrl == null || subtitleUrl.isEmpty())
                                             subtitleUrl = s.optString("url", "");
                                         org.json.JSONObject entry = new org.json.JSONObject();
                                         entry.put("url", s.optString("url", ""));
                                         entry.put("lang", "eng");
-                                        entry.put("label", "English");
+                                        entry.put("label", "English (OpenSubs)");
                                         merged.put(entry);
-                                        break; // one eng sub is enough
+                                        break;
                                     }
                                 }
                                 if (merged.length() > 0) allSubsJson = merged.toString();
