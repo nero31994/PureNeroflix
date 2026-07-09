@@ -126,6 +126,7 @@ public class TmdbClient {
                                 String sep = url.contains("?") ? "&" : "?";
                                 try { fresh.addAll(parseMovieList(fetchUrl(url + sep + "page=2"), mediaType)); } catch (Exception ignored2) {}
                             }
+                            fresh = dedup(fresh);
                             movieCache.put(url, fresh);
                             MovieCache.save(context, url, fresh);
                             mainHandler.post(() -> callback.onSuccess(fresh));
@@ -139,6 +140,12 @@ public class TmdbClient {
                         try {
                             String json = fetchUrl(url);
                             List<Movie> movies = parseMovieList(json, mediaType);
+                            boolean pageable = !url.contains("with_companies") && !url.contains("with_networks") && !url.contains("/person/") && !url.contains("append_to_response");
+                            if (pageable) {
+                                String sep = url.contains("?") ? "&" : "?";
+                                try { movies.addAll(parseMovieList(fetchUrl(url + sep + "page=2"), mediaType)); } catch (Exception ignored) {}
+                            }
+                            movies = dedup(movies);
                             movieCache.put(url, movies);
                             MovieCache.save(context, url, movies);
                             mainHandler.post(() -> callback.onSuccess(movies));
@@ -196,6 +203,12 @@ public class TmdbClient {
     }
 
     // ─── Parsers ─────────────────────────────────────────────────────────────
+
+    private List<Movie> dedup(List<Movie> movies) {
+        java.util.LinkedHashMap<Integer, Movie> seen = new java.util.LinkedHashMap<>();
+        for (Movie m : movies) seen.put(m.getId(), m);
+        return new ArrayList<>(seen.values());
+    }
 
     private List<Movie> parseMovieList(String json, String defaultMediaType) throws JSONException {
         List<Movie> movies = new ArrayList<>();
