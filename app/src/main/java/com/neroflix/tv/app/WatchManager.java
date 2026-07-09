@@ -125,6 +125,27 @@ public class WatchManager {
         return false;
     }
 
+    // ── Playback position (resume support) ───────────────────────────────
+    private static final String KEY_POSITIONS = "watch_positions";
+
+    public static void savePosition(Context context, int movieId, long positionMs) {
+        if (positionMs < 5000) return; // ignore if less than 5 seconds
+        try {
+            SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+            JSONObject positions = new JSONObject(prefs.getString(KEY_POSITIONS, "{}"));
+            positions.put(String.valueOf(movieId), positionMs);
+            prefs.edit().putString(KEY_POSITIONS, positions.toString()).apply();
+        } catch (Exception e) { e.printStackTrace(); }
+    }
+
+    public static long getPosition(Context context, int movieId) {
+        try {
+            SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+            JSONObject positions = new JSONObject(prefs.getString(KEY_POSITIONS, "{}"));
+            return positions.optLong(String.valueOf(movieId), 0);
+        } catch (Exception e) { return 0; }
+    }
+
     public static List<Movie> getWatchlist(Context context) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         return jsonArrayToMovies(getArray(prefs, KEY_WATCHLIST));

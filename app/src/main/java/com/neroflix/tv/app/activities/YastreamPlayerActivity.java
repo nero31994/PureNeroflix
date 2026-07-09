@@ -828,6 +828,10 @@ if (!activityDestroyed) runOnUiThread(() -> {
         exoPlayer.prepare();
         exoPlayer.setPlayWhenReady(true);
 
+        // Resume from saved position if available
+        long resumePos = com.neroflix.tv.app.WatchManager.getPosition(this, tmdbId);
+        if (resumePos > 5000) exoPlayer.seekTo(resumePos);
+
         // Add to watch history — fetch fresh TMDB data so poster/rating are always correct
         if (tmdbId > 0 && movieTitle != null && !movieTitle.isEmpty()) {
             final String _mediaType = mediaType;
@@ -996,7 +1000,13 @@ if (!activityDestroyed) runOnUiThread(() -> {
     // ── Lifecycle ─────────────────────────────────────────────────────────────
 
     @Override protected void onResume()  { super.onResume();  hideSystemUI(); if (exoPlayer != null) exoPlayer.play(); }
-    @Override protected void onPause()   { super.onPause();   if (exoPlayer != null) exoPlayer.pause(); }
+    @Override protected void onPause() {
+        super.onPause();
+        if (exoPlayer != null) {
+            exoPlayer.pause();
+            if (tmdbId > 0) com.neroflix.tv.app.WatchManager.savePosition(this, tmdbId, exoPlayer.getCurrentPosition());
+        }
+    }
     @Override protected void onDestroy() {
         activityDestroyed = true;
         super.onDestroy();
