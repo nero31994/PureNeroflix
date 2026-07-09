@@ -117,10 +117,9 @@ public class YastreamPlayerActivity extends BaseTvActivity {
             // Fetch yastream subtitles for direct/extracted m3u8 streams
             final String _directUrl = getIntent().getStringExtra("direct_stream_url");
             final String _existingSub = directSubtitleUrl;
-            if (_existingSub != null && !_existingSub.isEmpty()) {
-                // Already have a subtitle URL passed in — use it directly
-                initExoPlayer(_directUrl, _existingSub, null);
-            } else if (tmdbId > 0) {
+            if (tmdbId > 0) {
+                // Always fetch full yastream subtitle JSON for CC menu
+                // Use _existingSub as default selection if available
                 // Capture config on main thread before going background
                 final String _yasConfig = decryptYasConfig();
                 final int _season = getIntent().getIntExtra("season", 0);
@@ -167,6 +166,8 @@ public class YastreamPlayerActivity extends BaseTvActivity {
                                 }
                                 if (subUrl == null || subUrl.isEmpty())
                                     subUrl = arr.getJSONObject(0).optString("url", "");
+                                // Fallback to passed-in subtitle URL if still empty
+                                if (subUrl == null || subUrl.isEmpty()) subUrl = _existingSub;
                             }
                         }
                     } catch (Exception e) {
@@ -177,7 +178,7 @@ public class YastreamPlayerActivity extends BaseTvActivity {
                     runOnUiThread(() -> initExoPlayer(_directUrl, finalSub, finalAllSubs));
                 }).start();
             } else {
-                initExoPlayer(_directUrl, null, null);
+                initExoPlayer(_directUrl, _existingSub, null);
             }
         } else {
             fetchAndPlay();
