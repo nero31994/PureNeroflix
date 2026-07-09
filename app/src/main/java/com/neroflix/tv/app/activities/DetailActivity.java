@@ -405,35 +405,78 @@ public class DetailActivity extends BaseTvActivity {
                     while ((ln = br.readLine()) != null) sb.append(ln);
                     String imdbId = new org.json.JSONObject(sb.toString()).optString("imdb_id", "");
                     if (!imdbId.isEmpty()) {
-                        String yasType = "movie".equals(subMediaType) ? "movie" : "series";
-                        String yasId = imdbId;
+                        String stremioType = "movie".equals(subMediaType) ? "movie" : "series";
+                        String stremioId = imdbId;
                         if (!"movie".equals(subMediaType) && subSeason > 0 && subEpisode > 0)
-                            yasId += ":" + subSeason + ":" + subEpisode;
-                        String yasConfig = decryptYasConfig();
-                        String yasUrl = "https://yastream.tamthai.de/subtitles/" + yasType + "/" + yasId + ".json?config=" + yasConfig;
-                        java.net.HttpURLConnection c2 = (java.net.HttpURLConnection) new java.net.URL(yasUrl).openConnection();
-                        c2.setConnectTimeout(8000); c2.setReadTimeout(8000);
-                        java.io.BufferedReader br2 = new java.io.BufferedReader(new java.io.InputStreamReader(c2.getInputStream()));
-                        StringBuilder sb2 = new StringBuilder();
-                        while ((ln = br2.readLine()) != null) sb2.append(ln);
-                        org.json.JSONArray arr = new org.json.JSONObject(sb2.toString()).optJSONArray("subtitles");
-                        if (arr != null) {
-                            allSubsJson = arr.toString();
-                            // Prefer tgl (Filipino), fallback to eng
-                            for (int si = 0; si < arr.length(); si++) {
-                                org.json.JSONObject s = arr.getJSONObject(si);
-                                if ("tgl".equals(s.optString("lang", ""))) {
-                                    subtitleUrl = s.optString("url", ""); break;
-                                }
-                            }
-                            if (subtitleUrl == null || subtitleUrl.isEmpty()) {
-                                for (int si = 0; si < arr.length(); si++) {
-                                    org.json.JSONObject s = arr.getJSONObject(si);
+                            stremioId += ":" + subSeason + ":" + subEpisode;
+
+                        // 1. Try OpenSubtitles first (better sync for extracted streams)
+                        String openSubUrl = "https://opensubtitles-v3.strem.io/subtitles/"
+                            + stremioType + "/" + stremioId + ".json";
+                        try {
+                            java.net.HttpURLConnection os = (java.net.HttpURLConnection) new java.net.URL(openSubUrl).openConnection();
+                            os.setConnectTimeout(6000); os.setReadTimeout(6000);
+                            java.io.BufferedReader osBr = new java.io.BufferedReader(new java.io.InputStreamReader(os.getInputStream()));
+                            StringBuilder osSb = new StringBuilder();
+                            while ((ln = osBr.readLine()) != null) osSb.append(ln);
+                            org.json.JSONArray osArr = new org.json.JSONObject(osSb.toString()).optJSONArray("subtitles");
+                            if (osArr != null) {
+                                org.json.JSONArray merged = new org.json.JSONArray();
+                                // Prefer English from OpenSubtitles
+                                for (int si = 0; si < osArr.length(); si++) {
+                                    org.json.JSONObject s = osArr.getJSONObject(si);
                                     if ("eng".equals(s.optString("lang", ""))) {
-                                        subtitleUrl = s.optString("url", ""); break;
+                                        if (subtitleUrl == null || subtitleUrl.isEmpty())
+                                            subtitleUrl = s.optString("url", "");
+                                        org.json.JSONObject entry = new org.json.JSONObject();
+                                        entry.put("url", s.optString("url", ""));
+                                        entry.put("lang", "eng");
+                                        entry.put("label", "English");
+                                        merged.put(entry);
+                                        break; // one eng sub is enough
                                     }
                                 }
+                                if (merged.length() > 0) allSubsJson = merged.toString();
                             }
+                        } catch (Exception osErr) {
+                            android.util.Log.w("Detail", "OpenSubs failed: " + osErr.getMessage());
+                        }
+
+                        // 2. Fetch yastream subs (Filipino + all languages)
+                        try {
+                            String yasType = "movie".equals(subMediaType) ? "movie" : "series";
+                            String yasId = stremioId;
+                            String yasConfig = decryptYasConfig();
+                            String yasUrl = "https://yastream.tamthai.de/subtitles/" + yasType + "/" + yasId + ".json?config=" + yasConfig;
+                            java.net.HttpURLConnection c2 = (java.net.HttpURLConnection) new java.net.URL(yasUrl).openConnection();
+                            c2.setConnectTimeout(8000); c2.setReadTimeout(8000);
+                            java.io.BufferedReader br2 = new java.io.BufferedReader(new java.io.InputStreamReader(c2.getInputStream()));
+                            StringBuilder sb2 = new StringBuilder();
+                            while ((ln = br2.readLine()) != null) sb2.append(ln);
+                            org.json.JSONArray yasArr = new org.json.JSONObject(sb2.toString()).optJSONArray("subtitles");
+                            if (yasArr != null && yasArr.length() > 0) {
+                                // Prefer tgl as default if no OpenSub eng found
+                                for (int si = 0; si < yasArr.length(); si++) {
+                                    org.json.JSONObject s = yasArr.getJSONObject(si);
+                                    if ("tgl".equals(s.optString("lang", "")) && (subtitleUrl == null || subtitleUrl.isEmpty()))
+                                        subtitleUrl = s.optString("url", "");
+                                }
+                                if (subtitleUrl == null || subtitleUrl.isEmpty())
+                                    subtitleUrl = yasArr.getJSONObject(0).optString("url", "");
+                                // Merge yastream subs into allSubsJson
+                                org.json.JSONArray combined = allSubsJson != null
+                                    ? new org.json.JSONArray(allSubsJson) : new org.json.JSONArray();
+                                java.util.Set<String> seen = new java.util.HashSet<>();
+                                for (int si = 0; si < combined.length(); si++)
+                                    seen.add(combined.getJSONObject(si).optString("lang",""));
+                                for (int si = 0; si < yasArr.length(); si++) {
+                                    org.json.JSONObject s = yasArr.getJSONObject(si);
+                                    if (!seen.contains(s.optString("lang",""))) combined.put(s);
+                                }
+                                allSubsJson = combined.toString();
+                            }
+                        } catch (Exception yasErr) {
+                            android.util.Log.w("Detail", "Yastream subs failed: " + yasErr.getMessage());
                         }
                     }
                 } catch (Exception e) {
