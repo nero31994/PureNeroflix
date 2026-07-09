@@ -121,6 +121,10 @@ public class YastreamPlayerActivity extends BaseTvActivity {
                 // Already have a subtitle URL passed in — use it directly
                 initExoPlayer(_directUrl, _existingSub, null);
             } else if (tmdbId > 0) {
+                // Capture config on main thread before going background
+                final String _yasConfig = decryptYasConfig();
+                final int _season = getIntent().getIntExtra("season", 0);
+                final int _episode = getIntent().getIntExtra("episode", 0);
                 // Fetch full yastream subtitle JSON — same as yastream mode
                 new Thread(() -> {
                     String subUrl = null;
@@ -138,11 +142,9 @@ public class YastreamPlayerActivity extends BaseTvActivity {
                         if (!imdbId.isEmpty()) {
                             String yasType = "movie".equals(mediaType) ? "movie" : "series";
                             String yasId = imdbId;
-                            int season = getIntent().getIntExtra("season", 0);
-                            int episode = getIntent().getIntExtra("episode", 0);
-                            if (!"movie".equals(mediaType) && season > 0 && episode > 0)
-                                yasId += ":" + season + ":" + episode;
-                            String yasConfig = decryptYasConfig();
+                            if (!"movie".equals(mediaType) && _season > 0 && _episode > 0)
+                                yasId += ":" + _season + ":" + _episode;
+                            String yasConfig = _yasConfig;
                             String yasUrl = "https://yastream.tamthai.de/subtitles/" + yasType + "/" + yasId + ".json?config=" + yasConfig;
                             java.net.HttpURLConnection c2 = (java.net.HttpURLConnection) new java.net.URL(yasUrl).openConnection();
                             c2.setConnectTimeout(8000); c2.setReadTimeout(8000);
