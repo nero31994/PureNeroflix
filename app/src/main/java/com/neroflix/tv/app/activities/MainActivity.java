@@ -517,15 +517,14 @@ public class MainActivity extends BaseTvActivity {
                     {"📅 Airing Today",    "/tv/airing_today", "tv"},
                 }; break;
             case "asian":
-                loadCategories(new String[][]{
-                    {"🎭 Popular K-Drama",    "/discover/tv?with_genres=18&with_origin_country=KR&sort_by=popularity.desc&vote_count.gte=50",       "tv"},
-                    {"⭐ Top Rated K-Drama",  "/discover/tv?with_genres=18&with_origin_country=KR&sort_by=vote_average.desc&vote_count.gte=100",     "tv"},
-                    {"🇨🇳 C-Drama",           "/discover/tv?with_genres=18&with_origin_country=CN&sort_by=popularity.desc&vote_count.gte=50",        "tv"},
-                    {"🇯🇵 J-Drama",           "/discover/tv?with_genres=18&with_origin_country=JP&sort_by=popularity.desc&vote_count.gte=50",        "tv"},
-                    {"🇹🇭 Thai Drama",        "/discover/tv?with_genres=18&with_origin_country=TH&sort_by=popularity.desc&vote_count.gte=50",        "tv"},
-                    {"🇵🇭 Filipino Drama",    "/discover/tv?with_genres=18&with_origin_country=PH&sort_by=popularity.desc&vote_count.gte=20",        "tv"},
-                });
-                break;
+                defs = new String[][]{
+                    {"🎭 Popular K-Drama",   "/discover/tv?with_genres=18&with_origin_country=KR&sort_by=popularity.desc&vote_count.gte=50",   "tv"},
+                    {"⭐ Top Rated K-Drama", "/discover/tv?with_genres=18&with_origin_country=KR&sort_by=vote_average.desc&vote_count.gte=100", "tv"},
+                    {"🇨🇳 C-Drama",          "/discover/tv?with_genres=18&with_origin_country=CN&sort_by=popularity.desc&vote_count.gte=50",   "tv"},
+                    {"🇯🇵 J-Drama",          "/discover/tv?with_genres=18&with_origin_country=JP&sort_by=popularity.desc&vote_count.gte=50",   "tv"},
+                    {"🇹🇭 Thai Drama",       "/discover/tv?with_genres=18&with_origin_country=TH&sort_by=popularity.desc&vote_count.gte=50",   "tv"},
+                    {"🇵🇭 Filipino Drama",   "/discover/tv?with_genres=18&with_origin_country=PH&sort_by=popularity.desc&vote_count.gte=20",   "tv"},
+                }; break;
             default:
                 defs = CATEGORY_DEFS; break;
         }
