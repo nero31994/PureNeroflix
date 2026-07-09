@@ -232,6 +232,7 @@ public class TmdbClient {
                     : obj.optString("release_date", "");
             double voteAverage = obj.optDouble("vote_average", 0.0);
             if (title.isEmpty()) return null;
+            if (voteAverage == 0.0) return null; // skip unrated/unavailable movies
             Movie movie = new Movie(id, title, overview, posterPath, backdropPath, releaseDate, voteAverage, mediaType);
             movie.setVoteCount(obj.optInt("vote_count", 0));
             return movie;
