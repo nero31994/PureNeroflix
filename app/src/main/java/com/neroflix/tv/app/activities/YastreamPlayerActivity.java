@@ -168,7 +168,12 @@ public class YastreamPlayerActivity extends BaseTvActivity {
                         android.util.Log.w("Player", "Direct sub fetch failed: " + e.getMessage());
                     }
                     final String finalSub = subUrl;
-                    runOnUiThread(() -> initExoPlayer(_directUrl, finalSub, null));
+                    runOnUiThread(() -> {
+                        android.widget.Toast.makeText(YastreamPlayerActivity.this,
+                            "Sub: " + (finalSub != null ? finalSub.substring(0, Math.min(80, finalSub.length())) : "NULL"),
+                            android.widget.Toast.LENGTH_LONG).show();
+                        initExoPlayer(_directUrl, finalSub, null);
+                    });
                 }).start();
             } else {
                 initExoPlayer(_directUrl, null, null);
@@ -882,16 +887,6 @@ if (!activityDestroyed) runOnUiThread(() -> {
         exoPlayer = new ExoPlayer.Builder(this, rf)
             .build();
         playerView.setPlayer(exoPlayer);
-        // In direct mode with injected subs, disable embedded HLS text tracks
-        // so only our yastream subtitles show in the CC menu
-        if (directPlayMode && externalSubUrl != null && !externalSubUrl.isEmpty()) {
-            exoPlayer.setTrackSelectionParameters(
-                exoPlayer.getTrackSelectionParameters().buildUpon()
-                    .setTrackTypeDisabled(androidx.media3.common.C.TRACK_TYPE_TEXT, false)
-                    .setPreferredTextLanguage("tgl")
-                    .setSelectUndeterminedTextLanguage(false)
-                    .build());
-        }
         exoPlayer.setMediaSource(finalSource);
         exoPlayer.prepare();
         exoPlayer.setPlayWhenReady(true);
