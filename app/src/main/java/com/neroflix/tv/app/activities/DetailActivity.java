@@ -61,6 +61,19 @@ public class DetailActivity extends BaseTvActivity {
         setupViews();
         loadBasicInfo();
         loadDetailInfo();
+        updatePlayButton();
+    }
+
+    private void updatePlayButton() {
+        long pos = com.neroflix.tv.app.WatchManager.getPosition(this, movieId);
+        if (pos > 5000) {
+            long minutes = (pos / 1000) / 60;
+            long seconds = (pos / 1000) % 60;
+            ((android.widget.Button) playButton).setText(
+                String.format("⏵  RESUME %d:%02d", minutes, seconds));
+        } else {
+            ((android.widget.Button) playButton).setText("▶  PLAY NOW");
+        }
     }
 
     private void setupViews() {
