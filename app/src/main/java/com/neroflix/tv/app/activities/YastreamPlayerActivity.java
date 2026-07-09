@@ -828,14 +828,37 @@ if (!activityDestroyed) runOnUiThread(() -> {
         exoPlayer.prepare();
         exoPlayer.setPlayWhenReady(true);
 
-        // Add to watch history with full movie data
+        // Add to watch history — fetch fresh TMDB data so poster/rating are always correct
         if (tmdbId > 0 && movieTitle != null && !movieTitle.isEmpty()) {
-            String posterPath = getIntent().getStringExtra("movie_poster");
-            float rating = getIntent().getFloatExtra("vote_average", 0f);
-            com.neroflix.tv.app.models.Movie h = new com.neroflix.tv.app.models.Movie(
-                tmdbId, movieTitle, "", posterPath != null ? posterPath : "",
-                "", "", rating, mediaType);
-            com.neroflix.tv.app.WatchManager.addToHistory(YastreamPlayerActivity.this, h);
+            final String _mediaType = mediaType;
+            final int _tmdbId = tmdbId;
+            final String _title = movieTitle;
+            new Thread(() -> {
+                try {
+                    String type = "movie".equals(_mediaType) ? "movie" : "tv";
+                    String url = "https://api.themoviedb.org/3/" + type + "/" + _tmdbId
+                        + "?api_key=" + com.neroflix.tv.app.BuildConfig.TMDB_API_KEY;
+                    java.net.HttpURLConnection c = (java.net.HttpURLConnection) new java.net.URL(url).openConnection();
+                    c.setConnectTimeout(8000); c.setReadTimeout(8000);
+                    java.io.BufferedReader br = new java.io.BufferedReader(new java.io.InputStreamReader(c.getInputStream()));
+                    StringBuilder sb = new StringBuilder(); String ln;
+                    while ((ln = br.readLine()) != null) sb.append(ln);
+                    org.json.JSONObject obj = new org.json.JSONObject(sb.toString());
+                    String poster = obj.optString("poster_path", "");
+                    double rating = obj.optDouble("vote_average", 0.0);
+                    String release = obj.optString("release_date", obj.optString("first_air_date", ""));
+                    com.neroflix.tv.app.models.Movie h = new com.neroflix.tv.app.models.Movie(
+                        _tmdbId, _title, "", poster, "", release, rating, _mediaType);
+                    com.neroflix.tv.app.WatchManager.addToHistory(YastreamPlayerActivity.this, h);
+                } catch (Exception e) {
+                    String posterPath = getIntent().getStringExtra("movie_poster");
+                    float rating2 = getIntent().getFloatExtra("vote_average", 0f);
+                    com.neroflix.tv.app.models.Movie h = new com.neroflix.tv.app.models.Movie(
+                        _tmdbId, _title, "", posterPath != null ? posterPath : "",
+                        "", "", rating2, _mediaType);
+                    com.neroflix.tv.app.WatchManager.addToHistory(YastreamPlayerActivity.this, h);
+                }
+            }).start();
         }
 
         playerView.setUseController(true);
