@@ -114,7 +114,65 @@ public class YastreamPlayerActivity extends BaseTvActivity {
         setupViews();
         hideSystemUi(); // true fullscreen — hide nav bar + status bar
         if (directPlayMode) {
-            initExoPlayer(getIntent().getStringExtra("direct_stream_url"), directSubtitleUrl, null);
+            // Fetch yastream subtitles for direct/extracted m3u8 streams
+            final String _directUrl = getIntent().getStringExtra("direct_stream_url");
+            final String _existingSub = directSubtitleUrl;
+            if (_existingSub != null && !_existingSub.isEmpty()) {
+                // Already have a subtitle URL passed in — use it directly
+                initExoPlayer(_directUrl, _existingSub, null);
+            } else if (tmdbId > 0) {
+                // Fetch yastream subtitles the same way as yastream mode
+                new Thread(() -> {
+                    String subUrl = null;
+                    try {
+                        String extType = "movie".equals(mediaType) ? "movie" : "tv";
+                        String extUrl = "https://api.themoviedb.org/3/" + extType + "/" + tmdbId
+                            + "/external_ids?api_key=" + com.neroflix.tv.app.BuildConfig.TMDB_API_KEY;
+                        java.net.HttpURLConnection conn = (java.net.HttpURLConnection) new java.net.URL(extUrl).openConnection();
+                        conn.setConnectTimeout(5000); conn.setReadTimeout(5000);
+                        java.io.BufferedReader br = new java.io.BufferedReader(new java.io.InputStreamReader(conn.getInputStream()));
+                        StringBuilder sb = new StringBuilder(); String ln;
+                        while ((ln = br.readLine()) != null) sb.append(ln);
+                        String imdbId = new org.json.JSONObject(sb.toString()).optString("imdb_id", "");
+                        if (!imdbId.isEmpty()) {
+                            String yasType = "movie".equals(mediaType) ? "movie" : "series";
+                            String yasId = imdbId;
+                            int season = getIntent().getIntExtra("season", 0);
+                            int episode = getIntent().getIntExtra("episode", 0);
+                            if (!"movie".equals(mediaType) && season > 0 && episode > 0)
+                                yasId += ":" + season + ":" + episode;
+                            String yasConfig = decryptYasConfig();
+                            String yasUrl = "https://yastream.tamthai.de/subtitles/" + yasType + "/" + yasId + ".json?config=" + yasConfig;
+                            java.net.HttpURLConnection c2 = (java.net.HttpURLConnection) new java.net.URL(yasUrl).openConnection();
+                            c2.setConnectTimeout(8000); c2.setReadTimeout(8000);
+                            java.io.BufferedReader br2 = new java.io.BufferedReader(new java.io.InputStreamReader(c2.getInputStream()));
+                            StringBuilder sb2 = new StringBuilder();
+                            while ((ln = br2.readLine()) != null) sb2.append(ln);
+                            org.json.JSONArray arr = new org.json.JSONObject(sb2.toString()).optJSONArray("subtitles");
+                            if (arr != null) {
+                                // Prefer tgl, fallback eng
+                                for (int si = 0; si < arr.length(); si++) {
+                                    org.json.JSONObject s = arr.getJSONObject(si);
+                                    if ("tgl".equals(s.optString("lang", ""))) { subUrl = s.optString("url", ""); break; }
+                                }
+                                if (subUrl == null || subUrl.isEmpty()) {
+                                    for (int si = 0; si < arr.length(); si++) {
+                                        org.json.JSONObject s = arr.getJSONObject(si);
+                                        if ("eng".equals(s.optString("lang", ""))) { subUrl = s.optString("url", ""); break; }
+                                    }
+                                }
+                                directSubtitleUrl = subUrl;
+                            }
+                        }
+                    } catch (Exception e) {
+                        android.util.Log.w("Player", "Direct sub fetch failed: " + e.getMessage());
+                    }
+                    final String finalSub = subUrl;
+                    runOnUiThread(() -> initExoPlayer(_directUrl, finalSub, null));
+                }).start();
+            } else {
+                initExoPlayer(_directUrl, null, null);
+            }
         } else {
             fetchAndPlay();
         }
