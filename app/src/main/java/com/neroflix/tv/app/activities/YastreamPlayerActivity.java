@@ -114,11 +114,19 @@ public class YastreamPlayerActivity extends BaseTvActivity {
         setupViews();
         hideSystemUi(); // true fullscreen — hide nav bar + status bar
         if (directPlayMode) {
-            // Fetch yastream subtitles for direct/extracted m3u8 streams
             final String _directUrl = getIntent().getStringExtra("direct_stream_url");
             final String _existingSub = directSubtitleUrl;
-            if (tmdbId > 0) {
-                // Always fetch full yastream subtitle JSON for CC menu
+            // Check if DetailActivity already passed the full subtitle JSON
+            String _allSubsJsonStr = getIntent().getStringExtra("all_subs_json");
+            if (_allSubsJsonStr != null && !_allSubsJsonStr.isEmpty()) {
+                try {
+                    org.json.JSONArray _arr = new org.json.JSONArray(_allSubsJsonStr);
+                    initExoPlayer(_directUrl, _existingSub, _arr);
+                } catch (Exception e) {
+                    initExoPlayer(_directUrl, _existingSub, null);
+                }
+            } else if (tmdbId > 0) {
+                // Fetch full yastream subtitle JSON — same as yastream mode
                 // Use _existingSub as default selection if available
                 // Capture config on main thread before going background
                 final String _yasConfig = decryptYasConfig();

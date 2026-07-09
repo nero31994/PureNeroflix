@@ -393,6 +393,7 @@ public class DetailActivity extends BaseTvActivity {
             // Fetch subtitle on background, then launch player
             new Thread(() -> {
                 String subtitleUrl = null;
+                String allSubsJson = null;
                 try {
                     String extType = "movie".equals(subMediaType) ? "movie" : "tv";
                     String extUrl = "https://api.themoviedb.org/3/" + extType + "/" + subTmdbId
@@ -417,6 +418,7 @@ public class DetailActivity extends BaseTvActivity {
                         while ((ln = br2.readLine()) != null) sb2.append(ln);
                         org.json.JSONArray arr = new org.json.JSONObject(sb2.toString()).optJSONArray("subtitles");
                         if (arr != null) {
+                            allSubsJson = arr.toString();
                             // Prefer tgl (Filipino), fallback to eng
                             for (int si = 0; si < arr.length(); si++) {
                                 org.json.JSONObject s = arr.getJSONObject(si);
@@ -438,6 +440,7 @@ public class DetailActivity extends BaseTvActivity {
                     android.util.Log.w("Detail", "Subtitle fetch failed: " + e.getMessage());
                 }
                 final String finalSubUrl = subtitleUrl;
+                final String finalAllSubs = allSubsJson;
                 runOnUiThread(() -> {
                     Intent intent = new Intent(DetailActivity.this, com.neroflix.tv.app.activities.YastreamPlayerActivity.class);
                     intent.putExtra("movie_id",       subTmdbId);
@@ -451,6 +454,8 @@ public class DetailActivity extends BaseTvActivity {
                     intent.putExtra("vote_average",   _rating);
                     if (finalSubUrl != null && !finalSubUrl.isEmpty())
                         intent.putExtra("direct_subtitle_url", finalSubUrl);
+                    if (finalAllSubs != null)
+                        intent.putExtra("all_subs_json", finalAllSubs);
                     startActivity(intent);
                     overridePendingTransition(0, 0); // no transition — player starts black
                 });
