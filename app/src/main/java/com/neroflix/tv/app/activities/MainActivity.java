@@ -299,9 +299,12 @@ public class MainActivity extends BaseTvActivity {
         View ft = findViewById(R.id.filter_top_rated);
         View fn = findViewById(R.id.filter_now_playing);
         View fu = findViewById(R.id.filter_upcoming);
+        View fa = findViewById(R.id.filter_asian);
         if (fp != null) fp.setOnClickListener(v -> switchFilter("popular"));
         if (ft != null) ft.setOnClickListener(v -> switchFilter("top_rated"));
         if (fn != null) fn.setOnClickListener(v -> switchFilter("now_playing"));
+        if (fu != null) fu.setOnClickListener(v -> switchFilter("upcoming"));
+        if (fa != null) fa.setOnClickListener(v -> switchFilter("asian"));
         if (fu != null) fu.setOnClickListener(v -> switchFilter("upcoming"));
     }
 
