@@ -64,13 +64,14 @@
 
     </LinearLayout>
 
-    <!-- FULL SCREEN EPG GUIDE (auto-hides) -->
+    <!-- EPG GUIDE SIDEBAR — fixed width overlay, video visible on right -->
     <LinearLayout
         android:id="@+id/iptv_sidebar"
-        android:layout_width="match_parent"
+        android:layout_width="480dp"
         android:layout_height="match_parent"
         android:orientation="vertical"
-        android:background="#EE0D0D0D">
+        android:background="#EE0D0D0D"
+        android:elevation="8dp">
 
         <!-- Guide header: search + current date/time -->
         <LinearLayout
@@ -134,7 +135,7 @@
             <!-- Category list - permanent left column, full height -->
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/iptv_group_list"
-                android:layout_width="220dp"
+                android:layout_width="160dp"
                 android:layout_height="match_parent"
                 android:background="#161616"
                 android:scrollbars="none"
