@@ -140,28 +140,22 @@ public class IPTVChannelAdapter extends RecyclerView.Adapter<IPTVChannelAdapter.
             holder.logo.setImageResource(android.R.color.darker_gray);
         }
 
-        buildEpgStrip(holder, ch);
-        refreshEpgHighlights(holder);
-        // Auto-scroll to current time - use GlobalLayoutListener to ensure strip is measured
-        holder.epgScroll.getViewTreeObserver().addOnGlobalLayoutListener(
-            new android.view.ViewTreeObserver.OnGlobalLayoutListener() {
-                @Override
-                public void onGlobalLayout() {
-                    holder.epgScroll.getViewTreeObserver().removeOnGlobalLayoutListener(this);
-                    java.util.Calendar dayStart = java.util.Calendar.getInstance();
-                    dayStart.set(java.util.Calendar.HOUR_OF_DAY, 0);
-                    dayStart.set(java.util.Calendar.MINUTE, 0);
-                    dayStart.set(java.util.Calendar.SECOND, 0);
-                    dayStart.set(java.util.Calendar.MILLISECOND, 0);
-                    long elapsedMs = System.currentTimeMillis() - dayStart.getTimeInMillis();
-                    // Scroll so "now" marker is centered in the visible strip width
-                    int nowPx  = (int)((elapsedMs / 3600000.0) * dp(PX_PER_HOUR));
-                    int halfW  = holder.epgScroll.getWidth() / 2;
-                    int scrollX = Math.max(0, nowPx - halfW);
-                    holder.epgScroll.scrollTo(scrollX, 0);
-                }
+        // Show now-playing program as a subtitle under channel name.
+        // Full EPG timeline removed — detail available in floating PIP card.
+        if (holder.nowPlaying != null) {
+            List<EpgProgram> sched = EpgManager.getTodaySchedule(ch.tvgId, ch.name);
+            long nowMs = System.currentTimeMillis();
+            String nowTitle = null;
+            for (EpgProgram p : sched) {
+                if (nowMs >= p.startMs && nowMs < p.stopMs) { nowTitle = p.title; break; }
             }
-        );
+            if (nowTitle != null && !nowTitle.isEmpty()) {
+                holder.nowPlaying.setText("\u25b6 " + nowTitle);
+                holder.nowPlaying.setVisibility(View.VISIBLE);
+            } else {
+                holder.nowPlaying.setVisibility(View.GONE);
+            }
+        }
 
         holder.itemView.setSelected(origIdx == selectedIndex);
         holder.itemView.setScaleX(1f);
@@ -186,88 +180,9 @@ public class IPTVChannelAdapter extends RecyclerView.Adapter<IPTVChannelAdapter.
     }
 
 
-    private void refreshEpgHighlights(ViewHolder holder) {
-        long nowMs = System.currentTimeMillis();
-        for (int i = 0; i < holder.epgStrip.getChildCount(); i++) {
-            android.view.View child = holder.epgStrip.getChildAt(i);
-            if (child == null) continue;
-            Object startTag = child.getTag(R.id.epg_start_ms);
-            Object stopTag = child.getTag(R.id.epg_stop_ms);
-            if (startTag == null || stopTag == null) continue;
-            long startMs = (long) startTag;
-            long stopMs = (long) stopTag;
-            boolean isNow = (nowMs >= startMs && nowMs < stopMs);
-            if (isNow) {
-                child.setBackgroundColor(0x55E50914);
-                if (child instanceof android.widget.TextView) {
-                    ((android.widget.TextView) child).setTextColor(0xFFFFFFFF);
-                }
-            } else {
-                child.setBackgroundResource(R.drawable.epg_program_block);
-                if (child instanceof android.widget.TextView) {
-                    ((android.widget.TextView) child).setTextColor(0xFFCCCCCC);
-                }
-            }
-        }
-    }
+    // refreshEpgHighlights() removed — EPG in floating PIP card
 
-    private void buildEpgStrip(ViewHolder holder, M3UParser.Channel ch) {
-        // Skip rebuild if this exact channel was already bound to this holder with EPG built
-        String tag = ch.tvgId + "|" + ch.name;
-        if (tag.equals(holder.itemView.getTag())) return;
-        holder.itemView.setTag(tag);
-
-        holder.epgStrip.removeAllViews();
-
-        List<EpgProgram> schedule = EpgManager.getTodaySchedule(ch.tvgId, ch.name);
-        SimpleDateFormat timeFmt = new SimpleDateFormat("h:mm a", Locale.getDefault());
-
-        if (schedule.isEmpty()) {
-            TextView noInfo = new TextView(context);
-            noInfo.setText("No information");
-            noInfo.setTextColor(0xFF777777);
-            noInfo.setTextSize(10f);
-            noInfo.setGravity(android.view.Gravity.CENTER_VERTICAL);
-            noInfo.setPadding(dp(8), 0, dp(8), 0);
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(400), LinearLayout.LayoutParams.MATCH_PARENT);
-            noInfo.setLayoutParams(lp);
-            noInfo.setBackgroundResource(R.drawable.epg_program_block);
-            holder.epgStrip.addView(noInfo);
-            return;
-        }
-
-        for (EpgProgram p : schedule) {
-            long durationMs = p.stopMs - p.startMs;
-            int widthPx = (int) ((durationMs / 3600000.0) * dp(PX_PER_HOUR));
-            if (widthPx < dp(60)) widthPx = dp(60);
-
-            TextView block = new TextView(context);
-            block.setText(p.title);
-            block.setTextColor(0xFFCCCCCC);
-            block.setTextSize(10f);
-            block.setSingleLine(true);
-            block.setEllipsize(android.text.TextUtils.TruncateAt.END);
-            block.setGravity(android.view.Gravity.CENTER_VERTICAL);
-            block.setPadding(dp(8), 0, dp(8), 0);
-            block.setBackgroundResource(R.drawable.epg_program_block);
-            // Store timestamps as tags for highlight refresh
-            block.setTag(R.id.epg_start_ms, p.startMs);
-            block.setTag(R.id.epg_stop_ms, p.stopMs);
-
-            LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(widthPx, LinearLayout.LayoutParams.MATCH_PARENT);
-            lp.setMarginEnd(dp(2));
-            block.setLayoutParams(lp);
-
-            long nowMs = System.currentTimeMillis();
-            boolean isNow = (nowMs >= p.startMs && nowMs < p.stopMs);
-            if (isNow) {
-                block.setBackgroundColor(0x55E50914);
-                block.setTextColor(0xFFFFFFFF);
-            }
-
-            holder.epgStrip.addView(block);
-        }
-    }
+    // buildEpgStrip() removed — EPG in floating PIP card
 
     private int dp(int dp) {
         return Math.round(dp * context.getResources().getDisplayMetrics().density);
@@ -277,47 +192,31 @@ public class IPTVChannelAdapter extends RecyclerView.Adapter<IPTVChannelAdapter.
     @Override
     public int getItemCount() { return channels.size(); }
 
-    // Refresh EPG highlights every 60 seconds so "now" block stays accurate
-    private final android.os.Handler refreshHandler = new android.os.Handler(
-        android.os.Looper.getMainLooper());
+    // EPG refresh handler removed
 
     @Override
     public void onViewAttachedToWindow(@NonNull ViewHolder holder) {
         super.onViewAttachedToWindow(holder);
-        Runnable refreshTask = new Runnable() {
-            @Override public void run() {
-                if (holder.itemView.isAttachedToWindow()) {
-                    refreshEpgHighlights(holder);
-                    refreshHandler.postDelayed(this, 60_000);
-                }
-            }
-        };
-        holder.itemView.setTag(R.id.epg_start_ms, refreshTask);
-        refreshHandler.postDelayed(refreshTask, 60_000);
     }
 
     @Override
     public void onViewDetachedFromWindow(@NonNull ViewHolder holder) {
         super.onViewDetachedFromWindow(holder);
-        Object tag = holder.itemView.getTag(R.id.epg_start_ms);
-        if (tag instanceof Runnable) refreshHandler.removeCallbacks((Runnable) tag);
     }
 
     static class ViewHolder extends RecyclerView.ViewHolder {
         ImageView logo;
-        TextView number, name, drmBadge;
-        LinearLayout epgStrip;
-        android.widget.HorizontalScrollView epgScroll;
+        TextView number, name, drmBadge, nowPlaying;
         View focusOverlay;
+        // epgStrip + epgScroll removed — EPG detail in floating PIP card
 
         ViewHolder(View v) {
             super(v);
-            logo     = v.findViewById(R.id.channel_logo);
-            number   = v.findViewById(R.id.channel_number);
-            name     = v.findViewById(R.id.channel_name);
-            drmBadge = v.findViewById(R.id.channel_drm_badge);
-            epgStrip = v.findViewById(R.id.epg_strip);
-            epgScroll = v.findViewById(R.id.epg_scroll);
+            logo       = v.findViewById(R.id.channel_logo);
+            number     = v.findViewById(R.id.channel_number);
+            name       = v.findViewById(R.id.channel_name);
+            drmBadge   = v.findViewById(R.id.channel_drm_badge);
+            nowPlaying = v.findViewById(R.id.channel_now_playing);
             focusOverlay = v.findViewById(R.id.channel_focus_overlay);
         }
     }
