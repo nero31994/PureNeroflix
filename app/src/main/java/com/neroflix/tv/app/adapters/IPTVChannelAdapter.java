@@ -35,7 +35,7 @@ public class IPTVChannelAdapter extends RecyclerView.Adapter<IPTVChannelAdapter.
     private List<M3UParser.Channel> channels;
     private final OnClick listener;
     private int selectedIndex = -1;
-    private int focusedIndex = -1;
+    // focusedIndex removed — visual focus handled by Android native state_focused
     public Runnable onHideSidebar = null;
 
     public IPTVChannelAdapter(Context context, List<M3UParser.Channel> channels, OnClick listener) {
@@ -51,12 +51,8 @@ public class IPTVChannelAdapter extends RecyclerView.Adapter<IPTVChannelAdapter.
         notifyItemRangeChanged(0, channels.size());
     }
 
-    public void setFocused(int filteredPos) {
-        int prev = this.focusedIndex;
-        this.focusedIndex = filteredPos;
-        if (prev >= 0) notifyItemChanged(prev);
-        if (filteredPos >= 0) notifyItemChanged(filteredPos);
-    }
+    /** No-op — native state_focused selector handles visuals. */
+    public void setFocused(int filteredPos) {}
 
     public int getOriginalIndex(int filteredPos) {
         if (filteredPos < 0 || filteredPos >= channels.size()) return -1;
@@ -92,7 +88,25 @@ public class IPTVChannelAdapter extends RecyclerView.Adapter<IPTVChannelAdapter.
     @Override
     public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         View v = LayoutInflater.from(context).inflate(R.layout.item_channel, parent, false);
+        v.setFocusable(true);
+        v.setFocusableInTouchMode(true);
+        v.setBackground(buildItemBackground(context));
         return new ViewHolder(v);
+    }
+
+    private static android.graphics.drawable.Drawable buildItemBackground(Context ctx) {
+        float d = ctx.getResources().getDisplayMetrics().density;
+        int stroke = Math.round(3 * d);
+        android.graphics.drawable.StateListDrawable sl = new android.graphics.drawable.StateListDrawable();
+        android.graphics.drawable.GradientDrawable gFocus = new android.graphics.drawable.GradientDrawable();
+        gFocus.setColor(0x22E50914);
+        gFocus.setStroke(stroke, 0xFFE50914);
+        sl.addState(new int[]{android.R.attr.state_focused}, gFocus);
+        android.graphics.drawable.GradientDrawable gSel = new android.graphics.drawable.GradientDrawable();
+        gSel.setColor(0x11E50914);
+        sl.addState(new int[]{android.R.attr.state_selected}, gSel);
+        sl.addState(new int[]{}, new android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT));
+        return sl;
     }
 
     @Override
@@ -141,22 +155,9 @@ public class IPTVChannelAdapter extends RecyclerView.Adapter<IPTVChannelAdapter.
         );
 
         holder.itemView.setSelected(origIdx == selectedIndex);
-        boolean isFocused = (position == focusedIndex);
-        float targetScale = isFocused ? 1.02f : 1f;
-        holder.itemView.setScaleX(targetScale);
-        holder.itemView.setScaleY(targetScale);
-
-        if (isFocused) {
-            holder.itemView.setBackgroundColor(0xFF2A0A0C);
-            android.graphics.drawable.GradientDrawable border = new android.graphics.drawable.GradientDrawable();
-            border.setColor(0x00000000);
-            border.setStroke(6, 0xFFE50914);
-            holder.focusOverlay.setBackground(border);
-            holder.focusOverlay.setVisibility(View.VISIBLE);
-        } else {
-            holder.itemView.setBackgroundResource(R.drawable.nav_item_focus_bg);
-            holder.focusOverlay.setVisibility(View.GONE);
-        }
+        holder.itemView.setScaleX(1f);
+        holder.itemView.setScaleY(1f);
+        holder.focusOverlay.setVisibility(View.GONE);
 
         holder.itemView.setOnClickListener(v -> {
             int idx = getOriginalIndex(holder.getBindingAdapterPosition());

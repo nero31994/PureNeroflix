@@ -801,8 +801,15 @@ public class IPTVActivity extends BaseTvActivity {
     private void highlightChannel(int filteredPos) {
         if (adapter == null || filteredPos < 0) return;
         if (filteredPos >= adapter.getItemCount()) return;
-        adapter.setFocused(filteredPos);
-        recyclerView.post(() -> recyclerView.scrollToPosition(filteredPos));
+        recyclerView.scrollToPosition(filteredPos);
+        recyclerView.post(() -> {
+            RecyclerView.ViewHolder vh = recyclerView.findViewHolderForAdapterPosition(filteredPos);
+            if (vh != null) { vh.itemView.requestFocus(); return; }
+            recyclerView.postDelayed(() -> {
+                RecyclerView.ViewHolder vh2 = recyclerView.findViewHolderForAdapterPosition(filteredPos);
+                if (vh2 != null) vh2.itemView.requestFocus();
+            }, 80);
+        });
     }
 
     private void highlightGroup(int index) {
@@ -819,7 +826,7 @@ public class IPTVActivity extends BaseTvActivity {
         sidebar.setVisibility(View.GONE);
         topBar.setVisibility(View.GONE);
         autoHideHandler.removeCallbacksAndMessages(null);
-        if (adapter != null) adapter.setFocused(-1); // clear D-pad highlight
+        // native focus clears automatically when RecyclerView is hidden
     }
 
     @Override
