@@ -91,7 +91,16 @@ public class IPTVChannelAdapter extends RecyclerView.Adapter<IPTVChannelAdapter.
         v.setFocusable(true);
         v.setFocusableInTouchMode(true);
         v.setBackground(buildItemBackground(context));
-        return new ViewHolder(v);
+        ViewHolder vh = new ViewHolder(v);
+        // Block the EPG HorizontalScrollView and its children from stealing focus.
+        // Without this, requestFocus() on itemView leaks into the EPG strip TextView,
+        // showing the red border on the wrong element.
+        if (vh.epgScroll != null) {
+            vh.epgScroll.setFocusable(false);
+            vh.epgScroll.setFocusableInTouchMode(false);
+            vh.epgScroll.setDescendantFocusability(android.view.ViewGroup.FOCUS_BLOCK_DESCENDANTS);
+        }
+        return vh;
     }
 
     private static android.graphics.drawable.Drawable buildItemBackground(Context ctx) {
