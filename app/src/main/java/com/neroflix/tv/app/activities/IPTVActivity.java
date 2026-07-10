@@ -538,33 +538,7 @@ public class IPTVActivity extends BaseTvActivity {
 
 
 
-    private void buildEpgTimelineHeader() {
-        android.widget.LinearLayout header = findViewById(R.id.epg_timeline_header);
-        if (header == null) return;
-        header.removeAllViews();
-
-        int pxPerHour = com.neroflix.tv.app.adapters.IPTVChannelAdapter.PX_PER_HOUR;
-        java.util.Calendar cal = java.util.Calendar.getInstance();
-        cal.set(java.util.Calendar.MINUTE, 0);
-        cal.set(java.util.Calendar.SECOND, 0);
-        cal.set(java.util.Calendar.MILLISECOND, 0);
-
-        java.text.SimpleDateFormat fmt = new java.text.SimpleDateFormat("h:mm a", java.util.Locale.getDefault());
-
-        for (int i = 0; i < 12; i++) {
-            TextView label = new TextView(this);
-            label.setText(fmt.format(cal.getTime()));
-            label.setTextColor(0xFFAAAAAA);
-            label.setTextSize(11f);
-            label.setGravity(android.view.Gravity.CENTER_VERTICAL);
-            int px = Math.round(pxPerHour * getResources().getDisplayMetrics().density / getResources().getDisplayMetrics().density);
-            android.widget.LinearLayout.LayoutParams lp = new android.widget.LinearLayout.LayoutParams(
-                dpToPx(pxPerHour), android.widget.LinearLayout.LayoutParams.MATCH_PARENT);
-            label.setLayoutParams(lp);
-            header.addView(label);
-            cal.add(java.util.Calendar.HOUR_OF_DAY, 1);
-        }
-    }
+    // buildEpgTimelineHeader() removed — EPG timeline no longer in sidebar
 
     private int dpToPx(int dp) {
         return Math.round(dp * getResources().getDisplayMetrics().density);
