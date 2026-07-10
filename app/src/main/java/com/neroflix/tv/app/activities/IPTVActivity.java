@@ -575,6 +575,19 @@ public class IPTVActivity extends BaseTvActivity {
 
     // ── Playback ─────────────────────────────────────────────────────────────
 
+    /**
+     * Step to previous (-1) or next (+1) channel without opening the sidebar.
+     * Equivalent to channel up/down on a traditional TV remote.
+     */
+    private void channelStep(int direction) {
+        if (channels == null || channels.isEmpty()) return;
+        int next = currentIndex + direction;
+        if (next < 0) next = channels.size() - 1;
+        if (next >= channels.size()) next = 0;
+        playChannel(next);
+        showPipCard(); // show floating EPG card for the new channel
+    }
+
     private void playChannel(int index) {
         if (index < 0 || index >= channels.size()) return;
         currentIndex = index;
@@ -809,13 +822,16 @@ public class IPTVActivity extends BaseTvActivity {
             // Player controls when sidebar is hidden
             switch (action) {
                 case UniversalRemoteHandler.ACTION_UP:
+                    channelStep(-1); // previous channel, no sidebar
+                    return true;
                 case UniversalRemoteHandler.ACTION_DOWN:
-                    showSidebar();
-                    focusZone = FocusZone.CHANNELS;
+                    channelStep(1);  // next channel, no sidebar
                     return true;
                 case UniversalRemoteHandler.ACTION_LEFT:
                 case UniversalRemoteHandler.ACTION_RIGHT:
-                    scrollFocusedEpgStrip();
+                    // LEFT or RIGHT opens the sidebar
+                    showSidebar();
+                    focusZone = FocusZone.CHANNELS;
                     return true;
                 case UniversalRemoteHandler.ACTION_CENTER:
                     showSidebar();
@@ -880,7 +896,9 @@ public class IPTVActivity extends BaseTvActivity {
                         return true;
 
                     case UniversalRemoteHandler.ACTION_RIGHT:
-                        scrollFocusedEpgStrip();
+                        // Rightmost section — close sidebar
+                        hideSidebar();
+                        focusZone = FocusZone.PLAYER;
                         return true;
 
                     case UniversalRemoteHandler.ACTION_CENTER:
@@ -931,6 +949,13 @@ public class IPTVActivity extends BaseTvActivity {
                         highlightGroup(focusedGroupIndex);
                         return true;
 
+                    case UniversalRemoteHandler.ACTION_LEFT:
+                        // Navigate left to Search section
+                        focusZone = FocusZone.SEARCH;
+                        highlightGroup(-1);
+                        requestSearchFocus();
+                        return true;
+
                     case UniversalRemoteHandler.ACTION_RIGHT:
                         focusZone = FocusZone.CHANNELS;
                         highlightGroup(-1);
@@ -960,34 +985,38 @@ public class IPTVActivity extends BaseTvActivity {
             case SEARCH:
                 switch (action) {
                     case UniversalRemoteHandler.ACTION_DOWN:
-                        focusZone = FocusZone.GROUPS;
-                        clearSearchFocus();
-                        highlightGroup(focusedGroupIndex);
-                        return true;
-
-                    case UniversalRemoteHandler.ACTION_UP:
-                        // Stay in search if already at top
-                        return true;
-
-                    case UniversalRemoteHandler.ACTION_CENTER:
-                        // OK while searching - jump to channels with current results
+                        // DOWN from search — jump straight to channel list
                         focusZone = FocusZone.CHANNELS;
                         clearSearchFocus();
                         focusedChannelIndex = 0;
                         highlightChannel(0);
                         return true;
 
+                    case UniversalRemoteHandler.ACTION_UP:
+                        return true;
+
+                    case UniversalRemoteHandler.ACTION_CENTER:
+                        // OK on search bar — activate EditText so user can type
+                        requestSearchFocus();
+                        return true;
+
                     case UniversalRemoteHandler.ACTION_BACK:
-                        // Clear search and go back to groups
+                        // Clear search and return to categories
                         clearSearch();
                         focusZone = FocusZone.GROUPS;
                         highlightGroup(focusedGroupIndex);
                         return true;
 
                     case UniversalRemoteHandler.ACTION_LEFT:
+                        // Leftmost section — nothing further left
+                        return true;
+
                     case UniversalRemoteHandler.ACTION_RIGHT:
-                        // Let cursor move inside EditText
-                        return false;
+                        // RIGHT from search goes to Categories
+                        clearSearchFocus();
+                        focusZone = FocusZone.GROUPS;
+                        highlightGroup(focusedGroupIndex);
+                        return true;
                 }
                 return false;
         }
