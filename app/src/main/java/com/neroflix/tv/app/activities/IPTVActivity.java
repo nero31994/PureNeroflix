@@ -430,7 +430,6 @@ public class IPTVActivity extends BaseTvActivity {
             loadingBar.setVisibility(View.GONE);
             buildGroupTabs();
             setupRecycler();
-            buildEpgTimelineHeader();
             if (!channels.isEmpty()) playChannel(0);
             loadEpgInBackground(cached);
             return;
@@ -458,8 +457,7 @@ public class IPTVActivity extends BaseTvActivity {
                     loadingBar.setVisibility(View.GONE);
                     buildGroupTabs();
                     setupRecycler();
-                    buildEpgTimelineHeader();
-                    if (!channels.isEmpty()) playChannel(0);
+                            if (!channels.isEmpty()) playChannel(0);
                     loadEpgInBackground(playlistText);
                 });
             } catch (Exception e) {
@@ -487,8 +485,7 @@ public class IPTVActivity extends BaseTvActivity {
                         channels = com.neroflix.tv.app.iptv.M3UParser.parse(fallback);
                         buildGroupTabs();
                         setupRecycler();
-                        buildEpgTimelineHeader();
-                        if (!channels.isEmpty()) playChannel(0);
+                                    if (!channels.isEmpty()) playChannel(0);
                         Toast.makeText(IPTVActivity.this,
                             "Offline mode — showing cached channels", Toast.LENGTH_LONG).show();
                     } else {
