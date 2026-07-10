@@ -585,6 +585,7 @@ public class IPTVActivity extends BaseTvActivity {
         // time they re-enter the viewport.
         recyclerView.setHasFixedSize(true);
         recyclerView.setItemViewCacheSize(12);
+        recyclerView.setDescendantFocusability(android.view.ViewGroup.FOCUS_AFTER_DESCENDANTS);
         recyclerView.addOnScrollListener(new androidx.recyclerview.widget.RecyclerView.OnScrollListener() {
             @Override
             public void onScrolled(androidx.recyclerview.widget.RecyclerView rv, int dx, int dy) {
@@ -908,7 +909,8 @@ public class IPTVActivity extends BaseTvActivity {
                         if (adapter != null && focusedChannelIndex >= 0 && focusedChannelIndex < adapter.getItemCount()) {
                             // The channel is selected via the channel list in the sidebar
                             // The playChannel method is called via the adapter's OnClick listener
-                            adapter.setSelected(focusedChannelIndex);
+                            int origIdx = adapter.getOriginalIndex(focusedChannelIndex);
+                            if (origIdx >= 0) playChannel(origIdx);
                             hideSidebar();
                             focusZone = FocusZone.PLAYER;
                         }

@@ -164,6 +164,15 @@ public class IPTVChannelAdapter extends RecyclerView.Adapter<IPTVChannelAdapter.
             if (onHideSidebar != null) onHideSidebar.run();
         });
         holder.itemView.setFocusable(true);
+        holder.itemView.setOnKeyListener((v, keyCode, event) -> {
+            if (event.getAction() == android.view.KeyEvent.ACTION_DOWN
+                    && (keyCode == android.view.KeyEvent.KEYCODE_DPAD_CENTER
+                        || keyCode == android.view.KeyEvent.KEYCODE_ENTER)) {
+                v.performClick();
+                return true;
+            }
+            return false;
+        });
     }
 
 
