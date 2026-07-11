@@ -702,19 +702,6 @@ public class IPTVActivity extends BaseTvActivity {
 
     // ── D-pad / key input ────────────────────────────────────────────────────
 
-    private void scrollFocusedEpgStrip() {
-        if (recyclerView == null) return;
-        androidx.recyclerview.widget.RecyclerView.ViewHolder vh =
-            recyclerView.findViewHolderForAdapterPosition(focusedChannelIndex);
-        if (vh != null) {
-            android.widget.HorizontalScrollView scroll = vh.itemView.findViewById(R.id.epg_scroll);
-            if (scroll != null) {
-                scroll.smoothScrollBy(200, 0);
-            }
-        }
-    }
-
-
     private void showPipCard() {
         updatePipCard();
         pipHideHandler.removeCallbacksAndMessages(null);
