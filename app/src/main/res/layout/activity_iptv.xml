@@ -81,7 +81,7 @@
             android:gravity="center_vertical"
             android:paddingStart="16dp"
             android:paddingEnd="16dp"
-            android:background="#CC000000">
+            android:background="#00000000">
 
             <TextView
                 android:id="@+id/iptv_guide_back_btn"
@@ -178,7 +178,7 @@
         android:layout_marginTop="56dp"
         android:layout_marginEnd="12dp"
         android:orientation="vertical"
-        android:background="#EE111111"
+        android:background="#CC0D0D0D"
         android:padding="10dp"
         android:elevation="10dp"
         android:visibility="gone">
