@@ -29,7 +29,7 @@
         android:gravity="center_vertical"
         android:paddingStart="16dp"
         android:paddingEnd="16dp"
-        android:background="#CC000000">
+        android:background="#00000000">
 
         <TextView
             android:id="@+id/iptv_back_btn"
@@ -70,7 +70,7 @@
         android:layout_width="320dp"
         android:layout_height="match_parent"
         android:orientation="vertical"
-        android:background="#CC0D0D0D"
+        android:background="#990D0D0D"
         android:elevation="8dp">
 
         <!-- Guide header: search + current date/time -->
@@ -137,7 +137,7 @@
                 android:id="@+id/iptv_group_list"
                 android:layout_width="130dp"
                 android:layout_height="match_parent"
-                android:background="#161616"
+                android:background="#00000000"
                 android:scrollbars="none"
                 android:paddingTop="8dp"
                 android:focusable="true"
@@ -148,7 +148,7 @@
             <View
                 android:layout_width="1dp"
                 android:layout_height="match_parent"
-                android:background="#222222" />
+                android:background="#22FFFFFF" />
 
             <!-- Clean channel list — EPG detail in floating PIP card -->
             <androidx.recyclerview.widget.RecyclerView
