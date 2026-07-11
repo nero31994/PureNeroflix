@@ -98,10 +98,26 @@ public class IPTVChannelAdapter extends RecyclerView.Adapter<IPTVChannelAdapter.
         float d = ctx.getResources().getDisplayMetrics().density;
         int stroke = Math.round(3 * d);
         android.graphics.drawable.StateListDrawable sl = new android.graphics.drawable.StateListDrawable();
-        android.graphics.drawable.GradientDrawable gFocus = new android.graphics.drawable.GradientDrawable();
-        gFocus.setColor(0x22E50914);
-        gFocus.setStroke(stroke, 0xFFE50914);
-        sl.addState(new int[]{android.R.attr.state_focused}, gFocus);
+        // Left-strip-only focused drawable — same as CSS border-left: 3px solid #E50914
+        // No full border box, so the empty row width doesn't show a red rectangle.
+        final int strip = stroke;
+        sl.addState(new int[]{android.R.attr.state_focused},
+            new android.graphics.drawable.Drawable() {
+                private final android.graphics.Paint bg  = p(0x22E50914);
+                private final android.graphics.Paint bar = p(0xFFE50914);
+                private android.graphics.Paint p(int c) {
+                    android.graphics.Paint pt = new android.graphics.Paint();
+                    pt.setColor(c); return pt;
+                }
+                @Override public void draw(android.graphics.Canvas canvas) {
+                    android.graphics.Rect b = getBounds();
+                    canvas.drawRect(b, bg);
+                    canvas.drawRect(0, b.top, strip, b.bottom, bar);
+                }
+                @Override public void setAlpha(int a) {}
+                @Override public void setColorFilter(android.graphics.ColorFilter cf) {}
+                @Override public int getOpacity() { return android.graphics.PixelFormat.TRANSLUCENT; }
+            });
         android.graphics.drawable.GradientDrawable gSel = new android.graphics.drawable.GradientDrawable();
         gSel.setColor(0x11E50914);
         sl.addState(new int[]{android.R.attr.state_selected}, gSel);

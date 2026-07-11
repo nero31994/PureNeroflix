@@ -67,7 +67,7 @@
     <!-- EPG GUIDE SIDEBAR — fixed width overlay, video visible on right -->
     <LinearLayout
         android:id="@+id/iptv_sidebar"
-        android:layout_width="360dp"
+        android:layout_width="320dp"
         android:layout_height="match_parent"
         android:orientation="vertical"
         android:background="#EE0D0D0D"
