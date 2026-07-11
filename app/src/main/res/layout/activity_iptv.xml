@@ -70,7 +70,7 @@
         android:layout_width="320dp"
         android:layout_height="match_parent"
         android:orientation="vertical"
-        android:background="#EE0D0D0D"
+        android:background="#CC0D0D0D"
         android:elevation="8dp">
 
         <!-- Guide header: search + current date/time -->
