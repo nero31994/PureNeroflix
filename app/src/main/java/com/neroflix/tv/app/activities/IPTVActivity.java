@@ -97,7 +97,7 @@ public class IPTVActivity extends BaseTvActivity {
     private final android.os.Handler pipHideHandler = new android.os.Handler(android.os.Looper.getMainLooper());
     private static final long PIP_HIDE_DELAY_MS = 10000L;
     private final android.os.Handler autoHideHandler = new android.os.Handler(android.os.Looper.getMainLooper());
-    private static final long AUTO_HIDE_DELAY_MS = 5000L;
+    private static final long AUTO_HIDE_DELAY_MS = 60000L; // 60 seconds idle before hiding
     private int focusedChannelIndex = 0;
     private int focusedGroupIndex   = 0;
 
