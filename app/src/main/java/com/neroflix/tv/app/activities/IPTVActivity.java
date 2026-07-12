@@ -524,8 +524,10 @@ public class IPTVActivity extends BaseTvActivity {
         if (groupAdapter == null) {
             groupAdapter = new com.neroflix.tv.app.adapters.IPTVGroupAdapter(this, (position, groupKey) -> {
                 activeGroup = groupKey;
+                focusedGroupIndex = position;
                 if (adapter != null) adapter.filterByGroup(groupKey);
                 groupAdapter.setSelected(position);
+                showChannelList(groupKey != null ? groupKey : "All Channels");
             });
             groupListView.setLayoutManager(new LinearLayoutManager(this));
             groupListView.setAdapter(groupAdapter);
