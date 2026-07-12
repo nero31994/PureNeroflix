@@ -69,6 +69,7 @@
         android:id="@+id/iptv_sidebar"
         android:layout_width="320dp"
         android:layout_height="match_parent"
+        android:layout_below="@id/iptv_top_bar"
         android:orientation="vertical"
         android:background="#990D0D0D"
         android:elevation="8dp">
