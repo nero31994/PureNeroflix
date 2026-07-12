@@ -87,6 +87,8 @@ public class IPTVActivity extends BaseTvActivity {
     private List<M3UParser.Channel> channels = new ArrayList<>();
     private int currentIndex       = 0;
     private boolean sidebarVisible = false;
+    private boolean sidebarInChannelView = false; // true=channels visible, false=categories
+    private android.widget.TextView categoryLabel;
     private String lastReferrer    = "";
     private String activeGroup     = null;
 
@@ -179,6 +181,7 @@ public class IPTVActivity extends BaseTvActivity {
         currentChannelText = findViewById(R.id.iptv_current_channel);
         timeText           = findViewById(R.id.iptv_time);
         recyclerView       = findViewById(R.id.iptv_recycler);
+        categoryLabel      = findViewById(R.id.iptv_category_label);
         groupListView = findViewById(R.id.iptv_group_list);
 
         sidebar.setVisibility(View.GONE);
@@ -504,10 +507,18 @@ public class IPTVActivity extends BaseTvActivity {
         LinkedHashSet<String> groups = new LinkedHashSet<>();
         for (M3UParser.Channel ch : channels) groups.add(ch.group);
 
+        // Count channels per group for display (e.g. "Sports (28)")
+        java.util.Map<String, Integer> countMap = new java.util.HashMap<>();
+        for (M3UParser.Channel ch : channels) {
+            if (ch.group != null) countMap.merge(ch.group, 1, Integer::sum);
+        }
         List<com.neroflix.tv.app.adapters.IPTVGroupAdapter.Group> groupList = new ArrayList<>();
-        groupList.add(new com.neroflix.tv.app.adapters.IPTVGroupAdapter.Group("All", null));
+        groupList.add(new com.neroflix.tv.app.adapters.IPTVGroupAdapter.Group(
+            "All channels (" + channels.size() + ")", null));
         for (String g : groups) {
-            groupList.add(new com.neroflix.tv.app.adapters.IPTVGroupAdapter.Group(g, g));
+            int cnt = countMap.getOrDefault(g, 0);
+            groupList.add(new com.neroflix.tv.app.adapters.IPTVGroupAdapter.Group(
+                g + " (" + cnt + ")", g));
         }
 
         if (groupAdapter == null) {
@@ -675,17 +686,30 @@ public class IPTVActivity extends BaseTvActivity {
             topBar.setVisibility(View.VISIBLE);
             resetAutoHide();
 
-            // Sync D-pad focus to currently playing channel
-            if (adapter != null) {
-                for (int i = 0; i < adapter.getItemCount(); i++) {
-                    if (adapter.getOriginalIndex(i) == currentIndex) {
-                        focusedChannelIndex = i;
-                        break;
-                    }
-                }
-                highlightChannel(focusedChannelIndex);
-            }
+            // Always open to categories list first (two-stage nav)
+            showCategoryList();
         }
+    }
+
+    /** Stage 1 — show categories list (full width). */
+    private void showCategoryList() {
+        sidebarInChannelView = false;
+        groupListView.setVisibility(View.VISIBLE);
+        recyclerView.setVisibility(View.GONE);
+        if (categoryLabel != null) categoryLabel.setText("» Categories");
+        focusZone = FocusZone.GROUPS;
+        highlightGroup(focusedGroupIndex >= 0 ? focusedGroupIndex : 0);
+    }
+
+    /** Stage 2 — show channels list for selected category (full width). */
+    private void showChannelList(String catName) {
+        sidebarInChannelView = true;
+        groupListView.setVisibility(View.GONE);
+        recyclerView.setVisibility(View.VISIBLE);
+        if (categoryLabel != null) categoryLabel.setText("» " + catName);
+        focusZone = FocusZone.CHANNELS;
+        focusedChannelIndex = 0;
+        highlightChannel(0);
     }
 
     // ── Clock ─────────────────────────────────────────────────────────────────
@@ -877,9 +901,8 @@ public class IPTVActivity extends BaseTvActivity {
                         return true;
 
                     case UniversalRemoteHandler.ACTION_LEFT:
-                        focusZone = FocusZone.GROUPS;
-                        highlightChannel(-1);
-                        highlightGroup(focusedGroupIndex);
+                        // Left from channel list → go back to categories
+                        showCategoryList();
                         return true;
 
                     case UniversalRemoteHandler.ACTION_RIGHT:
@@ -900,8 +923,8 @@ public class IPTVActivity extends BaseTvActivity {
                         return true;
 
                     case UniversalRemoteHandler.ACTION_BACK:
-                        hideSidebar();
-                        focusZone = FocusZone.PLAYER;
+                        // Back from channel list → return to categories
+                        showCategoryList();
                         return true;
 
                     case UniversalRemoteHandler.ACTION_INFO:
@@ -955,11 +978,8 @@ public class IPTVActivity extends BaseTvActivity {
                             activeGroup = key;
                             if (adapter != null) adapter.filterByGroup(key);
                             groupAdapter.setSelected(focusedGroupIndex);
+                            showChannelList(key != null ? key : "All Channels");
                         }
-                        focusZone = FocusZone.CHANNELS;
-                        focusedChannelIndex = 0;
-                        highlightGroup(-1);
-                        highlightChannel(0);
                         return true;
 
                     case UniversalRemoteHandler.ACTION_BACK:
@@ -972,11 +992,15 @@ public class IPTVActivity extends BaseTvActivity {
             case SEARCH:
                 switch (action) {
                     case UniversalRemoteHandler.ACTION_DOWN:
-                        // DOWN from search — jump straight to channel list
-                        focusZone = FocusZone.CHANNELS;
+                        // DOWN from search — go to whichever list is currently visible
                         clearSearchFocus();
-                        focusedChannelIndex = 0;
-                        highlightChannel(0);
+                        if (sidebarInChannelView) {
+                            focusZone = FocusZone.CHANNELS;
+                            highlightChannel(focusedChannelIndex >= 0 ? focusedChannelIndex : 0);
+                        } else {
+                            focusZone = FocusZone.GROUPS;
+                            highlightGroup(focusedGroupIndex >= 0 ? focusedGroupIndex : 0);
+                        }
                         return true;
 
                     case UniversalRemoteHandler.ACTION_UP:

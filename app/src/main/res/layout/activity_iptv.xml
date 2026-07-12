@@ -73,97 +73,89 @@
         android:background="#990D0D0D"
         android:elevation="8dp">
 
-        <!-- Guide header: search + current date/time -->
+        <!-- Sidebar header: search on top, context label below -->
         <LinearLayout
             android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:orientation="horizontal"
-            android:gravity="center_vertical"
-            android:paddingStart="16dp"
-            android:paddingEnd="16dp"
-            android:background="#00000000">
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="#00000000"
+            android:paddingBottom="4dp">
 
-            <TextView
-                android:id="@+id/iptv_guide_back_btn"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="← Back to Movies"
-                android:textColor="#FFFFFF"
-                android:textSize="13sp"
-                android:padding="8dp"
-                android:focusable="true"
-                android:background="@drawable/nav_item_focus_bg"
-                android:layout_marginEnd="16dp"/>
-
-            <TextView
-                android:id="@+id/epg_date_label"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Guide"
-                android:textColor="#FFFFFF"
-                android:textSize="13sp"
-                android:textStyle="bold" />
-
+            <!-- Search — always at top, always accessible -->
             <EditText
                 android:id="@+id/iptv_search"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:layout_marginStart="20dp"
+                android:layout_width="match_parent"
+                android:layout_height="40dp"
+                android:layout_marginStart="12dp"
+                android:layout_marginEnd="12dp"
+                android:layout_marginTop="8dp"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp"
                 android:hint="🔍 Search channels..."
                 android:textColor="#FFFFFF"
-                android:textColorHint="#666666"
-                android:textSize="13sp"
-                android:background="@android:color/transparent"
+                android:textColorHint="#555555"
+                android:textSize="12sp"
+                android:background="@drawable/nav_item_focus_bg"
                 android:maxLines="1"
                 android:imeOptions="actionSearch"
                 android:inputType="text"
                 android:focusable="true"
                 android:focusableInTouchMode="true"
-                android:nextFocusDown="@id/iptv_group_list"
-                android:nextFocusRight="@id/iptv_recycler" />
+                android:nextFocusDown="@id/iptv_group_list" />
+
+            <!-- Context label: Categories or selected category name -->
+            <TextView
+                android:id="@+id/iptv_category_label"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="» Categories"
+                android:textColor="#E50914"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:paddingStart="16dp"
+                android:paddingEnd="16dp"
+                android:paddingTop="8dp"
+                android:paddingBottom="4dp" />
+
+            <!-- Hidden stubs so Java findViewByIds do not NPE -->
+            <TextView android:id="@+id/iptv_guide_back_btn"
+                android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone" />
+            <TextView android:id="@+id/epg_date_label"
+                android:layout_width="0dp" android:layout_height="0dp" android:visibility="gone" />
 
         </LinearLayout>
 
-        <!-- Body: categories (left, full height) + guide rows (right) -->
-        <LinearLayout
+        <!-- Body: single column — switches between categories and channels view -->
+        <FrameLayout
             android:layout_width="match_parent"
             android:layout_height="0dp"
-            android:layout_weight="1"
-            android:orientation="horizontal">
+            android:layout_weight="1">
 
-            <!-- Category list - permanent left column, full height -->
+            <!-- Stage 1: Categories list — full width, visible by default -->
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/iptv_group_list"
-                android:layout_width="130dp"
+                android:layout_width="match_parent"
                 android:layout_height="match_parent"
                 android:background="#00000000"
                 android:scrollbars="none"
-                android:paddingTop="8dp"
+                android:paddingTop="4dp"
                 android:focusable="true"
-                android:nextFocusRight="@id/iptv_recycler"
                 android:nextFocusUp="@id/iptv_search"
-                android:nextFocusDown="@id/iptv_recycler" />
+                android:visibility="visible" />
 
-            <View
-                android:layout_width="1dp"
-                android:layout_height="match_parent"
-                android:background="#22FFFFFF" />
-
-            <!-- Clean channel list — EPG detail in floating PIP card -->
+            <!-- Stage 2: Channels list — full width, shown after category selected -->
             <androidx.recyclerview.widget.RecyclerView
                 android:id="@+id/iptv_recycler"
-                android:background="#00000000"
-                android:layout_width="0dp"
+                android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:layout_weight="1"
+                android:background="#00000000"
                 android:scrollbars="none"
                 android:clipToPadding="false"
                 android:focusable="true"
-                android:nextFocusLeft="@id/iptv_group_list"
-                android:nextFocusUp="@id/iptv_search" />
+                android:nextFocusUp="@id/iptv_search"
+                android:visibility="gone" />
 
-        </LinearLayout>
+        </FrameLayout>
 
     </LinearLayout>
 
