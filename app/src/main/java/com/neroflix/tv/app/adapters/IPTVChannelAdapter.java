@@ -95,10 +95,13 @@ public class IPTVChannelAdapter extends RecyclerView.Adapter<IPTVChannelAdapter.
     }
 
     private static android.graphics.drawable.Drawable buildItemBackground(Context ctx) {
-        // Gold gradient bar (solid at the left edge, fading to transparent) —
-        // matches the reference "Nero gold" highlight style instead of the old red box.
+        // Focused row (D-pad browsing cursor) → gold gradient bar.
+        // Selected row (channel actually playing) → thin blue accent stripe,
+        // so the two states never look like the same highlight on two rows.
         int gold = androidx.core.content.ContextCompat.getColor(ctx, R.color.neon_gold);
         int goldTransparent = gold & 0x00FFFFFF; // same RGB, alpha 0
+        final int blue = androidx.core.content.ContextCompat.getColor(ctx, R.color.neon_blue);
+        final int stripeWidth = Math.round(4 * ctx.getResources().getDisplayMetrics().density);
 
         android.graphics.drawable.StateListDrawable sl = new android.graphics.drawable.StateListDrawable();
 
@@ -107,10 +110,23 @@ public class IPTVChannelAdapter extends RecyclerView.Adapter<IPTVChannelAdapter.
                 new int[]{ (0xCC << 24) | (gold & 0x00FFFFFF), goldTransparent });
         sl.addState(new int[]{android.R.attr.state_focused}, focusGrad);
 
-        android.graphics.drawable.GradientDrawable selGrad = new android.graphics.drawable.GradientDrawable(
-                android.graphics.drawable.GradientDrawable.Orientation.LEFT_RIGHT,
-                new int[]{ (0x88 << 24) | (gold & 0x00FFFFFF), goldTransparent });
-        sl.addState(new int[]{android.R.attr.state_selected}, selGrad);
+        sl.addState(new int[]{android.R.attr.state_selected},
+            new android.graphics.drawable.Drawable() {
+                private final android.graphics.Paint bg  = paint(0x14FFFFFF);
+                private final android.graphics.Paint bar = paint(0xFF000000 | (blue & 0x00FFFFFF));
+                private android.graphics.Paint paint(int c) {
+                    android.graphics.Paint p = new android.graphics.Paint();
+                    p.setColor(c); return p;
+                }
+                @Override public void draw(android.graphics.Canvas canvas) {
+                    android.graphics.Rect b = getBounds();
+                    canvas.drawRect(b, bg);
+                    canvas.drawRect(0, b.top, stripeWidth, b.bottom, bar);
+                }
+                @Override public void setAlpha(int a) {}
+                @Override public void setColorFilter(android.graphics.ColorFilter cf) {}
+                @Override public int getOpacity() { return android.graphics.PixelFormat.TRANSLUCENT; }
+            });
 
         sl.addState(new int[]{}, new android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT));
         return sl;
