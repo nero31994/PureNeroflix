@@ -188,6 +188,14 @@ public class IPTVActivity extends BaseTvActivity {
         topBar.setVisibility(View.GONE);
 
         EditText search = findViewById(R.id.iptv_search);
+        search.setOnFocusChangeListener((v, hasFocus) -> {
+            if (hasFocus) {
+                // Tapping the search box gives it native Android focus directly —
+                // keep our own navigation state in sync, or key events (typing)
+                // get routed to whatever zone was previously active and swallowed.
+                focusZone = FocusZone.SEARCH;
+            }
+        });
         findViewById(R.id.iptv_back_btn).setOnClickListener(v -> finish());
         View guideBackBtn = findViewById(R.id.iptv_guide_back_btn);
         if (guideBackBtn != null) {
