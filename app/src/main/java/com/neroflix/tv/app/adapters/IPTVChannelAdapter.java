@@ -95,32 +95,23 @@ public class IPTVChannelAdapter extends RecyclerView.Adapter<IPTVChannelAdapter.
     }
 
     private static android.graphics.drawable.Drawable buildItemBackground(Context ctx) {
-        float d = ctx.getResources().getDisplayMetrics().density;
-        int stroke = Math.round(3 * d);
+        // Gold gradient bar (solid at the left edge, fading to transparent) —
+        // matches the reference "Nero gold" highlight style instead of the old red box.
+        int gold = androidx.core.content.ContextCompat.getColor(ctx, R.color.neon_gold);
+        int goldTransparent = gold & 0x00FFFFFF; // same RGB, alpha 0
+
         android.graphics.drawable.StateListDrawable sl = new android.graphics.drawable.StateListDrawable();
-        // Left-strip-only focused drawable — same as CSS border-left: 3px solid #E50914
-        // No full border box, so the empty row width doesn't show a red rectangle.
-        final int strip = stroke;
-        sl.addState(new int[]{android.R.attr.state_focused},
-            new android.graphics.drawable.Drawable() {
-                private final android.graphics.Paint bg  = p(0x22E50914);
-                private final android.graphics.Paint bar = p(0xFFE50914);
-                private android.graphics.Paint p(int c) {
-                    android.graphics.Paint pt = new android.graphics.Paint();
-                    pt.setColor(c); return pt;
-                }
-                @Override public void draw(android.graphics.Canvas canvas) {
-                    android.graphics.Rect b = getBounds();
-                    canvas.drawRect(b, bg);
-                    canvas.drawRect(0, b.top, strip, b.bottom, bar);
-                }
-                @Override public void setAlpha(int a) {}
-                @Override public void setColorFilter(android.graphics.ColorFilter cf) {}
-                @Override public int getOpacity() { return android.graphics.PixelFormat.TRANSLUCENT; }
-            });
-        android.graphics.drawable.GradientDrawable gSel = new android.graphics.drawable.GradientDrawable();
-        gSel.setColor(0x11E50914);
-        sl.addState(new int[]{android.R.attr.state_selected}, gSel);
+
+        android.graphics.drawable.GradientDrawable focusGrad = new android.graphics.drawable.GradientDrawable(
+                android.graphics.drawable.GradientDrawable.Orientation.LEFT_RIGHT,
+                new int[]{ (0xCC << 24) | (gold & 0x00FFFFFF), goldTransparent });
+        sl.addState(new int[]{android.R.attr.state_focused}, focusGrad);
+
+        android.graphics.drawable.GradientDrawable selGrad = new android.graphics.drawable.GradientDrawable(
+                android.graphics.drawable.GradientDrawable.Orientation.LEFT_RIGHT,
+                new int[]{ (0x88 << 24) | (gold & 0x00FFFFFF), goldTransparent });
+        sl.addState(new int[]{android.R.attr.state_selected}, selGrad);
+
         sl.addState(new int[]{}, new android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT));
         return sl;
     }

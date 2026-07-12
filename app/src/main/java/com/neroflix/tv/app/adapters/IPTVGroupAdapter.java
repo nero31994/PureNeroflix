@@ -72,9 +72,11 @@ public class IPTVGroupAdapter extends RecyclerView.Adapter<IPTVGroupAdapter.View
         boolean selected = position == selectedIndex;
         boolean focused = position == focusedIndex;
 
+        int gold = androidx.core.content.ContextCompat.getColor(context, R.color.neon_gold);
+
         if (selected) {
-            holder.label.setTextColor(0xFFFFFFFF);
-            holder.label.setBackgroundColor(0xFFE50914);
+            holder.label.setTextColor(gold);
+            holder.label.setBackgroundColor(0x33FFD700);
         } else if (focused) {
             holder.label.setTextColor(0xFFFFFFFF);
             holder.label.setBackgroundColor(0xFF3A3A3A);
