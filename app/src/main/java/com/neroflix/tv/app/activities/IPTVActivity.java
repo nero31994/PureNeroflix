@@ -201,7 +201,16 @@ public class IPTVActivity extends BaseTvActivity {
                 searchDebounceHandler.removeCallbacksAndMessages(null);
                 String query = s.toString();
                 searchDebounceHandler.postDelayed(() -> {
-                    if (adapter != null) adapter.filter(query);
+                    if (adapter == null) return;
+                    if (!query.isEmpty() && !sidebarInChannelView) {
+                        // Typing while still on the categories screen — jump into
+                        // the full (unfiltered) channel list so results show up.
+                        activeGroup = null;
+                        if (groupAdapter != null) groupAdapter.setSelected(0);
+                        adapter.filterByGroup(null);
+                        showChannelList("All Channels");
+                    }
+                    adapter.filter(query);
                 }, 300);
             }
             @Override public void afterTextChanged(Editable s) {}
