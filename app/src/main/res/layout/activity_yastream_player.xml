@@ -12,9 +12,9 @@
         android:layout_height="match_parent"
         android:focusable="true"
         android:focusableInTouchMode="true"
-        app:show_subtitle_button="true"
+        app:show_subtitle_button="false"
         app:show_buffering="when_playing"
-        app:use_controller="true"
+        app:use_controller="false"
         app:resize_mode="fit" />
 
     <!-- Loading spinner -->
@@ -147,6 +147,141 @@
 
     </LinearLayout>
 
+    <!-- ── BOTTOM GRADIENT + CONTROLS ──────────────────────────────── -->
+    <LinearLayout
+        android:id="@+id/yastream_bottom_bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:orientation="vertical">
+
+        <!-- Gradient fade -->
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="120dp"
+            android:background="@drawable/player_bottom_gradient" />
+
+        <!-- Controls area (sits on gradient) -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="-120dp"
+            android:orientation="vertical"
+            android:paddingStart="24dp"
+            android:paddingEnd="24dp"
+            android:paddingBottom="20dp">
+
+            <!-- Progress bar row -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="12dp">
+
+                <TextView
+                    android:id="@+id/yastream_time_current"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="0:00"
+                    android:textColor="#FFFFFF"
+                    android:textSize="12sp"
+                    android:layout_marginEnd="10dp" />
+
+                <SeekBar
+                    android:id="@+id/yastream_seekbar"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:progressTint="#E50914"
+                    android:thumbTint="#E50914"
+                    android:progressBackgroundTint="#55FFFFFF"
+                    android:max="1000"
+                    android:focusable="true" />
+
+                <TextView
+                    android:id="@+id/yastream_time_total"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="0:00"
+                    android:textColor="#AAAAAA"
+                    android:textSize="12sp"
+                    android:layout_marginStart="10dp" />
+
+            </LinearLayout>
+
+            <!-- Playback buttons row -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center">
+
+                <!-- Previous / Skip back 10s -->
+                <TextView
+                    android:id="@+id/yastream_skip_back"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:text="↺"
+                    android:textSize="26sp"
+                    android:textColor="#FFFFFF"
+                    android:gravity="center"
+                    android:focusable="true"
+                    android:layout_marginEnd="16dp" />
+
+                <!-- Rewind 5s -->
+                <TextView
+                    android:id="@+id/yastream_rewind"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:text="⏪"
+                    android:textSize="20sp"
+                    android:textColor="#FFFFFF"
+                    android:gravity="center"
+                    android:focusable="true"
+                    android:layout_marginEnd="16dp" />
+
+                <!-- Play/Pause -->
+                <TextView
+                    android:id="@+id/yastream_play_pause"
+                    android:layout_width="64dp"
+                    android:layout_height="64dp"
+                    android:text="⏸"
+                    android:textSize="32sp"
+                    android:textColor="#FFFFFF"
+                    android:gravity="center"
+                    android:focusable="true"
+                    android:background="@drawable/player_play_btn_bg"
+                    android:layout_marginEnd="16dp" />
+
+                <!-- Forward 5s -->
+                <TextView
+                    android:id="@+id/yastream_forward"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:text="⏩"
+                    android:textSize="20sp"
+                    android:textColor="#FFFFFF"
+                    android:gravity="center"
+                    android:focusable="true"
+                    android:layout_marginEnd="16dp" />
+
+                <!-- Skip forward 10s -->
+                <TextView
+                    android:id="@+id/yastream_skip_forward"
+                    android:layout_width="48dp"
+                    android:layout_height="48dp"
+                    android:text="↻"
+                    android:textSize="26sp"
+                    android:textColor="#FFFFFF"
+                    android:gravity="center"
+                    android:focusable="true" />
+
+            </LinearLayout>
+
+        </LinearLayout>
+
+    </LinearLayout>
 
     <!-- Status text (buffering) -->
     <TextView
@@ -206,6 +341,5 @@
             android:clickable="true" />
 
     </LinearLayout>
-
 
 </FrameLayout>

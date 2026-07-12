@@ -1,10 +1,14 @@
 package com.neroflix.tv.app.activities;
 
+import android.animation.ObjectAnimator;
+import android.animation.ValueAnimator;
 import android.app.AlertDialog;
 import android.os.Bundle;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.WindowManager;
+import android.view.animation.AccelerateDecelerateInterpolator;
+import android.widget.ImageView;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
@@ -70,11 +74,15 @@ public class YastreamPlayerActivity extends BaseTvActivity {
     private JSONArray streamList;
     private int       currentStreamIndex = 0;
     private volatile boolean activityDestroyed = false; // guards background threads
-    // Direct play mode — set when launched from PlayerActivity stream sniff
+    // Direct play mode — set when launched with a pre-sniffed stream URL
     private boolean directPlayMode       = false;
     private String  directStreamReferrer = "";
     private String  directSubtitleUrl    = null;
     private org.json.JSONArray currentAllSubs = null; // all subtitle tracks loaded in player
+
+    // Loading overlay (backdrop + pulsing poster) — shown during fetchAndPlay/initExoPlayer
+    private View           loadingOverlay;
+    private ObjectAnimator pulseAnimator;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -252,15 +260,24 @@ public class YastreamPlayerActivity extends BaseTvActivity {
     }
 
     private void setupViews() {
-        playerView  = findViewById(R.id.yastream_player_view);
-        loadingBar  = findViewById(R.id.yastream_loading);
-        titleText   = findViewById(R.id.yastream_title);
-        statusText  = findViewById(R.id.yastream_status);
-        errorLayout = findViewById(R.id.yastream_error_layout);
-        errorMsg    = findViewById(R.id.yastream_error_msg);
-        topBar      = findViewById(R.id.yastream_top_bar);
+        playerView    = findViewById(R.id.yastream_player_view);
+        loadingBar    = findViewById(R.id.yastream_loading);
+        titleText     = findViewById(R.id.yastream_title);
+        statusText    = findViewById(R.id.yastream_status);
+        errorLayout   = findViewById(R.id.yastream_error_layout);
+        errorMsg      = findViewById(R.id.yastream_error_msg);
+        topBar        = findViewById(R.id.yastream_top_bar);
+        loadingOverlay = findViewById(R.id.yastream_loading_overlay);
 
         if (titleText != null) titleText.setText(movieTitle);
+
+        // Show title in the loading overlay label
+        TextView overlayTitle = findViewById(R.id.yastream_loading_title_label);
+        if (overlayTitle != null) overlayTitle.setText(movieTitle != null ? movieTitle : "");
+
+        // Load backdrop + pulsing title logo — identical to the old PlayerActivity loading screen
+        loadLoadingArtwork();
+        startPulseAnimation();
 
         View changeSourceBtn = findViewById(R.id.yastream_change_source);
         if (changeSourceBtn != null)
@@ -290,6 +307,80 @@ public class YastreamPlayerActivity extends BaseTvActivity {
 
         // Auto-hide after 3 seconds on start
         scheduleHideTopBar();
+    }
+
+    // ── Loading artwork (backdrop + pulsing title logo) ───────────────────────
+
+    private void loadLoadingArtwork() {
+        ImageView backdrop = findViewById(R.id.yastream_loading_backdrop);
+        ImageView logoView = findViewById(R.id.yastream_loading_poster);
+        if (backdrop == null || logoView == null) return;
+
+        String posterPath   = getIntent().getStringExtra("movie_poster");
+        String backdropPath = getIntent().getStringExtra("movie_backdrop");
+        String tmdbBase     = "https://image.tmdb.org/t/p/";
+
+        // Backdrop (dim background)
+        if (backdropPath != null && !backdropPath.isEmpty()) {
+            com.bumptech.glide.Glide.with(this)
+                .load(tmdbBase + "w780" + backdropPath)
+                .placeholder(android.R.color.black).into(backdrop);
+        } else if (posterPath != null && !posterPath.isEmpty()) {
+            com.bumptech.glide.Glide.with(this)
+                .load(tmdbBase + "w500" + posterPath)
+                .placeholder(android.R.color.black).into(backdrop);
+        }
+
+        // TMDB PNG title logo — transparent, like Netflix/Disney+
+        if (tmdbId > 0) {
+            com.neroflix.tv.app.network.TmdbClient.getInstance(this)
+                .fetchTitleLogo(tmdbId, mediaType,
+                    new com.neroflix.tv.app.network.TmdbClient.TitleLogoCallback() {
+                        @Override public void onSuccess(String logoUrl) {
+                            if (isFinishing() || isDestroyed()) return;
+                            com.bumptech.glide.Glide.with(YastreamPlayerActivity.this)
+                                .load(logoUrl)
+                                .placeholder(R.drawable.ic_launcher_foreground)
+                                .error(R.drawable.ic_launcher_foreground)
+                                .format(com.bumptech.glide.load.DecodeFormat.PREFER_ARGB_8888)
+                                .into(logoView);
+                        }
+                        @Override public void onError(String error) { /* keep app icon */ }
+                    });
+        } else if (posterPath != null && !posterPath.isEmpty()) {
+            com.bumptech.glide.Glide.with(this)
+                .load(tmdbBase + "w185" + posterPath)
+                .placeholder(R.drawable.ic_launcher_foreground)
+                .into(logoView);
+        } else {
+            logoView.setImageResource(R.drawable.ic_launcher_foreground);
+        }
+    }
+
+    private void startPulseAnimation() {
+        ImageView poster = findViewById(R.id.yastream_loading_poster);
+        if (poster == null) return;
+        pulseAnimator = ObjectAnimator.ofFloat(poster, "alpha", 1f, 0.4f);
+        pulseAnimator.setDuration(900);
+        pulseAnimator.setRepeatCount(ValueAnimator.INFINITE);
+        pulseAnimator.setRepeatMode(ValueAnimator.REVERSE);
+        pulseAnimator.setInterpolator(new AccelerateDecelerateInterpolator());
+        pulseAnimator.start();
+    }
+
+    private void stopPulseAnimation() {
+        if (pulseAnimator != null) { pulseAnimator.cancel(); pulseAnimator = null; }
+    }
+
+    /** Fades out the loading overlay once the stream is ready to play. */
+    private void hideLoadingOverlay() {
+        stopPulseAnimation();
+        if (loadingOverlay == null || loadingOverlay.getVisibility() != View.VISIBLE) return;
+        loadingOverlay.animate()
+            .alpha(0f)
+            .setDuration(400)
+            .withEndAction(() -> loadingOverlay.setVisibility(View.GONE))
+            .start();
     }
 
     // ── Fetch streams ─────────────────────────────────────────────────────────
@@ -976,7 +1067,7 @@ if (!activityDestroyed) runOnUiThread(() -> {
             @Override public void onPlaybackStateChanged(int state) {
                 switch (state) {
                     case Player.STATE_BUFFERING: showLoading(true); break;
-                    case Player.STATE_READY: showLoading(false); setStatus(""); break;
+                    case Player.STATE_READY: showLoading(false); setStatus(""); hideLoadingOverlay(); break;
                     case Player.STATE_ENDED: showLoading(false); setStatus("Playback ended"); break;
                     case Player.STATE_IDLE: showLoading(false); break;
                 }
@@ -1081,6 +1172,7 @@ if (!activityDestroyed) runOnUiThread(() -> {
         activityDestroyed = true;
         super.onDestroy();
         releasePlayer();
+        stopPulseAnimation();
         hideHandler.removeCallbacks(hideTopBar);
     }
 
