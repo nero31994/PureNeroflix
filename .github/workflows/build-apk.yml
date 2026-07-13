@@ -48,6 +48,7 @@ jobs:
         with:
           name: NeroFlix-Release-APK
           path: app/build/outputs/apk/release/app-release.apk
+          retention-days: 1
 
       - name: Get Version
         id: version
