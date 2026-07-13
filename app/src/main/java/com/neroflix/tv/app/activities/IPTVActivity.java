@@ -859,13 +859,14 @@ public class IPTVActivity extends BaseTvActivity {
                     return true;
                 case UniversalRemoteHandler.ACTION_LEFT:
                 case UniversalRemoteHandler.ACTION_RIGHT:
-                    // LEFT or RIGHT opens the sidebar
+                    // Open sidebar — search receives focus first, no auto-keyboard
                     showSidebar();
-                    focusZone = FocusZone.CHANNELS;
+                    focusZone = FocusZone.SEARCH;
+                    requestSearchFocus();
                     return true;
                 case UniversalRemoteHandler.ACTION_CENTER:
-                    showSidebar();
-                    focusZone = FocusZone.CHANNELS;
+                    // OK on player — show floating EPG card for current channel
+                    showPipCard();
                     return true;
                 case UniversalRemoteHandler.ACTION_BACK:
                     finish();
@@ -913,8 +914,12 @@ public class IPTVActivity extends BaseTvActivity {
                         return true;
 
                     case UniversalRemoteHandler.ACTION_DOWN:
-                        if (focusedChannelIndex < adapter.getItemCount() - 1) {
-                            focusedChannelIndex++;
+                        if (adapter != null) {
+                            if (focusedChannelIndex < adapter.getItemCount() - 1) {
+                                focusedChannelIndex++;
+                            } else {
+                                focusedChannelIndex = 0; // wrap to first
+                            }
                         }
                         highlightChannel(focusedChannelIndex);
                         return true;
@@ -966,29 +971,24 @@ public class IPTVActivity extends BaseTvActivity {
                         return true;
 
                     case UniversalRemoteHandler.ACTION_DOWN:
-                        if (groupAdapter != null && focusedGroupIndex < groupAdapter.getCount() - 1) {
-                            focusedGroupIndex++;
-                        } else if (groupAdapter != null) {
-                            focusZone = FocusZone.CHANNELS;
-                            highlightGroup(-1);
-                            focusedChannelIndex = 0;
-                            highlightChannel(0);
-                            return true;
+                        if (groupAdapter != null) {
+                            if (focusedGroupIndex < groupAdapter.getCount() - 1) {
+                                focusedGroupIndex++;
+                            } else {
+                                focusedGroupIndex = 0; // wrap to first
+                            }
                         }
                         highlightGroup(focusedGroupIndex);
                         return true;
 
                     case UniversalRemoteHandler.ACTION_LEFT:
-                        // Navigate left to Search section
-                        focusZone = FocusZone.SEARCH;
-                        highlightGroup(-1);
-                        requestSearchFocus();
+                        // Close sidebar (no lateral nav — sidebar opens with search on top)
+                        hideSidebar();
+                        focusZone = FocusZone.PLAYER;
                         return true;
 
                     case UniversalRemoteHandler.ACTION_RIGHT:
-                        focusZone = FocusZone.CHANNELS;
-                        highlightGroup(-1);
-                        highlightChannel(focusedChannelIndex);
+                        // Two-stage nav — use OK to select a category
                         return true;
 
                     case UniversalRemoteHandler.ACTION_CENTER:
@@ -1026,8 +1026,14 @@ public class IPTVActivity extends BaseTvActivity {
                         return true;
 
                     case UniversalRemoteHandler.ACTION_CENTER:
-                        // OK on search bar — activate EditText so user can type
+                        // OK on search — show on-screen keyboard
                         requestSearchFocus();
+                        android.view.inputmethod.InputMethodManager imm =
+                            (android.view.inputmethod.InputMethodManager)
+                                getSystemService(INPUT_METHOD_SERVICE);
+                        android.widget.EditText sf = findViewById(R.id.iptv_search);
+                        if (imm != null && sf != null)
+                            imm.showSoftInput(sf, android.view.inputmethod.InputMethodManager.SHOW_FORCED);
                         return true;
 
                     case UniversalRemoteHandler.ACTION_BACK:
