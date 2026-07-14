@@ -557,132 +557,141 @@ public class YastreamPlayerActivity extends BaseTvActivity {
     }
 
     private void fetchKisskhDirect(String kisskhId) {
-        int kisskhSeason = (season > 0) ? season : 1;
+        new Thread(() -> {
+            try {
+                int kisskhSeason = (season > 0) ? season : 1;
 
-        // kisskhId already has the "kisskh:" prefix (e.g. "kisskh:2121");
-        // strip it since the Worker re-adds the catalog prefix itself.
-        String rawContentId = kisskhId.startsWith("kisskh:")
-            ? kisskhId.substring("kisskh:".length()) : kisskhId;
-        String stremioId = kisskhId + ":" + kisskhSeason + ":" + episode;
+                // 1. Fetch streams directly from yastream (not CF Worker)
+                String stremioId  = kisskhId + ":" + kisskhSeason + ":" + episode;
+                String streamsUrl = yastreamUrl("/stream/series/"
+                    + java.net.URLEncoder.encode(stremioId, "UTF-8") + ".json");
 
-        // 1. Fetch streams via nero-license Worker (not direct yastream)
-        LicenseManager.fetchYastreamStreamsByCatalog(this, "kisskh", rawContentId,
-            "series", kisskhSeason, episode, streams -> {
+                android.util.Log.d("Yastream", "Direct stream URL: " + streamsUrl);
+                org.json.JSONObject streamsJson =
+                    new org.json.JSONObject(fetchUrl(streamsUrl));
+                org.json.JSONArray streams = streamsJson.optJSONArray("streams");
 
-            if (streams == null || streams.length() == 0) {
+                if (streams == null || streams.length() == 0) {
+    if (!activityDestroyed) runOnUiThread(() -> {
+                        showLoading(false);
+                        showError("No streams available.\nThis episode may not be on kisskh yet.");
+                    });
+                    return;
+                }
+
+                // 2. Fetch subtitles directly from yastream
+                // Subtitles are returned separately by yastream using tbKey
+                org.json.JSONArray subtitles = null;
+                try {
+                    String subsUrl = yastreamUrl("/subtitles/series/"
+                        + java.net.URLEncoder.encode(stremioId, "UTF-8") + ".json");
+                    android.util.Log.d("Yastream", "Direct subtitle URL: " + subsUrl);
+                    org.json.JSONObject subsJson =
+                        new org.json.JSONObject(fetchUrl(subsUrl));
+                    subtitles = subsJson.optJSONArray("subtitles");
+                    android.util.Log.d("Yastream", "Subtitles from yastream: "
+                        + (subtitles != null ? subtitles.length() : 0));
+                } catch (Exception subErr) {
+                    android.util.Log.w("Yastream", "Subtitle fetch failed: " + subErr.getMessage());
+                }
+
+                // 3. Also check if subtitles are embedded in each stream object
+                // yastream sometimes includes subtitles[] inside the stream response
+                if (subtitles == null || subtitles.length() == 0) {
+                    for (int i = 0; i < streams.length(); i++) {
+                        org.json.JSONArray embeddedSubs =
+                            streams.getJSONObject(i).optJSONArray("subtitles");
+                        if (embeddedSubs != null && embeddedSubs.length() > 0) {
+                            subtitles = embeddedSubs;
+                            android.util.Log.d("Yastream", "Using embedded subs from stream: "
+                                + subtitles.length());
+                            break;
+                        }
+                    }
+                }
+
+
+                // 3b. Fallback: fetch English subtitles from OpenSubtitles via Stremio
+                if (subtitles == null || subtitles.length() == 0) {
+                    try {
+                        // Step 1: get IMDB ID from TMDB
+                        String extType = "movie".equals(mediaType) ? "movie" : "tv";
+                        String extUrl = "https://api.themoviedb.org/3/" + extType + "/" + tmdbId
+                            + "/external_ids?api_key=" + com.neroflix.tv.app.BuildConfig.TMDB_API_KEY;
+                        String extResp = fetchUrl(extUrl);
+                        org.json.JSONObject extJson = new org.json.JSONObject(extResp);
+                        String imdbId = extJson.optString("imdb_id", "");
+                        android.util.Log.d("Yastream", "IMDB ID for fallback subs: " + imdbId);
+
+                        if (!imdbId.isEmpty()) {
+                            // Step 2: fetch subtitles from Stremio OpenSubtitles
+                            String stremioType = "movie".equals(mediaType) ? "movie" : "series";
+                            String stremioSubId = imdbId;
+                            if (!"movie".equals(mediaType) && season > 0 && episode > 0) {
+                                stremioSubId += ":" + season + ":" + episode;
+                            }
+                            String subsUrl = "https://opensubtitles-v3.strem.io/subtitles/"
+                                + stremioType + "/" + stremioSubId + ".json";
+                            android.util.Log.d("Yastream", "OpenSubs fallback URL: " + subsUrl);
+                            String subsResp = fetchUrl(subsUrl);
+                            org.json.JSONObject subsJson = new org.json.JSONObject(subsResp);
+                            org.json.JSONArray subsArr = subsJson.optJSONArray("subtitles");
+                            if (subsArr != null && subsArr.length() > 0) {
+                                subtitles = new org.json.JSONArray();
+                                // Pick first English subtitle
+                                for (int si = 0; si < subsArr.length(); si++) {
+                                    org.json.JSONObject s = subsArr.getJSONObject(si);
+                                    if ("eng".equals(s.optString("lang", ""))) {
+                                        org.json.JSONObject entry = new org.json.JSONObject();
+                                        entry.put("url", s.optString("url", ""));
+                                        entry.put("lang", "eng");
+                                        subtitles.put(entry);
+                                        android.util.Log.d("Yastream", "OpenSubs fallback found: " + entry.optString("url"));
+                                        break;
+                                    }
+                                }
+                                if (subtitles.length() == 0) subtitles = null;
+                            }
+                        }
+                    } catch (Exception subFallbackErr) {
+                        android.util.Log.w("Yastream", "OpenSubs fallback failed: " + subFallbackErr.getMessage());
+                    }
+                }
+
+                // 4. Inject subtitles into all stream objects for the player
+                if (subtitles != null && subtitles.length() > 0) {
+                    for (int i = 0; i < streams.length(); i++) {
+                        streams.getJSONObject(i).put("subtitles", subtitles);
+                    }
+                }
+
+                streamList = streams;
+
+                // 5. Find best stream (prefer kisskh provider)
+                int bestIndex = 0;
+                for (int i = 0; i < streams.length(); i++) {
+                    try {
+                        String provider = streams.getJSONObject(i).optString("title","");
+                        if (provider.toLowerCase().contains("kisskh")) {
+                            bestIndex = i; break;
+                        }
+                    } catch (Exception ignored) {}
+                }
+
+                final int finalIndex = bestIndex;
                 if (!activityDestroyed) runOnUiThread(() -> {
                     showLoading(false);
-                    showError("No streams available.\nThis episode may not be on kisskh yet.");
+                    playStream(finalIndex);
                 });
-                return;
+
+            } catch (Exception e) {
+                android.util.Log.e("Yastream", "fetchKisskhDirect failed: " + e.getMessage());
+if (!activityDestroyed) runOnUiThread(() -> {
+                    showLoading(false);
+                    showError("Failed to fetch stream: " + e.getMessage());
+                });
             }
-
-            // 2. Fetch subtitles via nero-license Worker (not direct yastream)
-            LicenseManager.fetchYastreamSubtitles(this, "series", stremioId, subsFromWorker -> {
-                new Thread(() -> {
-                    try {
-                        org.json.JSONArray subtitles = subsFromWorker;
-                        android.util.Log.d("Yastream", "Subtitles from Worker: "
-                            + (subtitles != null ? subtitles.length() : 0));
-
-                        // 3. Also check if subtitles are embedded in each stream object
-                        // yastream sometimes includes subtitles[] inside the stream response
-                        if (subtitles == null || subtitles.length() == 0) {
-                            for (int i = 0; i < streams.length(); i++) {
-                                org.json.JSONArray embeddedSubs =
-                                    streams.getJSONObject(i).optJSONArray("subtitles");
-                                if (embeddedSubs != null && embeddedSubs.length() > 0) {
-                                    subtitles = embeddedSubs;
-                                    android.util.Log.d("Yastream", "Using embedded subs from stream: "
-                                        + subtitles.length());
-                                    break;
-                                }
-                            }
-                        }
-
-                        // 3b. Fallback: fetch English subtitles from OpenSubtitles via Stremio
-                        if (subtitles == null || subtitles.length() == 0) {
-                            try {
-                                // Step 1: get IMDB ID from TMDB
-                                String extType = "movie".equals(mediaType) ? "movie" : "tv";
-                                String extUrl = "https://api.themoviedb.org/3/" + extType + "/" + tmdbId
-                                    + "/external_ids?api_key=" + com.neroflix.tv.app.BuildConfig.TMDB_API_KEY;
-                                String extResp = fetchUrl(extUrl);
-                                org.json.JSONObject extJson = new org.json.JSONObject(extResp);
-                                String imdbId = extJson.optString("imdb_id", "");
-                                android.util.Log.d("Yastream", "IMDB ID for fallback subs: " + imdbId);
-
-                                if (!imdbId.isEmpty()) {
-                                    // Step 2: fetch subtitles from Stremio OpenSubtitles
-                                    String stremioType = "movie".equals(mediaType) ? "movie" : "series";
-                                    String stremioSubId = imdbId;
-                                    if (!"movie".equals(mediaType) && season > 0 && episode > 0) {
-                                        stremioSubId += ":" + season + ":" + episode;
-                                    }
-                                    String subsUrl = "https://opensubtitles-v3.strem.io/subtitles/"
-                                        + stremioType + "/" + stremioSubId + ".json";
-                                    android.util.Log.d("Yastream", "OpenSubs fallback URL: " + subsUrl);
-                                    String subsResp = fetchUrl(subsUrl);
-                                    org.json.JSONObject subsJson = new org.json.JSONObject(subsResp);
-                                    org.json.JSONArray subsArr = subsJson.optJSONArray("subtitles");
-                                    if (subsArr != null && subsArr.length() > 0) {
-                                        subtitles = new org.json.JSONArray();
-                                        // Pick first English subtitle
-                                        for (int si = 0; si < subsArr.length(); si++) {
-                                            org.json.JSONObject s = subsArr.getJSONObject(si);
-                                            if ("eng".equals(s.optString("lang", ""))) {
-                                                org.json.JSONObject entry = new org.json.JSONObject();
-                                                entry.put("url", s.optString("url", ""));
-                                                entry.put("lang", "eng");
-                                                subtitles.put(entry);
-                                                android.util.Log.d("Yastream", "OpenSubs fallback found: " + entry.optString("url"));
-                                                break;
-                                            }
-                                        }
-                                        if (subtitles.length() == 0) subtitles = null;
-                                    }
-                                }
-                            } catch (Exception subFallbackErr) {
-                                android.util.Log.w("Yastream", "OpenSubs fallback failed: " + subFallbackErr.getMessage());
-                            }
-                        }
-
-                        // 4. Inject subtitles into all stream objects for the player
-                        if (subtitles != null && subtitles.length() > 0) {
-                            for (int i = 0; i < streams.length(); i++) {
-                                streams.getJSONObject(i).put("subtitles", subtitles);
-                            }
-                        }
-
-                        streamList = streams;
-
-                        // 5. Find best stream (prefer kisskh provider)
-                        int bestIndex = 0;
-                        for (int i = 0; i < streams.length(); i++) {
-                            try {
-                                String provider = streams.getJSONObject(i).optString("title","");
-                                if (provider.toLowerCase().contains("kisskh")) {
-                                    bestIndex = i; break;
-                                }
-                            } catch (Exception ignored) {}
-                        }
-
-                        final int finalIndex = bestIndex;
-                        if (!activityDestroyed) runOnUiThread(() -> {
-                            showLoading(false);
-                            playStream(finalIndex);
-                        });
-
-                    } catch (Exception e) {
-                        android.util.Log.e("Yastream", "fetchKisskhDirect failed: " + e.getMessage());
-                        if (!activityDestroyed) runOnUiThread(() -> {
-                            showLoading(false);
-                            showError("Failed to fetch stream: " + e.getMessage());
-                        });
-                    }
-                }).start();
-            });
-        });
+        }).start();
     }
 
     // ── Subtitle picker ───────────────────────────────────────────────────────
