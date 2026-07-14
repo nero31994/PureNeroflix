@@ -348,6 +348,8 @@ public class DetailActivity extends BaseTvActivity {
             runOnUiThread(() -> {
                 progressBar.setVisibility(View.GONE);
 
+                android.widget.Toast.makeText(DetailActivity.this, "DEBUG servers: " + (servers == null ? "null" : servers.length), android.widget.Toast.LENGTH_LONG).show();
+
                 if (servers == null || servers.length == 0) {
                     // Not activated — send to ActivationActivity
                     startActivity(new Intent(this,
