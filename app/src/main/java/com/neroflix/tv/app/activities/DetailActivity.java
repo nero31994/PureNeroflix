@@ -506,27 +506,28 @@ public class DetailActivity extends BaseTvActivity {
             return;
         }
 
-        // ── Standard / AnyEmbed servers: direct ExoPlayer via YastreamPlayerActivity ──
-        // Sniffing removed — go straight to the embedded server (fetchAndPlay mode).
-        // Loading artwork (backdrop + poster + pulse) is shown inside YastreamPlayerActivity.
+        // ── Standard / AnyEmbed servers: GeckoView embed player ──────────────
         String stdTitle = (movie != null) ? movie.getTitle()
                 : getIntent().getStringExtra("movie_title");
         String stdPoster = (movie != null && movie.getPosterPath() != null && !movie.getPosterPath().isEmpty())
                 ? movie.getPosterPath()
                 : getIntent().getStringExtra("movie_poster");
-        Intent intent = new Intent(this, com.neroflix.tv.app.activities.YastreamPlayerActivity.class);
-        intent.putExtra("movie_id",       movieId);
-        intent.putExtra("media_type",     mediaType);
-        intent.putExtra("movie_title",    stdTitle);
-        intent.putExtra("season",         season);
-        intent.putExtra("episode",        episode);
-        intent.putExtra("movie_poster",   stdPoster);
-        intent.putExtra("movie_backdrop", getIntent().getStringExtra("movie_backdrop"));
+        Intent intent = new Intent(this, com.neroflix.tv.app.activities.PlayerActivity.class);
+        intent.putExtra("movie_id",          movieId);
+        intent.putExtra("media_type",        mediaType);
+        intent.putExtra("movie_title",       stdTitle);
+        intent.putExtra("season",            season);
+        intent.putExtra("episode",           episode);
+        intent.putExtra("server_index",      serverIndex);
+        intent.putExtra("server_url",        serverUrl);
+        intent.putExtra("server_url_tv",     serverUrlTv);
+        intent.putExtra("server_url_format", serverUrlFormat);
+        intent.putExtra("movie_poster",      stdPoster);
+        intent.putExtra("movie_backdrop",    getIntent().getStringExtra("movie_backdrop"));
         float stdRating = (movie != null && movie.getVoteAverage() > 0)
                 ? (float) movie.getVoteAverage()
                 : (float) getIntent().getDoubleExtra("movie_rating", 0.0);
         intent.putExtra("vote_average",   stdRating);
-        // No direct_stream_url → YastreamPlayerActivity uses fetchAndPlay() automatically
         startActivity(intent);
         overridePendingTransition(0, 0);
     }
