@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="60dp"
+    android:orientation="horizontal"
+    android:gravity="center_vertical"
+    android:paddingStart="12dp"
+    android:paddingEnd="16dp"
+    android:focusable="true"
+    android:focusableInTouchMode="false">
+
+    <TextView
+        android:id="@+id/channel_number"
+        android:layout_width="30dp"
+        android:layout_height="wrap_content"
+        android:textColor="#555555"
+        android:textSize="11sp"
+        android:fontFamily="monospace"
+        android:gravity="end"
+        android:layout_marginEnd="10dp" />
+
+    <ImageView
+        android:id="@+id/channel_logo"
+        android:layout_width="38dp"
+        android:layout_height="38dp"
+        android:scaleType="fitCenter"
+        android:layout_marginEnd="12dp"
+        android:background="#22FFFFFF"
+        android:contentDescription="Channel logo" />
+
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:orientation="vertical">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/channel_name"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textColor="#CCCCCC"
+                android:textSize="13sp"
+                android:fontFamily="sans-serif-medium"
+                android:maxLines="1"
+                android:ellipsize="end" />
+
+            <TextView
+                android:id="@+id/channel_drm_badge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="DRM"
+                android:textColor="#FFFFFF"
+                android:textSize="8sp"
+                android:background="#CC0000"
+                android:paddingStart="4dp"
+                android:paddingEnd="4dp"
+                android:paddingTop="1dp"
+                android:paddingBottom="1dp"
+                android:layout_marginStart="6dp"
+                android:visibility="gone" />
+
+        </LinearLayout>
+
+        <!-- Now-playing subtitle — replaces EPG horizontal strip -->
+        <TextView
+            android:id="@+id/channel_now_playing"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="#555555"
+            android:textSize="10sp"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:layout_marginTop="2dp"
+            android:visibility="gone" />
+
+    </LinearLayout>
+
+    <!-- Focus overlay stub kept for adapter compatibility -->
+    <View
+        android:id="@+id/channel_focus_overlay"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:visibility="gone" />
+
+</LinearLayout>

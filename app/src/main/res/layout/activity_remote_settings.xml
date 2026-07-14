@@ -1,0 +1,127 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#0D0D0D">
+
+    <!-- Header -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:background="#1A1A1A"
+        android:padding="12dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Remote Control Debug Tool"
+            android:textColor="#FFFFFF"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            android:gravity="center" />
+
+    </LinearLayout>
+
+    <!-- Remote Type Display -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="#161616"
+        android:padding="16dp"
+        android:layout_margin="8dp">
+
+        <TextView
+            android:id="@+id/remote_type_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Detected Remote Type: Generic"
+            android:textColor="#E50914"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:padding="12dp"
+            android:background="#2A2A2A"
+            android:gravity="center" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Press buttons on your remote to see key codes and normalized actions"
+            android:textColor="#AAAAAA"
+            android:textSize="12sp"
+            android:layout_marginTop="8dp"
+            android:padding="8dp" />
+
+    </LinearLayout>
+
+    <!-- Key History Header -->
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Key Press History (Latest First)"
+        android:textColor="#888888"
+        android:textSize="13sp"
+        android:textStyle="bold"
+        android:padding="12dp"
+        android:background="#1A1A1A" />
+
+    <!-- Key History List -->
+    <ScrollView
+        android:id="@+id/history_scroll"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:scrollbars="vertical"
+        android:background="#0D0D0D"
+        android:padding="4dp">
+
+        <LinearLayout
+            android:id="@+id/key_history_container"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical" />
+
+    </ScrollView>
+
+    <!-- Footer Instructions -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:background="#1A1A1A"
+        android:padding="12dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Legend:"
+            android:textColor="#E50914"
+            android:textSize="12sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="KeyCode: Android key code from remote\nNormalized: Mapped to standard action (UP/DOWN/LEFT/RIGHT/CENTER, etc.)\nRemote: Detected remote type (Generic/Samsung/LG/Xiaomi/Gamepad)"
+            android:textColor="#888888"
+            android:textSize="11sp"
+            android:layout_marginTop="8dp"
+            android:lineSpacingMultiplier="1.4" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Press BACK to exit this debug activity"
+            android:textColor="#AAAAAA"
+            android:textSize="12sp"
+            android:layout_marginTop="12dp"
+            android:padding="8dp"
+            android:background="#2A2A2A"
+            android:gravity="center" />
+
+    </LinearLayout>
+
+</LinearLayout>

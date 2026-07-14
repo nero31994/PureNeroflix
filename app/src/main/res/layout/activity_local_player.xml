@@ -1,0 +1,91 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#000000">
+
+    <SurfaceView
+        android:id="@+id/local_surface"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <ProgressBar
+        android:id="@+id/local_loading"
+        android:layout_width="48dp"
+        android:layout_height="48dp"
+        android:layout_centerInParent="true"
+        android:indeterminateTint="@color/neon_red"
+        android:visibility="gone" />
+
+    <LinearLayout
+        android:id="@+id/local_controls"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentBottom="true"
+        android:orientation="vertical"
+        android:background="#AA000000"
+        android:padding="16dp">
+
+        <TextView
+            android:id="@+id/local_title"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="#FFFFFF"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:layout_marginBottom="8dp" />
+
+        <SeekBar
+            android:id="@+id/local_seekbar"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:progressTint="@color/neon_red"
+            android:thumbTint="@color/neon_red" />
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginTop="8dp">
+
+            <TextView
+                android:id="@+id/local_close_btn"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="✕ Close"
+                android:textColor="#FFFFFF"
+                android:textSize="13sp"
+                android:padding="8dp"
+                android:focusable="true"
+                android:background="@drawable/nav_item_focus_bg" />
+
+            <TextView
+                android:id="@+id/local_play_pause_btn"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="⏸ Pause"
+                android:textColor="#FFFFFF"
+                android:textSize="13sp"
+                android:padding="8dp"
+                android:layout_marginStart="12dp"
+                android:focusable="true"
+                android:background="@drawable/nav_item_focus_bg" />
+
+            <Space
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1" />
+
+            <TextView
+                android:id="@+id/local_time"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="0:00 / 0:00"
+                android:textColor="#AAAAAA"
+                android:textSize="12sp" />
+
+        </LinearLayout>
+    </LinearLayout>
+
+</RelativeLayout>

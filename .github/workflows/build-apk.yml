@@ -1,0 +1,61 @@
+name: Build NeroFlix APK
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3.2.1
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: Restore Keystore
+        run: |
+          xxd -r nero.keystore.hex > nero.keystore
+          echo "Keystore MD5:"
+          md5sum nero.keystore
+
+      - name: Build Release APK
+        run: ./gradlew assembleRelease --no-daemon
+        env:
+          SIGNING_STORE_FILE: ${{ github.workspace }}/nero.keystore
+          SIGNING_STORE_PASSWORD: Neroflix2025
+
+      - name: Verify APK Signature
+        run: |
+          $ANDROID_HOME/build-tools/$(ls $ANDROID_HOME/build-tools | tail -1)/apksigner verify --print-certs app/build/outputs/apk/release/app-release.apk | grep -i "sha-256\|sha256" 
+
+
+      - name: Get Version
+        id: version
+        run: |
+          VERSION=$(grep 'versionName' app/build.gradle | grep -v Suffix | head -1 | awk '{print $2}' | tr -d '"')
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: Neroflix v${{ steps.version.outputs.version }}
+          files: app/build/outputs/apk/release/app-release.apk
+          make_latest: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

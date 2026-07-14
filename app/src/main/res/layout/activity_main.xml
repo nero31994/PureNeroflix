@@ -1,0 +1,255 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="horizontal"
+    android:background="@color/bg_primary"
+    
+    android:focusable="true"
+    android:focusableInTouchMode="true">
+
+    <!-- LEFT SIDEBAR -->
+    <LinearLayout
+        android:id="@+id/left_sidebar"
+        android:layout_width="52dp"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:background="@color/bg_secondary"
+        android:elevation="4dp">
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/nav_recycler"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"
+            android:scrollbars="none"
+            android:focusable="false"/>
+
+        <TextView
+        android:id="@+id/dpad_debug_label"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom|end"
+        android:layout_margin="16dp"
+        android:background="#EE000000"
+        android:textColor="#00FF00"
+        android:textSize="14sp"
+        android:textStyle="bold"
+        android:fontFamily="monospace"
+        android:padding="10dp"
+        android:text="Zone: NAV"
+        android:elevation="999dp"/>
+
+</LinearLayout>
+
+    <!-- MAIN CONTENT -->
+    <RelativeLayout
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1">
+
+        <!-- TOP FILTER BAR -->
+        <HorizontalScrollView
+            android:id="@+id/filter_bar"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:layout_alignParentTop="true"
+            android:background="@color/bg_secondary"
+            android:scrollbars="none"
+            android:elevation="2dp">
+
+            <LinearLayout
+                android:id="@+id/filter_bar_inner"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingStart="12dp"
+                android:paddingEnd="12dp">
+
+                <TextView
+                    android:id="@+id/filter_popular"
+                    android:layout_width="wrap_content"
+                    android:layout_height="34dp"
+                    android:text="Popular"
+                    android:textColor="@color/bg_primary"
+                    android:textSize="12sp"
+                    android:gravity="center"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="16dp"
+                    android:focusable="false"
+                    android:focusableInTouchMode="false"
+                    android:background="@drawable/filter_chip_active"
+                    android:layout_marginEnd="8dp" />
+
+                <TextView
+                    android:id="@+id/filter_top_rated"
+                    android:layout_width="wrap_content"
+                    android:layout_height="34dp"
+                    android:text="Top Rated"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="12sp"
+                    android:gravity="center"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="16dp"
+                    android:focusable="false"
+                    android:focusableInTouchMode="false"
+                    android:background="@drawable/filter_chip_inactive"
+                    android:layout_marginEnd="8dp" />
+
+                <TextView
+                    android:id="@+id/filter_now_playing"
+                    android:layout_width="wrap_content"
+                    android:layout_height="34dp"
+                    android:text="Now Playing"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="12sp"
+                    android:gravity="center"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="16dp"
+                    android:focusable="false"
+                    android:focusableInTouchMode="false"
+                    android:background="@drawable/filter_chip_inactive"
+                    android:layout_marginEnd="8dp" />
+
+                <TextView
+                    android:id="@+id/filter_upcoming"
+                    android:layout_width="wrap_content"
+                    android:layout_height="34dp"
+                    android:text="Upcoming"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="12sp"
+                    android:gravity="center"
+                    android:paddingStart="16dp"
+                    android:paddingEnd="16dp"
+                    android:focusable="false"
+                    android:focusableInTouchMode="false"
+                    android:background="@drawable/filter_chip_inactive" />
+
+            </LinearLayout>
+        </HorizontalScrollView>
+
+        <!-- SCROLLABLE CONTENT -->
+        <androidx.core.widget.NestedScrollView
+            android:id="@+id/main_scroll_view"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:layout_below="@id/filter_bar"
+            android:scrollbars="none"
+            android:overScrollMode="never">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical">
+
+                <!-- Hidden hero stubs for code compat -->
+                <RelativeLayout
+                    android:id="@+id/hero_section"
+                    android:layout_width="0dp"
+                    android:layout_height="0dp"
+                    android:visibility="gone">
+                    <ImageView android:id="@+id/hero_backdrop" android:layout_width="0dp" android:layout_height="0dp" android:contentDescription="@string/hero_backdrop_desc"/>
+                    <TextView android:id="@+id/hero_title" android:layout_width="0dp" android:layout_height="0dp"/>
+                    <TextView android:id="@+id/hero_rating" android:layout_width="0dp" android:layout_height="0dp"/>
+                    <TextView android:id="@+id/hero_year" android:layout_width="0dp" android:layout_height="0dp"/>
+                    <TextView android:id="@+id/hero_overview" android:layout_width="0dp" android:layout_height="0dp"/>
+                    <Button android:id="@+id/hero_play_btn" android:layout_width="0dp" android:layout_height="0dp"/>
+                    <Button android:id="@+id/hero_info_btn" android:layout_width="0dp" android:layout_height="0dp"/>
+                </RelativeLayout>
+
+                <!-- Network logos row -->
+                <TextView
+                    android:id="@+id/network_label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Popular Networks"
+                    android:textColor="@color/text_primary"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:paddingStart="12dp"
+                    android:paddingTop="12dp"
+                    android:paddingBottom="8dp" />
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/network_recycler"
+                    android:layout_width="match_parent"
+                    android:layout_height="90dp"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
+                    android:clipToPadding="false"
+                    android:layout_marginBottom="8dp" />
+
+                <!-- Studios row -->
+                <TextView
+                    android:id="@+id/studio_label"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Studios"
+                    android:textColor="@color/text_primary"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:paddingStart="12dp"
+                    android:paddingTop="4dp"
+                    android:paddingBottom="8dp" />
+
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/studio_recycler"
+                    android:layout_width="match_parent"
+                    android:layout_height="90dp"
+                    android:paddingStart="12dp"
+                    android:paddingEnd="12dp"
+                    android:clipToPadding="false"
+                    android:layout_marginBottom="8dp" />
+
+                <!-- Category rows -->
+                <androidx.recyclerview.widget.RecyclerView
+                    android:id="@+id/main_recycler_view"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:nestedScrollingEnabled="false"
+                    android:paddingBottom="32dp" />
+
+            </LinearLayout>
+        </androidx.core.widget.NestedScrollView>
+
+        <ProgressBar
+            android:id="@+id/progress_bar"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:layout_centerInParent="true"
+            android:indeterminateTint="@color/neon_red"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/offline_banner"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_alignParentTop="true"
+            android:text="⚠ You're offline — check your internet connection"
+            android:textColor="#FFFFFF"
+            android:textSize="13sp"
+            android:gravity="center"
+            android:padding="10dp"
+            android:background="#CC8B0000"
+            android:visibility="gone"
+            android:elevation="20dp" />
+
+        <TextView
+            android:id="@+id/refresh_btn"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentTop="true"
+            android:layout_alignParentEnd="true"
+            android:layout_margin="12dp"
+            android:text="⟳ Refresh"
+            android:textColor="@color/text_primary"
+            android:textSize="12sp"
+            android:padding="8dp"
+            android:focusable="true"
+            android:background="@drawable/nav_item_focus_bg"
+            android:elevation="21dp" />
+
+    </RelativeLayout>
+
+</LinearLayout>

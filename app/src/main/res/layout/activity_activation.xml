@@ -1,0 +1,263 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="horizontal"
+    android:background="#0D0D0F"
+    android:gravity="center"
+    android:fitsSystemWindows="true"
+    android:padding="20dp">
+
+    <!-- LEFT PANEL -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:background="@drawable/card_glass_dark"
+        android:padding="28dp"
+        android:layout_marginEnd="10dp">
+
+        <!-- App Icon -->
+        <ImageView
+            android:layout_width="80dp"
+            android:layout_height="80dp"
+            android:src="@drawable/ic_launcher_foreground"
+            android:background="@drawable/circle_red"
+            android:padding="10dp"
+            android:scaleType="fitCenter"
+            android:layout_marginBottom="14dp"/>
+
+        <!-- App Name -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="PureNeroflix"
+            android:textColor="#FFFFFF"
+            android:textSize="22sp"
+            android:textStyle="bold"
+            android:fontFamily="@font/orbitron_bold"
+            android:layout_marginBottom="8dp"/>
+
+        <!-- Status -->
+        <TextView
+            android:id="@+id/activation_status"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:textColor="#FFAA00"
+            android:textSize="12sp"
+            android:gravity="center"
+            android:text="Enter your access code to continue.&#10;Or contact admin to get activated."
+            android:layout_marginBottom="20dp"/>
+
+        <!-- Code Input -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:orientation="horizontal"
+            android:background="@drawable/input_bg"
+            android:gravity="center_vertical"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:layout_marginBottom="10dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="🔒"
+                android:textSize="15sp"
+                android:layout_marginEnd="8dp"/>
+
+            <EditText
+                android:id="@+id/code_input"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:hint="Enter access code"
+                android:textColor="#FFFFFF"
+                android:textColorHint="#555555"
+                android:textSize="14sp"
+                android:inputType="textCapCharacters"
+                android:background="@null"
+                android:focusable="true"
+                android:focusableInTouchMode="true"
+                android:imeOptions="actionDone"
+                android:padding="0dp"/>
+        </LinearLayout>
+
+        <!-- Activate Button -->
+        <Button
+            android:id="@+id/submit_code_btn"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:text="ACTIVATE"
+            android:textColor="#FFFFFF"
+            android:textStyle="bold"
+            android:textSize="14sp"
+            android:backgroundTint="#E50914"
+            android:focusable="true"
+            android:layout_marginBottom="12dp"/>
+
+        <ProgressBar
+            android:id="@+id/code_loading"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:visibility="gone"
+            android:layout_marginBottom="8dp"/>
+
+        <!-- OR divider -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1"
+                android:background="#2A2A2A"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="  OR  "
+                android:textColor="#444444"
+                android:textSize="11sp"/>
+
+            <View
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1"
+                android:background="#2A2A2A"/>
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- RIGHT PANEL -->
+    <LinearLayout
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:orientation="vertical"
+        android:gravity="center"
+        android:background="@drawable/card_glass_dark"
+        android:padding="28dp"
+        android:layout_marginStart="10dp">
+
+        <!-- Device ID label -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginBottom="10dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="🖥️"
+                android:textSize="15sp"
+                android:layout_marginEnd="8dp"/>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Your Device ID"
+                android:textColor="#CCCCCC"
+                android:textSize="14sp"
+                android:textStyle="bold"/>
+        </LinearLayout>
+
+        <!-- Device ID + Copy -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:orientation="horizontal"
+            android:background="@drawable/input_bg"
+            android:gravity="center_vertical"
+            android:paddingStart="14dp"
+            android:paddingEnd="6dp"
+            android:layout_marginBottom="14dp">
+
+            <TextView
+                android:id="@+id/device_id_text"
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:textColor="#FFFFFF"
+                android:textSize="13sp"
+                android:textStyle="bold"
+                android:ellipsize="end"
+                android:maxLines="1"/>
+
+            <Button
+                android:id="@+id/copy_btn"
+                android:layout_width="wrap_content"
+                android:layout_height="36dp"
+                android:text="COPY"
+                android:textColor="#FFFFFF"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:backgroundTint="#2A2A2A"
+                android:focusable="true"
+                android:paddingStart="14dp"
+                android:paddingEnd="14dp"/>
+        </LinearLayout>
+
+        <!-- Check Activation -->
+        <Button
+            android:id="@+id/check_activation_btn"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:text="🔄  CHECK ACTIVATION"
+            android:textColor="#FFFFFF"
+            android:textStyle="bold"
+            android:textSize="13sp"
+            android:backgroundTint="#1DB954"
+            android:focusable="true"
+            android:layout_marginBottom="10dp"/>
+
+        <!-- Message Admin -->
+        <Button
+            android:id="@+id/message_admin_btn"
+            android:layout_width="match_parent"
+            android:layout_height="50dp"
+            android:text="💬  MESSAGE ADMIN ON MESSENGER"
+            android:textColor="#FFFFFF"
+            android:textStyle="bold"
+            android:textSize="12sp"
+            android:backgroundTint="#0084FF"
+            android:focusable="true"
+            android:layout_marginBottom="14dp"/>
+
+        <!-- Help text -->
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:background="@drawable/input_bg"
+            android:padding="12dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="🛡️"
+                android:textSize="13sp"
+                android:layout_marginEnd="8dp"/>
+
+            <TextView
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_weight="1"
+                android:text="Need help? Contact our admin on Messenger for quick activation support."
+                android:textColor="#777777"
+                android:textSize="11sp"
+                android:lineSpacingExtra="2dp"/>
+        </LinearLayout>
+
+    </LinearLayout>
+
+</LinearLayout>

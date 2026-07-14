@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Background palette -->
+    <color name="bg_primary">#0A0A0F</color>
+    <color name="bg_secondary">#12121A</color>
+    <color name="bg_card">#1A1A26</color>
+    <color name="bg_elevated">#22223A</color>
+
+    <!-- Text -->
+    <color name="text_primary">#FFFFFF</color>
+    <color name="text_secondary">#B0B0C8</color>
+    <color name="text_tertiary">#606080</color>
+
+    <!-- Neon accents -->
+    <color name="neon_red">#E50914</color>
+    <color name="neon_red_dark">#A00000</color>
+    <color name="neon_gold">#FFD700</color>
+    <color name="neon_blue">#4FC3F7</color>
+    <color name="neon_purple">#7B61FF</color>
+
+    <!-- Status bar -->
+    <color name="colorPrimaryDark">#0A0A0F</color>
+</resources>

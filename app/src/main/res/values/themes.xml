@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources xmlns:tools="http://schemas.android.com/tools">
+
+    <!-- Base application theme -->
+    <style name="Theme.NeroFlix" parent="Theme.MaterialComponents.NoActionBar">
+        <item name="colorPrimary">@color/neon_red</item>
+        <item name="colorPrimaryVariant">@color/neon_red_dark</item>
+        <item name="colorOnPrimary">@color/text_primary</item>
+        <item name="colorSurface">@color/bg_secondary</item>
+        <item name="colorOnSurface">@color/text_primary</item>
+        <item name="android:windowBackground">@color/bg_primary</item>
+        <item name="android:statusBarColor">@color/bg_primary</item>
+        <item name="android:navigationBarColor">@color/bg_primary</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowActionBar">false</item>
+        <item name="android:windowFullscreen">false</item>
+        <item name="android:windowContentOverlay">@null</item>
+    </style>
+
+    <!-- Fullscreen player theme -->
+    <style name="Theme.NeroFlix.Player" parent="Theme.NeroFlix">
+        <item name="android:windowFullscreen">true</item>
+        <item name="android:windowLayoutInDisplayCutoutMode" tools:targetApi="o_mr1">shortEdges</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/black</item>
+    </style>
+
+    <!-- Button styles -->
+    <style name="Widget.NeroFlix.Button.Primary" parent="Widget.MaterialComponents.Button">
+        <item name="cornerRadius">6dp</item>
+        <item name="android:stateListAnimator">@null</item>
+    </style>
+
+    <style name="Widget.NeroFlix.Button.Secondary" parent="Widget.MaterialComponents.Button.OutlinedButton">
+        <item name="cornerRadius">6dp</item>
+        <item name="strokeColor">@color/text_secondary</item>
+        <item name="android:stateListAnimator">@null</item>
+    </style>
+
+</resources>

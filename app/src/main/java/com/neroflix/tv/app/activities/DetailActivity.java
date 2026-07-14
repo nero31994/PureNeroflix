@@ -1,0 +1,715 @@
+package com.neroflix.tv.app.activities;
+
+import androidx.appcompat.app.AlertDialog;
+import android.content.Intent;
+import android.widget.NumberPicker;
+import android.widget.LinearLayout;
+import android.os.Bundle;
+import android.view.KeyEvent;
+import android.view.View;
+import android.widget.ImageView;
+import android.widget.ProgressBar;
+import android.widget.TextView;
+
+
+import com.bumptech.glide.Glide;
+import com.bumptech.glide.load.resource.drawable.DrawableTransitionOptions;
+import com.neroflix.tv.app.R;
+import com.neroflix.tv.app.models.Movie;
+import com.neroflix.tv.app.network.TmdbClient;
+
+public class DetailActivity extends BaseTvActivity {
+
+    private int movieId;
+    private String mediaType;
+    private Movie movie;
+
+    private ImageView backdropImage;
+    private ImageView posterImage;
+    private TextView titleText;
+    private TextView overviewText;
+    private TextView ratingText;
+    private TextView yearText;
+    private TextView genresText;
+    private TextView runtimeText;
+    private TextView taglineText;
+    private View playButton;
+    private View backButton;
+    private ProgressBar progressBar;
+
+
+
+
+
+
+
+    private void showDialogWithDpadHidden(android.app.Dialog dialog) {
+        dialog.setOnDismissListener(d -> {
+        });
+        dialog.show();
+    }
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_detail);
+
+        movieId = getIntent().getIntExtra("movie_id", 0);
+        mediaType = getIntent().getStringExtra("media_type");
+
+        setupViews();
+        loadBasicInfo();
+        loadDetailInfo();
+        updatePlayButton();
+    }
+
+    private void updatePlayButton() {
+        long pos = com.neroflix.tv.app.WatchManager.getPosition(this, movieId);
+        if (pos > 5000) {
+            long totalSec = pos / 1000;
+            long hours = totalSec / 3600;
+            long minutes = (totalSec % 3600) / 60;
+            long seconds = totalSec % 60;
+            String timestamp = hours > 0
+                ? String.format("%d:%02d:%02d", hours, minutes, seconds)
+                : String.format("%d:%02d", minutes, seconds);
+            ((android.widget.Button) playButton).setText("⏵  RESUME " + timestamp);
+        } else {
+            ((android.widget.Button) playButton).setText("▶  PLAY NOW");
+        }
+    }
+
+    private void setupViews() {
+        backdropImage = findViewById(R.id.detail_backdrop);
+        posterImage   = findViewById(R.id.detail_poster);
+        titleText     = findViewById(R.id.detail_title);
+        overviewText  = findViewById(R.id.detail_overview);
+        ratingText    = findViewById(R.id.detail_rating);
+        yearText      = findViewById(R.id.detail_year);
+        genresText    = findViewById(R.id.detail_genres);
+        runtimeText   = findViewById(R.id.detail_runtime);
+        taglineText   = findViewById(R.id.detail_tagline);
+        playButton    = findViewById(R.id.detail_play_btn);
+        backButton    = findViewById(R.id.detail_back_btn);
+        progressBar   = findViewById(R.id.detail_progress);
+
+        playButton.setFocusable(true);
+        backButton.setFocusable(true);
+
+        playButton.setOnClickListener(v -> playMovie());
+
+        View downloadButton = findViewById(R.id.detail_download_btn);
+        if (downloadButton != null) {
+            downloadButton.setFocusable(true);
+            downloadButton.setOnClickListener(v -> openDownload());
+            setFocusAnimation(downloadButton);
+            downloadButton.setOnKeyListener((v, keyCode, event) -> {
+                if (event.getAction() == KeyEvent.ACTION_DOWN
+                        && (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER)) {
+                    openDownload(); return true;
+                }
+                if (event.getAction() == KeyEvent.ACTION_DOWN && keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
+                    playButton.requestFocus(); return true;
+                }
+                return false;
+            });
+        }
+
+        View watchlistBtn = findViewById(R.id.detail_watchlist_btn);
+        if (watchlistBtn != null) {
+            watchlistBtn.setFocusable(true);
+            updateWatchlistBtn(watchlistBtn);
+            watchlistBtn.setOnClickListener(v -> {
+                if (movie != null) {
+                    com.neroflix.tv.app.WatchManager.toggleWatchlist(this, movie,
+                        () -> updateWatchlistBtn(watchlistBtn));
+                }
+            });
+            setFocusAnimation(watchlistBtn);
+            watchlistBtn.setOnKeyListener((v, keyCode, event) -> {
+                if (event.getAction() == KeyEvent.ACTION_DOWN
+                        && (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER)) {
+                    if (movie != null) {
+                        com.neroflix.tv.app.WatchManager.toggleWatchlist(this, movie,
+                            () -> updateWatchlistBtn(watchlistBtn));
+                    }
+                    return true;
+                }
+                if (event.getAction() == KeyEvent.ACTION_DOWN && keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
+                    playButton.requestFocus(); return true;
+                }
+                return false;
+            });
+        }
+
+        backButton.setOnClickListener(v -> finish());
+
+        // D-pad navigation between buttons: Back ← Play → Download → Watchlist
+        playButton.setOnKeyListener((v, keyCode, event) -> {
+            if (event.getAction() == KeyEvent.ACTION_DOWN) {
+                if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER) {
+                    playMovie(); return true;
+                }
+                if (keyCode == KeyEvent.KEYCODE_DPAD_LEFT) {
+                    backButton.requestFocus(); return true;
+                }
+                if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                    View dl = findViewById(R.id.detail_download_btn);
+                    if (dl != null) { dl.requestFocus(); return true; }
+                }
+            }
+            return false;
+        });
+
+        backButton.setOnKeyListener((v, keyCode, event) -> {
+            if (event.getAction() == KeyEvent.ACTION_DOWN) {
+                if (keyCode == KeyEvent.KEYCODE_DPAD_CENTER || keyCode == KeyEvent.KEYCODE_ENTER) {
+                    finish(); return true;
+                }
+                if (keyCode == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                    playButton.requestFocus(); return true;
+                }
+            }
+            return false;
+        });
+
+        setFocusAnimation(playButton);
+        setFocusAnimation(backButton);
+
+        // Auto-focus play button on open
+        playButton.requestFocus();
+    }
+
+    private void setFocusAnimation(View view) {
+        view.setOnFocusChangeListener((v, hasFocus) -> {
+            v.animate().scaleX(hasFocus ? 1.05f : 1f)
+                    .scaleY(hasFocus ? 1.05f : 1f)
+                    .setDuration(120).start();
+        });
+    }
+
+    private void loadBasicInfo() {
+        String title        = getIntent().getStringExtra("movie_title");
+        String overview     = getIntent().getStringExtra("movie_overview");
+        String posterPath   = getIntent().getStringExtra("movie_poster");
+        String backdropPath = getIntent().getStringExtra("movie_backdrop");
+        String year         = getIntent().getStringExtra("movie_year");
+        double rating       = getIntent().getDoubleExtra("movie_rating", 0.0);
+
+        if (title != null)    titleText.setText(title);
+        if (overview != null) overviewText.setText(overview);
+        if (year != null)     yearText.setText(year);
+        ratingText.setText(String.format("★ %.1f", rating));
+
+        if (backdropPath != null && !backdropPath.isEmpty()) {
+            Glide.with(this)
+                    .load("https://image.tmdb.org/t/p/w1280" + backdropPath)
+                    .transition(DrawableTransitionOptions.withCrossFade())
+                    .centerCrop()
+                    .into(backdropImage);
+        }
+
+        if (posterPath != null && !posterPath.isEmpty()) {
+            Glide.with(this)
+                    .load("https://image.tmdb.org/t/p/w500" + posterPath)
+                    .transition(DrawableTransitionOptions.withCrossFade())
+                    .centerCrop()
+                    .into(posterImage);
+        }
+    }
+
+    private void loadDetailInfo() {
+        progressBar.setVisibility(View.VISIBLE);
+        TmdbClient.getInstance(this).fetchMovieDetail(movieId, mediaType, new TmdbClient.MovieDetailCallback() {
+            @Override
+            public void onSuccess(Movie m) {
+                movie = m;
+                progressBar.setVisibility(View.GONE);
+                updateDetailUI(m);
+            }
+            @Override
+            public void onError(String error) {
+                progressBar.setVisibility(View.GONE);
+            }
+        });
+    }
+
+    private void updateDetailUI(Movie m) {
+        if (m.getGenres() != null && !m.getGenres().isEmpty()) {
+            genresText.setText(m.getGenres());
+            genresText.setVisibility(View.VISIBLE);
+        }
+        if (!m.getRuntimeFormatted().isEmpty()) {
+            runtimeText.setText(m.getRuntimeFormatted());
+            runtimeText.setVisibility(View.VISIBLE);
+        }
+        if (m.getTagline() != null && !m.getTagline().isEmpty()) {
+            taglineText.setText("\"" + m.getTagline() + "\"");
+            taglineText.setVisibility(View.VISIBLE);
+        }
+    }
+
+    private void playMovie() {
+        if ("tv".equals(mediaType)) {
+            showEpisodePicker();
+        } else {
+            launchPlayer(1, 1);
+        }
+    }
+
+    private void showEpisodePicker() {
+        AlertDialog loadingDialog = new AlertDialog.Builder(this)
+            .setTitle("Loading seasons...")
+            .setMessage("Please wait")
+            .setCancelable(false)
+            .create();
+        loadingDialog.show();
+
+        com.neroflix.tv.app.network.TmdbClient.getInstance(this).fetchTVDetails(movieId,
+            new com.neroflix.tv.app.network.TmdbClient.TVDetailsCallback() {
+                @Override
+                public void onSuccess(int numSeasons, java.util.List<String> seasonNames) {
+                    if (!isFinishing() && !isDestroyed() && loadingDialog.isShowing()) loadingDialog.dismiss();
+                    showSeasonDialog(numSeasons, seasonNames);
+                }
+                @Override
+                public void onError(String error) {
+                    if (!isFinishing() && !isDestroyed() && loadingDialog.isShowing()) loadingDialog.dismiss();
+                    showSimpleEpisodePicker();
+                }
+            });
+    }
+
+    private void showSeasonDialog(int numSeasons, java.util.List<String> seasonNames) {
+        String[] seasons = seasonNames.toArray(new String[0]);
+        new AlertDialog.Builder(this)
+            .setTitle("Select Season")
+            .setItems(seasons, (d, which) -> fetchEpisodesForSeason(which + 1))
+            .setNegativeButton("Cancel", null)
+            .show();
+    }
+
+    private void fetchEpisodesForSeason(int season) {
+        AlertDialog loadingDialog = new AlertDialog.Builder(this)
+            .setTitle("Loading episodes...")
+            .setMessage("Season " + season)
+            .setCancelable(false)
+            .create();
+        loadingDialog.show();
+
+        com.neroflix.tv.app.network.TmdbClient.getInstance(this).fetchEpisodes(movieId, season,
+            new com.neroflix.tv.app.network.TmdbClient.EpisodesCallback() {
+                @Override
+                public void onSuccess(java.util.List<String> episodeNames) {
+                    if (!isFinishing() && !isDestroyed() && loadingDialog.isShowing()) loadingDialog.dismiss();
+                    String[] episodes = episodeNames.toArray(new String[0]);
+                    new AlertDialog.Builder(DetailActivity.this)
+                        .setTitle("Season " + season + " — Select Episode")
+                        .setItems(episodes, (d, which) -> launchPlayer(season, which + 1))
+                        .setNegativeButton("Cancel", null)
+                        .show();
+                }
+                @Override
+                public void onError(String error) {
+                    if (!isFinishing() && !isDestroyed() && loadingDialog.isShowing()) loadingDialog.dismiss();
+                    showSimpleEpisodePicker();
+                }
+            });
+    }
+
+    private void showSimpleEpisodePicker() {
+        android.widget.LinearLayout layout = new android.widget.LinearLayout(this);
+        layout.setOrientation(android.widget.LinearLayout.HORIZONTAL);
+        layout.setPadding(40, 20, 40, 20);
+        layout.setGravity(android.view.Gravity.CENTER);
+        android.widget.NumberPicker seasonPicker = new android.widget.NumberPicker(this);
+        seasonPicker.setMinValue(1);
+        seasonPicker.setMaxValue(15);
+        android.widget.NumberPicker episodePicker = new android.widget.NumberPicker(this);
+        episodePicker.setMinValue(1);
+        episodePicker.setMaxValue(30);
+        layout.addView(seasonPicker);
+        layout.addView(episodePicker);
+        new AlertDialog.Builder(this)
+            .setTitle("Select Episode")
+            .setView(layout)
+            .setPositiveButton("Watch", (d, w) -> launchPlayer(seasonPicker.getValue(), episodePicker.getValue()))
+            .setNegativeButton("Cancel", null)
+            .show();
+    }
+
+    private void launchPlayer(int season, int episode) {
+        // Show a loading indicator while we contact the server
+        runOnUiThread(() -> progressBar.setVisibility(View.VISIBLE));
+
+        // fetchServers contacts the Worker — server URLs are never in the APK.
+        // Returns null if device is not approved.
+        com.neroflix.tv.app.LicenseManager.fetchServers(this, servers -> {
+            runOnUiThread(() -> {
+                progressBar.setVisibility(View.GONE);
+
+                if (servers == null || servers.length == 0) {
+                    // Not activated — send to ActivationActivity
+                    startActivity(new Intent(this,
+                        com.neroflix.tv.app.activities.ActivationActivity.class));
+                    return;
+                }
+
+                if (servers.length == 1) {
+                    launchPlayerIntent(movieId, mediaType, season, episode, 0,
+                        servers[0][1], servers[0][2], servers[0][3]);
+                    return;
+                }
+
+                String[] labels = new String[servers.length];
+                for (int i = 0; i < servers.length; i++) labels[i] = servers[i][0];
+
+                final String[][] finalServers = servers;
+                new AlertDialog.Builder(this)
+                    .setTitle("Select Server")
+                    .setItems(labels, (d, which) ->
+                        launchPlayerIntent(movieId, mediaType, season, episode,
+                            which, finalServers[which][1], finalServers[which][2],
+                            finalServers[which].length > 3 ? finalServers[which][3] : "standard"))
+                    .show();
+            });
+        });
+    }
+
+    private void launchPlayerIntent(int movieId, String mediaType,
+                                    int season, int episode,
+                                    int serverIndex, String serverUrl, String serverUrlTv, String serverUrlFormat) {
+
+        // ── Yastream servers: ExoPlayer m3u8 player ──────────────────────────
+        if ("yastream".equals(serverUrlFormat) || "yastream_onetouchtv".equals(serverUrlFormat)) {
+            String title = (movie != null) ? movie.getTitle()
+                    : getIntent().getStringExtra("movie_title");
+            final String subMediaType = mediaType;
+            final int subTmdbId = movieId;
+            final int subSeason = season;
+            final int subEpisode = episode;
+            final String subTitle = (movie != null) ? movie.getTitle() : getIntent().getStringExtra("movie_title");
+            // Fetch subtitle on background, then launch player
+            new Thread(() -> {
+                String subtitleUrl = null;
+                String allSubsJson = null;
+                try {
+                    String extType = "movie".equals(subMediaType) ? "movie" : "tv";
+                    String extUrl = "https://api.themoviedb.org/3/" + extType + "/" + subTmdbId
+                        + "/external_ids?api_key=" + com.neroflix.tv.app.BuildConfig.TMDB_API_KEY;
+                    java.net.HttpURLConnection conn = (java.net.HttpURLConnection) new java.net.URL(extUrl).openConnection();
+                    conn.setConnectTimeout(5000); conn.setReadTimeout(5000);
+                    java.io.BufferedReader br = new java.io.BufferedReader(new java.io.InputStreamReader(conn.getInputStream()));
+                    StringBuilder sb = new StringBuilder(); String ln;
+                    while ((ln = br.readLine()) != null) sb.append(ln);
+                    String imdbId = new org.json.JSONObject(sb.toString()).optString("imdb_id", "");
+                    if (!imdbId.isEmpty()) {
+                        String stremioType = "movie".equals(subMediaType) ? "movie" : "series";
+                        String stremioId = imdbId;
+                        if (!"movie".equals(subMediaType) && subSeason > 0 && subEpisode > 0)
+                            stremioId += ":" + subSeason + ":" + subEpisode;
+
+                        // 1. Try OpenSubtitles first (better sync for extracted streams)
+                        String openSubUrl = "https://opensubtitles-v3.strem.io/subtitles/"
+                            + stremioType + "/" + stremioId + ".json";
+                        try {
+                            java.net.HttpURLConnection os = (java.net.HttpURLConnection) new java.net.URL(openSubUrl).openConnection();
+                            os.setConnectTimeout(6000); os.setReadTimeout(6000);
+                            java.io.BufferedReader osBr = new java.io.BufferedReader(new java.io.InputStreamReader(os.getInputStream()));
+                            StringBuilder osSb = new StringBuilder();
+                            while ((ln = osBr.readLine()) != null) osSb.append(ln);
+                            org.json.JSONArray osArr = new org.json.JSONObject(osSb.toString()).optJSONArray("subtitles");
+                            if (osArr != null) {
+                                org.json.JSONArray merged = new org.json.JSONArray();
+                                // Prefer English from OpenSubtitles
+                                for (int si = 0; si < osArr.length(); si++) {
+                                    org.json.JSONObject s = osArr.getJSONObject(si);
+                                    String sLang = s.optString("lang", "");
+                                    if ("eng".equals(sLang) || "en".equals(sLang) || "English".equalsIgnoreCase(sLang)) {
+                                        if (subtitleUrl == null || subtitleUrl.isEmpty())
+                                            subtitleUrl = s.optString("url", "");
+                                        org.json.JSONObject entry = new org.json.JSONObject();
+                                        entry.put("url", s.optString("url", ""));
+                                        entry.put("lang", "eng");
+                                        entry.put("label", "English (OpenSubs)");
+                                        merged.put(entry);
+                                        break;
+                                    }
+                                }
+                                if (merged.length() > 0) allSubsJson = merged.toString();
+                            }
+                        } catch (Exception osErr) {
+                            android.util.Log.w("Detail", "OpenSubs failed: " + osErr.getMessage());
+                        }
+
+                        // 2. Fetch yastream subs (Filipino + all languages)
+                        try {
+                            String yasType = "movie".equals(subMediaType) ? "movie" : "series";
+                            String yasId = stremioId;
+                            String yasConfig = decryptYasConfig();
+                            String yasUrl = "https://yastream.tamthai.de/subtitles/" + yasType + "/" + yasId + ".json?config=" + yasConfig;
+                            java.net.HttpURLConnection c2 = (java.net.HttpURLConnection) new java.net.URL(yasUrl).openConnection();
+                            c2.setConnectTimeout(8000); c2.setReadTimeout(8000);
+                            java.io.BufferedReader br2 = new java.io.BufferedReader(new java.io.InputStreamReader(c2.getInputStream()));
+                            StringBuilder sb2 = new StringBuilder();
+                            while ((ln = br2.readLine()) != null) sb2.append(ln);
+                            org.json.JSONArray yasArr = new org.json.JSONObject(sb2.toString()).optJSONArray("subtitles");
+                            if (yasArr != null && yasArr.length() > 0) {
+                                // Prefer tgl as default if no OpenSub eng found
+                                for (int si = 0; si < yasArr.length(); si++) {
+                                    org.json.JSONObject s = yasArr.getJSONObject(si);
+                                    if ("tgl".equals(s.optString("lang", "")) && (subtitleUrl == null || subtitleUrl.isEmpty()))
+                                        subtitleUrl = s.optString("url", "");
+                                }
+                                if (subtitleUrl == null || subtitleUrl.isEmpty())
+                                    subtitleUrl = yasArr.getJSONObject(0).optString("url", "");
+                                // Merge yastream subs into allSubsJson
+                                org.json.JSONArray combined = allSubsJson != null
+                                    ? new org.json.JSONArray(allSubsJson) : new org.json.JSONArray();
+                                java.util.Set<String> seen = new java.util.HashSet<>();
+                                for (int si = 0; si < combined.length(); si++)
+                                    seen.add(combined.getJSONObject(si).optString("lang",""));
+                                for (int si = 0; si < yasArr.length(); si++) {
+                                    org.json.JSONObject s = yasArr.getJSONObject(si);
+                                    if (!seen.contains(s.optString("lang",""))) combined.put(s);
+                                }
+                                allSubsJson = combined.toString();
+                            }
+                        } catch (Exception yasErr) {
+                            android.util.Log.w("Detail", "Yastream subs failed: " + yasErr.getMessage());
+                        }
+                    }
+                } catch (Exception e) {
+                    android.util.Log.w("Detail", "Subtitle fetch failed: " + e.getMessage());
+                }
+                final String finalSubUrl = subtitleUrl;
+                final String finalAllSubs = allSubsJson;
+                runOnUiThread(() -> {
+                    Intent intent = new Intent(DetailActivity.this, com.neroflix.tv.app.activities.YastreamPlayerActivity.class);
+                    intent.putExtra("movie_id",       subTmdbId);
+                    intent.putExtra("media_type",     subMediaType);
+                    intent.putExtra("movie_title",    subTitle);
+                    intent.putExtra("season",         subSeason);
+                    intent.putExtra("episode",        subEpisode);
+                    String _poster = (movie != null && movie.getPosterPath() != null && !movie.getPosterPath().isEmpty()) ? movie.getPosterPath() : getIntent().getStringExtra("movie_poster");
+                    intent.putExtra("movie_poster",   _poster);
+                    float _rating = (movie != null && movie.getVoteAverage() > 0) ? (float) movie.getVoteAverage() : (float) getIntent().getDoubleExtra("movie_rating", 0.0);
+                    intent.putExtra("vote_average",   _rating);
+                    if (finalSubUrl != null && !finalSubUrl.isEmpty())
+                        intent.putExtra("direct_subtitle_url", finalSubUrl);
+                    if (finalAllSubs != null)
+                        intent.putExtra("all_subs_json", finalAllSubs);
+                    startActivity(intent);
+                    overridePendingTransition(0, 0); // no transition — player starts black
+                });
+            }).start();
+            return;
+        }
+
+        // ── Standard / AnyEmbed servers: direct ExoPlayer via YastreamPlayerActivity ──
+        // Sniffing removed — go straight to the embedded server (fetchAndPlay mode).
+        // Loading artwork (backdrop + poster + pulse) is shown inside YastreamPlayerActivity.
+        String stdTitle = (movie != null) ? movie.getTitle()
+                : getIntent().getStringExtra("movie_title");
+        String stdPoster = (movie != null && movie.getPosterPath() != null && !movie.getPosterPath().isEmpty())
+                ? movie.getPosterPath()
+                : getIntent().getStringExtra("movie_poster");
+        Intent intent = new Intent(this, com.neroflix.tv.app.activities.YastreamPlayerActivity.class);
+        intent.putExtra("movie_id",       movieId);
+        intent.putExtra("media_type",     mediaType);
+        intent.putExtra("movie_title",    stdTitle);
+        intent.putExtra("season",         season);
+        intent.putExtra("episode",        episode);
+        intent.putExtra("movie_poster",   stdPoster);
+        intent.putExtra("movie_backdrop", getIntent().getStringExtra("movie_backdrop"));
+        float stdRating = (movie != null && movie.getVoteAverage() > 0)
+                ? (float) movie.getVoteAverage()
+                : (float) getIntent().getDoubleExtra("movie_rating", 0.0);
+        intent.putExtra("vote_average",   stdRating);
+        // No direct_stream_url → YastreamPlayerActivity uses fetchAndPlay() automatically
+        startActivity(intent);
+        overridePendingTransition(0, 0);
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+    }
+
+    // Detail screen focus: 0=Back, 1=Play, 2=Download, 3=Watchlist
+    private int detailFocusIndex = 1;
+    private final int[] DETAIL_BTN_IDS = {
+        R.id.detail_back_btn,
+        R.id.detail_play_btn,
+        R.id.detail_download_btn,
+        R.id.detail_watchlist_btn
+    };
+
+    private void highlightDetailBtn(int index) {
+        detailFocusIndex = Math.max(0, Math.min(index, DETAIL_BTN_IDS.length - 1));
+        for (int i = 0; i < DETAIL_BTN_IDS.length; i++) {
+            android.view.View btn = findViewById(DETAIL_BTN_IDS[i]);
+            if (btn == null) continue;
+            if (i == detailFocusIndex) {
+                // Scale up + elevation only - don't replace background
+                btn.setScaleX(1.06f);
+                btn.setScaleY(1.06f);
+                btn.setElevation(12f);
+                btn.setAlpha(1f);
+            } else {
+                btn.setScaleX(1f);
+                btn.setScaleY(1f);
+                btn.setElevation(2f);
+                btn.setAlpha(0.75f);
+            }
+        }
+    }
+
+        @Override
+    protected boolean onTvKeyDown(int keyCode, KeyEvent event) {
+        switch (keyCode) {
+            case KeyEvent.KEYCODE_BACK:
+                finish();
+                overridePendingTransition(R.anim.slide_in_left, R.anim.slide_out_right);
+                return true;
+            case KeyEvent.KEYCODE_DPAD_DOWN:
+            case KeyEvent.KEYCODE_DPAD_RIGHT:
+                highlightDetailBtn(detailFocusIndex + 1);
+                return true;
+            case KeyEvent.KEYCODE_DPAD_UP:
+            case KeyEvent.KEYCODE_DPAD_LEFT:
+                highlightDetailBtn(detailFocusIndex - 1);
+                return true;
+            case KeyEvent.KEYCODE_DPAD_CENTER:
+            case KeyEvent.KEYCODE_ENTER:
+                android.view.View btn = findViewById(DETAIL_BTN_IDS[detailFocusIndex]);
+                if (btn != null) btn.performClick();
+                return true;
+        }
+        return false; // fallback now handled by BaseTvActivity
+    }
+
+    private void openDownload() {
+        com.neroflix.tv.app.LicenseManager.fetchServers(this, servers -> {
+            runOnUiThread(() -> {
+                if (servers == null || !com.neroflix.tv.app.LicenseManager.isPremium(this)) {
+                    // Free plan or not activated — no download
+                    new AlertDialog.Builder(this)
+                        .setTitle("🔒 Premium Required")
+                        .setMessage("Download feature is available for Premium users only.\n\nContact admin to upgrade.")
+                        .setPositiveButton("OK", null)
+                        .show();
+                    return;
+                }
+                if ("tv".equals(mediaType)) {
+                    showEpisodePickerForDownload();
+                } else {
+                    launchDownload(1, 1);
+                }
+            });
+        });
+    }
+
+    private void showEpisodePickerForDownload() {
+        AlertDialog loadingDialog = new AlertDialog.Builder(this)
+            .setTitle("Loading seasons...")
+            .setMessage("Please wait")
+            .setCancelable(false)
+            .create();
+        loadingDialog.show();
+
+        com.neroflix.tv.app.network.TmdbClient.getInstance(this).fetchTVDetails(movieId,
+            new com.neroflix.tv.app.network.TmdbClient.TVDetailsCallback() {
+                @Override
+                public void onSuccess(int numSeasons, java.util.List<String> seasonNames) {
+                    if (!isFinishing() && !isDestroyed() && loadingDialog.isShowing()) loadingDialog.dismiss();
+                    String[] seasons = seasonNames.toArray(new String[0]);
+                    new AlertDialog.Builder(DetailActivity.this)
+                        .setTitle("Select Season to Download")
+                        .setItems(seasons, (d, which) -> fetchEpisodesForDownload(which + 1))
+                        .setNegativeButton("Cancel", null)
+                        .show();
+                }
+                @Override
+                public void onError(String error) {
+                    if (!isFinishing() && !isDestroyed() && loadingDialog.isShowing()) loadingDialog.dismiss();
+                    android.widget.NumberPicker sp = new android.widget.NumberPicker(DetailActivity.this);
+                    sp.setMinValue(1); sp.setMaxValue(15);
+                    android.widget.NumberPicker ep = new android.widget.NumberPicker(DetailActivity.this);
+                    ep.setMinValue(1); ep.setMaxValue(30);
+                    android.widget.LinearLayout layout = new android.widget.LinearLayout(DetailActivity.this);
+                    layout.setOrientation(android.widget.LinearLayout.HORIZONTAL);
+                    layout.setPadding(40, 20, 40, 20);
+                    layout.setGravity(android.view.Gravity.CENTER);
+                    layout.addView(sp); layout.addView(ep);
+                    new AlertDialog.Builder(DetailActivity.this)
+                        .setTitle("Select Episode to Download")
+                        .setView(layout)
+                        .setPositiveButton("Download", (d, w) -> launchDownload(sp.getValue(), ep.getValue()))
+                        .setNegativeButton("Cancel", null)
+                        .show();
+                }
+            });
+    }
+
+    private void fetchEpisodesForDownload(int season) {
+        AlertDialog loadingDialog = new AlertDialog.Builder(this)
+            .setTitle("Loading episodes...")
+            .setMessage("Season " + season)
+            .setCancelable(false)
+            .create();
+        loadingDialog.show();
+
+        com.neroflix.tv.app.network.TmdbClient.getInstance(this).fetchEpisodes(movieId, season,
+            new com.neroflix.tv.app.network.TmdbClient.EpisodesCallback() {
+                @Override
+                public void onSuccess(java.util.List<String> episodeNames) {
+                    if (!isFinishing() && !isDestroyed() && loadingDialog.isShowing()) loadingDialog.dismiss();
+                    String[] episodes = episodeNames.toArray(new String[0]);
+                    new AlertDialog.Builder(DetailActivity.this)
+                        .setTitle("Season " + season + " — Select Episode")
+                        .setItems(episodes, (d, which) -> launchDownload(season, which + 1))
+                        .setNegativeButton("Cancel", null)
+                        .show();
+                }
+                @Override
+                public void onError(String error) {
+                    if (!isFinishing() && !isDestroyed() && loadingDialog.isShowing()) loadingDialog.dismiss();
+                    launchDownload(season, 1);
+                }
+            });
+    }
+
+    private void launchDownload(int season, int episode) {
+        Intent intent = new Intent(this, DownloadActivity.class);
+        intent.putExtra("movie_id",   movieId);
+        intent.putExtra("media_type", mediaType);
+        intent.putExtra("season",     season);
+        intent.putExtra("episode",    episode);
+        String title = (movie != null) ? movie.getTitle()
+                : getIntent().getStringExtra("movie_title");
+        intent.putExtra("movie_title", title);
+        startActivity(intent);
+        overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
+    }
+
+    private void updateWatchlistBtn(android.view.View btn) {
+        if (movie == null) return;
+        boolean inList = com.neroflix.tv.app.WatchManager.isInWatchlist(this, movie);
+        if (btn instanceof android.widget.Button) {
+            ((android.widget.Button) btn).setText(inList ? "✓ In Watchlist" : "+ Watchlist");
+        }
+    }
+    private static final String _K1 = "NeroTv";
+    private static final String _K2 = "SecretKey2026";
+    private static final byte[] _YC = {(byte)0x2b,(byte)0x1c,(byte)0x38,(byte)0x05,(byte)0x0d,(byte)0x2e,(byte)0x01,(byte)0x0d,(byte)0x01,(byte)0x35,(byte)0x5c,(byte)0x1a,(byte)0x28,(byte)0x1c,(byte)0x30,(byte)0x04,(byte)0x67,(byte)0x4b,(byte)0x7c,(byte)0x3c,(byte)0x04,(byte)0x2a,(byte)0x21,(byte)0x2e,(byte)0x17,(byte)0x61,(byte)0x02,(byte)0x16,(byte)0x11,(byte)0x57,(byte)0x22,(byte)0x32,(byte)0x04,(byte)0x2e,(byte)0x64,(byte)0x4a,(byte)0x7e,(byte)0x5d,(byte)0x3a,(byte)0x13,(byte)0x11,(byte)0x02,(byte)0x02,(byte)0x1e,(byte)0x31,(byte)0x0c,(byte)0x2a,(byte)0x01,(byte)0x2c,(byte)0x19,(byte)0x3f,(byte)0x15,(byte)0x1a,(byte)0x01,(byte)0x7e,(byte)0x40,(byte)0x57,(byte)0x0d,(byte)0x50,(byte)0x06,(byte)0x0d,(byte)0x67,(byte)0x2c,(byte)0x23,(byte)0x3f,(byte)0x30,(byte)0x47,(byte)0x29,(byte)0x16,(byte)0x78,(byte)0x2f,(byte)0x15,(byte)0x6b,(byte)0x67,(byte)0x06,(byte)0x5f,(byte)0x02,(byte)0x26,(byte)0x38,(byte)0x1d,(byte)0x35,(byte)0x2e,(byte)0x1d,(byte)0x1f,(byte)0x02,(byte)0x40,(byte)0x02,(byte)0x01,(byte)0x29,(byte)0x32,(byte)0x40,(byte)0x00,(byte)0x51,(byte)0x65,(byte)0x63,(byte)0x3b,(byte)0x34,(byte)0x40,(byte)0x07,(byte)0x24,(byte)0x14,(byte)0x3e,(byte)0x33,(byte)0x19,(byte)0x28,(byte)0x36,(byte)0x3d,(byte)0x38,(byte)0x2c,(byte)0x14,(byte)0x46,(byte)0x40,(byte)0x51,(byte)0x05,(byte)0x00,(byte)0x17,(byte)0x13,(byte)0x2c,(byte)0x61,(byte)0x0c,(byte)0x09,(byte)0x3d,(byte)0x29,(byte)0x02,(byte)0x3f,(byte)0x2c,(byte)0x06,(byte)0x10,(byte)0x28,(byte)0x00,(byte)0x58,(byte)0x42,(byte)0x54,(byte)0x23,(byte)0x33,(byte)0x08,(byte)0x35,(byte)0x07,(byte)0x3f,(byte)0x20,(byte)0x2c,(byte)0x0e,(byte)0x06,(byte)0x15,(byte)0x17,(byte)0x78,(byte)0x2b,(byte)0x0b,(byte)0x53,(byte)0x73,(byte)0x07,(byte)0x42,(byte)0x2c,(byte)0x56,(byte)0x28,(byte)0x1f,(byte)0x0e,(byte)0x25,(byte)0x66,(byte)0x33,(byte)0x36,(byte)0x0b,(byte)0x2c,(byte)0x07,(byte)0x02,(byte)0x08,(byte)0x0d,(byte)0x42,(byte)0x53,(byte)0x01,(byte)0x78,(byte)0x3c,(byte)0x04,(byte)0x31,(byte)0x5a,(byte)0x2e,(byte)0x2c,(byte)0x0b,(byte)0x2f,(byte)0x13,(byte)0x28,(byte)0x3d,(byte)0x39,(byte)0x3e,(byte)0x33,(byte)0x2f,(byte)0x7f,(byte)0x59,(byte)0x7e,(byte)0x75,(byte)0x04,(byte)0x17,(byte)0x13,(byte)0x37,(byte)0x1a,(byte)0x0c,(byte)0x32,(byte)0x57,(byte)0x04,(byte)0x07,(byte)0x07,(byte)0x23,(byte)0x72,(byte)0x57,(byte)0x18,(byte)0x65,(byte)0x65,(byte)0x47,(byte)0x60,(byte)0x09,(byte)0x0d,(byte)0x1a,(byte)0x0e,(byte)0x07,(byte)0x3f,(byte)0x20,(byte)0x2c,(byte)0x0e,(byte)0x06,(byte)0x15,(byte)0x17,(byte)0x78,(byte)0x2b,(byte)0x0b,(byte)0x53,(byte)0x73,(byte)0x07,(byte)0x4c,(byte)0x14,(byte)0x3d,(byte)0x38,(byte)0x1f,(byte)0x0e,(byte)0x2e,(byte)0x1e,(byte)0x10,(byte)0x35,(byte)0x35,(byte)0x0d,(byte)0x1c,(byte)0x2a,(byte)0x36,(byte)0x30,(byte)0x41,(byte)0x79,(byte)0x5f,(byte)0x42,(byte)0x3e,(byte)0x06,(byte)0x41,(byte)0x21,(byte)0x26,(byte)0x17,(byte)0x10,(byte)0x50,(byte)0x17,(byte)0x10,(byte)0x56,(byte)0x2e,(byte)0x3b,(byte)0x3f,(byte)0x2a,(byte)0x07,(byte)0x61,(byte)0x53,(byte)0x71,(byte)0x22,(byte)0x16,(byte)0x13,(byte)0x37,(byte)0x16,(byte)0x01,(byte)0x32,(byte)0x32,(byte)0x56,(byte)0x1e,(byte)0x2c,(byte)0x1d,(byte)0x3c,(byte)0x0c,(byte)0x18,(byte)0x00,(byte)0x5c,(byte)0x48,(byte)0x55,(byte)0x7c,(byte)0x11,(byte)0x1d,(byte)0x23,(byte)0x3a,(byte)0x38,(byte)0x3f,(byte)0x06,(byte)0x0e,(byte)0x1e,(byte)0x09,(byte)0x17,(byte)0x32,(byte)0x50,(byte)0x28,(byte)0x53,(byte)0x77,(byte)0x5e,(byte)0x45,(byte)0x2f,(byte)0x3d,(byte)0x30,(byte)0x18,(byte)0x35,(byte)0x21,(byte)0x66,(byte)0x09,(byte)0x2a,(byte)0x1b,(byte)0x12,(byte)0x1d,(byte)0x2a,(byte)0x57,(byte)0x15,(byte)0x48,(byte)0x53,(byte)0x00,(byte)0x42,(byte)0x21,(byte)0x29,(byte)0x1f,(byte)0x5e,(byte)0x22,(byte)0x12,(byte)0x3e,(byte)0x09,(byte)0x0f,(byte)0x3e,(byte)0x0e,(byte)0x04,(byte)0x23,(byte)0x06,(byte)0x3e,(byte)0x74,(byte)0x45,(byte)0x68,(byte)0x6e,(byte)0x00,(byte)0x09,(byte)0x3b,(byte)0x06,(byte)0x23,(byte)0x1f,(byte)0x32,(byte)0x57,(byte)0x0f,(byte)0x08,(byte)0x06,(byte)0x46,(byte)0x3f,(byte)0x0a,(byte)0x35,(byte)0x5c,(byte)0x7e,(byte)0x5e,(byte)0x55,(byte)0x23,(byte)0x09,(byte)0x1e,(byte)0x0c,(byte)0x2d,(byte)0x43,(byte)0x18,(byte)0x3c,(byte)0x3b,(byte)0x30,(byte)0x0d,(byte)0x16,(byte)0x26,(byte)0x33,(byte)0x03,(byte)0x68,(byte)0x63,(byte)0x7b,(byte)0x45,(byte)0x07,(byte)0x08,(byte)0x06,(byte)0x1f,(byte)0x37,(byte)0x45,(byte)0x1d,(byte)0x17,(byte)0x02,(byte)0x31,(byte)0x50,(byte)0x00,(byte)0x29,(byte)0x56,(byte)0x23,(byte)0x42,(byte)0x6a,(byte)0x61,(byte)0x03,(byte)0x07,(byte)0x07,(byte)0x40,(byte)0x5a,(byte)0x3a,(byte)0x17,(byte)0x61,(byte)0x5c,(byte)0x16,(byte)0x28,(byte)0x1c,(byte)0x3d,(byte)0x38,(byte)0x2c,(byte)0x14,(byte)0x46,(byte)0x40,(byte)0x51,(byte)0x05,(byte)0x00,(byte)0x17,(byte)0x13,(byte)0x2c,(byte)0x61,(byte)0x0c,(byte)0x09,(byte)0x3d,(byte)0x29,(byte)0x02,(byte)0x3f,(byte)0x2c,(byte)0x06,(byte)0x10,(byte)0x2a,(byte)0x75,(byte)0x09,(byte)0x47,(byte)0x6c,(byte)0x7c,(byte)0x11,(byte)0x04,(byte)0x0d,(byte)0x39,(byte)0x15,(byte)0x3a,(byte)0x29,(byte)0x20,(byte)0x38,(byte)0x17,(byte)0x15,(byte)0x13,(byte)0x2b,(byte)0x03,(byte)0x53,(byte)0x02,(byte)0x55,(byte)0x43,(byte)0x2c,(byte)0x32,(byte)0x4b,(byte)0x5d,(byte)0x35,(byte)0x21,(byte)0x06,(byte)0x10,(byte)0x35,(byte)0x35,(byte)0x23,(byte)0x04,(byte)0x2f,(byte)0x57,(byte)0x3f,(byte)0x47,(byte)0x6a,(byte)0x6a,(byte)0x78,(byte)0x22,(byte)0x2c,(byte)0x1b,(byte)0x18,(byte)0x3d,(byte)0x17,(byte)0x61,(byte)0x09,(byte)0x19,(byte)0x11,(byte)0x57,(byte)0x00,(byte)0x24,(byte)0x29,(byte)0x17,(byte)0x7c,(byte)0x5c,(byte)0x51,(byte)0x5b,(byte)0x22,(byte)0x09,(byte)0x11,(byte)0x16,(byte)0x61,(byte)0x23,(byte)0x0a,(byte)0x32,(byte)0x0f,(byte)0x41,(byte)0x3c,(byte)0x23,(byte)0x7e,(byte)0x09,(byte)0x1a,(byte)0x00,(byte)0x65,(byte)0x5b,(byte)0x7a,(byte)0x0d,(byte)0x2f,(byte)0x04,(byte)0x0d,(byte)0x39,(byte)0x20,(byte)0x63,(byte)0x07,(byte)0x50,(byte)0x24,(byte)0x0f,(byte)0x15,(byte)0x03,(byte)0x37,(byte)0x4b,(byte)0x7e,(byte)0x5e,(byte)0x7c,(byte)0x5a,(byte)0x2d,(byte)0x08,(byte)0x1e,(byte)0x03,(byte)0x37,(byte)0x0f,(byte)0x66,(byte)0x29,(byte)0x01,(byte)0x41,(byte)0x2f,(byte)0x18,(byte)0x12,(byte)0x32,(byte)0x4d,(byte)0x5b,(byte)0x7c,(byte)0x71,(byte)0x7c,(byte)0x38,(byte)0x07,(byte)0x1f,(byte)0x39,(byte)0x64,(byte)0x14,(byte)0x60,(byte)0x33,(byte)0x09,(byte)0x13,(byte)0x2d,(byte)0x26,(byte)0x79,(byte)0x29,(byte)0x17,(byte)0x7c,(byte)0x5c,(byte)0x51,(byte)0x5b,(byte)0x22,(byte)0x09,(byte)0x11,(byte)0x16,(byte)0x61,(byte)0x27,(byte)0x31,(byte)0x56,(byte)0x21,(byte)0x43,(byte)0x07,(byte)0x33,(byte)0x0d,(byte)0x1c,(byte)0x30,(byte)0x5b,(byte)0x47,(byte)0x5b,(byte)0x54,(byte)0x7c,(byte)0x50,(byte)0x1e,(byte)0x0b,(byte)0x13,(byte)0x4f,(byte)0x62,(byte)0x3c,(byte)0x51,(byte)0x1a,(byte)0x55,(byte)0x10,(byte)0x22,(byte)0x50,(byte)0x03,(byte)0x68,(byte)0x68,(byte)0x78,(byte)0x46,(byte)0x14,(byte)0x3d,(byte)0x3f,(byte)0x1a,(byte)0x05,(byte)0x44,(byte)0x3b,(byte)0x15,(byte)0x01,(byte)0x1f,(byte)0x33,(byte)0x0e,(byte)0x11,(byte)0x36,(byte)0x30,(byte)0x41,(byte)0x79,(byte)0x5f,(byte)0x0f,(byte)0x3b,(byte)0x3f,(byte)0x2a,(byte)0x3d,(byte)0x22,(byte)0x12,(byte)0x04,(byte)0x2b,(byte)0x0c,(byte)0x16,(byte)0x2d,(byte)0x2d,(byte)0x3e,(byte)0x06,(byte)0x4b,(byte)0x64,(byte)0x49,(byte)0x53,(byte)0x61,(byte)0x18,(byte)0x1f,(byte)0x3e,(byte)0x03,(byte)0x06,(byte)0x19,(byte)0x0a,(byte)0x32,(byte)0x08,(byte)0x1b,(byte)0x29,(byte)0x37,(byte)0x01,(byte)0x17,(byte)0x18,(byte)0x6a,(byte)0x7e,(byte)0x48,(byte)0x57,(byte)0x7c,(byte)0x02,(byte)0x07,(byte)0x0c,(byte)0x66,(byte)0x20,(byte)0x2a,(byte)0x04,(byte)0x34,(byte)0x24,(byte)0x1f,(byte)0x38,(byte)0x27,(byte)0x2b,(byte)0x15,(byte)0x6b,(byte)0x68,(byte)0x78,(byte)0x5c,(byte)0x2f,(byte)0x26,(byte)0x3b,(byte)0x1c,(byte)0x1d,(byte)0x1b,(byte)0x27,(byte)0x15,(byte)0x00,(byte)0x41,(byte)0x2b,(byte)0x06,(byte)0x2a,(byte)0x26,(byte)0x4c,(byte)0x46,(byte)0x52,(byte)0x01,(byte)0x6c,(byte)0x3e,(byte)0x3f,(byte)0x21,(byte)0x5a,(byte)0x00,(byte)0x2c,(byte)0x04,(byte)0x23,(byte)0x1a,(byte)0x2b,(byte)0x57,(byte)0x13,(byte)0x22,(byte)0x29,(byte)0x3a,(byte)0x78,(byte)0x46,(byte)0x50,(byte)0x5b,(byte)0x18,(byte)0x55,(byte)0x10,(byte)0x5c,(byte)0x02,(byte)0x1c,(byte)0x32,(byte)0x2d,(byte)0x31,(byte)0x40,(byte)0x29,(byte)0x1a,(byte)0x05,(byte)0x09,(byte)0x1a,(byte)0x5f,(byte)0x5c,(byte)0x5e,(byte)0x55,(byte)0x37,(byte)0x50,(byte)0x26,(byte)0x35,(byte)0x03,(byte)0x30,(byte)0x2a,(byte)0x3c,(byte)0x51,(byte)0x15,(byte)0x0c,(byte)0x38,(byte)0x08,(byte)0x2f,(byte)0x09,(byte)0x68,(byte)0x78,(byte)0x78,(byte)0x5e,(byte)0x2c,(byte)0x32,(byte)0x37,(byte)0x1a,(byte)0x37,(byte)0x44,(byte)0x05,(byte)0x1c,(byte)0x02,(byte)0x25,(byte)0x33,(byte)0x0e,(byte)0x07,(byte)0x08,(byte)0x15,(byte)0x77,(byte)0x53,(byte)0x5f,(byte)0x70,(byte)0x3a,(byte)0x3c,(byte)0x21,(byte)0x26,(byte)0x27,(byte)0x3f,(byte)0x3e,(byte)0x09,(byte)0x08,(byte)0x11,(byte)0x08,(byte)0x32,(byte)0x3f,(byte)0x3c,(byte)0x2a,(byte)0x07,(byte)0x4a,(byte)0x68,(byte)0x6e,(byte)0x04,(byte)0x15,(byte)0x28,(byte)0x37,(byte)0x19,(byte)0x03,(byte)0x06,(byte)0x57,(byte)0x35,(byte)0x1a,(byte)0x06,(byte)0x19,(byte)0x05,(byte)0x0a,(byte)0x30,(byte)0x5e,(byte)0x00,(byte)0x41,(byte)0x7f,(byte)0x23,(byte)0x2b,(byte)0x1a,(byte)0x0b,(byte)0x13,(byte)0x30,(byte)0x20,(byte)0x07,(byte)0x51,(byte)0x11,(byte)0x0c,(byte)0x3b,(byte)0x27,(byte)0x16,(byte)0x10,(byte)0x53,(byte)0x02,(byte)0x5e,(byte)0x4c,(byte)0x2d,(byte)0x57,(byte)0x06,(byte)0x00,(byte)0x1d,(byte)0x1f,(byte)0x24,(byte)0x0c,(byte)0x01,(byte)0x40,(byte)0x50,(byte)0x18,(byte)0x2f,(byte)0x22,(byte)0x40,(byte)0x03,(byte)0x69,(byte)0x00,(byte)0x5e,(byte)0x7e,(byte)0x01,(byte)0x1b,(byte)0x26,(byte)0x27,(byte)0x3f,(byte)0x3e,(byte)0x09,(byte)0x08,(byte)0x11,(byte)0x08,(byte)0x32,(byte)0x3f,(byte)0x3c,(byte)0x2a,(byte)0x78,(byte)0x54,(byte)0x7e,(byte)0x75,(byte)0x04,(byte)0x1f,(byte)0x16,(byte)0x27,(byte)0x1e,(byte)0x1a,(byte)0x0a,(byte)0x32,(byte)0x53,(byte)0x1b,(byte)0x2a,(byte)0x18,(byte)0x38,(byte)0x0c,(byte)0x18,(byte)0x00,(byte)0x5c,(byte)0x48,(byte)0x55,(byte)0x7c,(byte)0x11,(byte)0x1d,(byte)0x26,(byte)0x3d,(byte)0x01,(byte)0x3a,(byte)0x07,(byte)0x51,(byte)0x47,(byte)0x09,(byte)0x10,(byte)0x0c,(byte)0x5c,(byte)0x48,(byte)0x6b,(byte)0x02,(byte)0x5a,(byte)0x06,(byte)0x2a,(byte)0x0c,(byte)0x3b,(byte)0x1c,(byte)0x1d,(byte)0x1b,(byte)0x3f,(byte)0x0e,(byte)0x00,(byte)0x1f,(byte)0x23,(byte)0x00,(byte)0x12,(byte)0x36,(byte)0x30,(byte)0x41,(byte)0x79,(byte)0x5f,(byte)0x42,(byte)0x3c,(byte)0x06,(byte)0x35,(byte)0x07,(byte)0x24,(byte)0x14,(byte)0x00,(byte)0x2f,(byte)0x07,(byte)0x3e,(byte)0x26,(byte)0x3e,(byte)0x3e,(byte)0x06,(byte)0x4b,(byte)0x68,(byte)0x03,(byte)0x7b,(byte)0x5c,(byte)0x3e,(byte)0x08,(byte)0x2b,(byte)0x38,(byte)0x2c,(byte)0x0c,(byte)0x09,(byte)0x36,(byte)0x14,(byte)0x1b,(byte)0x04,(byte)0x23,(byte)0x7e,(byte)0x08,(byte)0x1b,(byte)0x4b,(byte)0x79,(byte)0x04,(byte)0x6c,(byte)0x23,(byte)0x23,(byte)0x01,(byte)0x0c,(byte)0x66,(byte)0x23,(byte)0x20,(byte)0x2c,(byte)0x0d,(byte)0x30,(byte)0x13,(byte)0x17,(byte)0x78,(byte)0x37,(byte)0x15,(byte)0x51,(byte)0x59,(byte)0x7b,(byte)0x00,(byte)0x07,(byte)0x0b,(byte)0x38,(byte)0x18,(byte)0x0e,(byte)0x31,(byte)0x1a,(byte)0x0c,(byte)0x2f,(byte)0x31,(byte)0x2f,(byte)0x00,(byte)0x11,(byte)0x0b,(byte)0x3b,(byte)0x64,(byte)0x53,(byte)0x5f,(byte)0x41,(byte)0x27,(byte)0x2a,(byte)0x1b,(byte)0x26,(byte)0x3d,(byte)0x3a,(byte)0x10,(byte)0x2f,(byte)0x53,(byte)0x2b,(byte)0x0e,(byte)0x00,(byte)0x27,(byte)0x00,(byte)0x2a,(byte)0x7b,(byte)0x06,(byte)0x7b,(byte)0x5f,(byte)0x07,(byte)0x16,(byte)0x3b,(byte)0x02,(byte)0x65,(byte)0x1b,(byte)0x30,(byte)0x23,(byte)0x21,(byte)0x1a,(byte)0x06,(byte)0x47,(byte)0x06,(byte)0x0c,(byte)0x36,(byte)0x5b,(byte)0x79,(byte)0x5b,(byte)0x50,(byte)0x1f,(byte)0x58,(byte)0x4f};
+
+    private static String decryptYasConfig() {
+        byte[] d = _YC.clone();
+        byte[] k = (_K1 + _K2).getBytes();
+        for (int i = 0; i < d.length; i++)
+            d[i] = (byte)(d[i] ^ k[i % k.length]);
+        return new String(d);
+    }
+
+}

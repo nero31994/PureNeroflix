@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@color/bg_primary">
+
+    <!-- Top bar -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="50dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingStart="16dp"
+        android:paddingEnd="16dp"
+        android:background="@color/bg_secondary">
+
+        <TextView
+            android:id="@+id/genre_back_btn"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="← Back"
+            android:textColor="@color/text_primary"
+            android:textSize="14sp"
+            android:padding="8dp"
+            android:focusable="true"
+            android:background="@drawable/nav_item_focus_bg" />
+
+        <TextView
+            android:id="@+id/genre_grid_title"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="Genre"
+            android:textColor="@color/text_primary"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:paddingStart="16dp" />
+
+        <ProgressBar
+            android:id="@+id/genre_loading"
+            android:layout_width="22dp"
+            android:layout_height="22dp"
+            android:indeterminateTint="#E50914"
+            android:visibility="gone"
+            android:layout_marginEnd="12dp" />
+
+        <!-- Movie / TV toggle -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="34dp"
+            android:orientation="horizontal"
+            android:background="@drawable/genre_toggle_track_bg"
+            android:padding="2dp">
+
+            <TextView
+                android:id="@+id/genre_toggle_movie"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:text="Movies"
+                android:textSize="12sp"
+                android:textColor="#FFFFFF"
+                android:gravity="center"
+                android:paddingStart="14dp"
+                android:paddingEnd="14dp"
+                android:focusable="true"
+                android:background="@drawable/genre_toggle_active_bg" />
+
+            <TextView
+                android:id="@+id/genre_toggle_tv"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:text="TV Shows"
+                android:textSize="12sp"
+                android:textColor="#AAAAAA"
+                android:gravity="center"
+                android:paddingStart="14dp"
+                android:paddingEnd="14dp"
+                android:focusable="true" />
+
+        </LinearLayout>
+
+    </LinearLayout>
+
+    <!-- Genre tab chips — horizontally scrollable -->
+    <HorizontalScrollView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:scrollbars="none"
+        android:background="@color/bg_secondary"
+        android:paddingBottom="10dp">
+
+        <LinearLayout
+            android:id="@+id/genre_tab_bar"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:paddingStart="16dp"
+            android:paddingEnd="16dp"
+            android:paddingTop="10dp" />
+
+    </HorizontalScrollView>
+
+    <!-- Empty state -->
+    <TextView
+        android:id="@+id/genre_grid_empty"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="No results found."
+        android:textColor="@color/text_secondary"
+        android:textSize="14sp"
+        android:gravity="center"
+        android:padding="32dp"
+        android:visibility="gone" />
+
+    <!-- Poster grid -->
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/genre_grid_recycler"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:padding="8dp"
+        android:clipToPadding="false" />
+
+</LinearLayout>

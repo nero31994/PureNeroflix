@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:clipToOutline="true"
+    android:focusable="true"
+    android:clickable="true">
+
+    <!-- Full poster — no text overlay, clean like the reference -->
+    <ImageView
+        android:id="@+id/kisskh_poster"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="fitXY"/>
+
+    <!-- Episode count badge top-right only -->
+    <TextView
+        android:id="@+id/kisskh_episodes"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_gravity="top|end"
+        android:layout_margin="5dp"
+        android:background="#CC000000"
+        android:textColor="#E50914"
+        android:textSize="9sp"
+        android:textStyle="bold"
+        android:paddingStart="5dp"
+        android:paddingEnd="5dp"
+        android:paddingTop="2dp"
+        android:paddingBottom="2dp"/>
+
+    <!-- Hidden title for accessibility only — not visible -->
+    <TextView
+        android:id="@+id/kisskh_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_gravity="bottom"
+        android:visibility="gone"/>
+
+</FrameLayout>

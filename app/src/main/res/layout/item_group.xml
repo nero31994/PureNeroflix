@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TextView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/group_label"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:text="Group"
+    android:textColor="#CCCCCC"
+    android:textSize="13sp"
+    android:padding="12dp"
+    android:singleLine="true"
+    android:ellipsize="end"
+    android:background="@drawable/nav_item_focus_bg"
+    android:focusable="true"
+    android:focusableInTouchMode="false"/>

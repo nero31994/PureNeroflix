@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="#000000"
+    android:fitsSystemWindows="false">
+
+    <!-- Header -->
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:paddingStart="12dp"
+        android:paddingEnd="12dp"
+        android:background="#111111">
+
+        <ImageView
+            android:id="@+id/network_back"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:src="@drawable/ic_arrow_back"
+            android:padding="6dp"
+            android:layout_centerVertical="true"
+            android:layout_alignParentStart="true"/>
+
+        <LinearLayout
+            android:layout_width="160dp"
+            android:layout_height="40dp"
+            android:layout_centerInParent="true"
+            android:background="#FFFFFF"
+            android:gravity="center"
+            android:padding="6dp">
+
+            <ImageView
+                android:id="@+id/network_header_logo"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scaleType="fitCenter"/>
+
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/network_count_badge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentEnd="true"
+            android:layout_centerVertical="true"
+            android:textColor="#AAAAAA"
+            android:textSize="11sp"
+            android:background="@drawable/badge_bg"
+            android:paddingStart="8dp"
+            android:paddingEnd="8dp"
+            android:paddingTop="3dp"
+            android:paddingBottom="3dp"/>
+
+    </RelativeLayout>
+
+
+
+    <!-- Grid -->
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1">
+
+        <androidx.recyclerview.widget.RecyclerView
+            android:id="@+id/network_recycler"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:padding="3dp"
+            android:clipToPadding="false"/>
+
+        <ProgressBar
+            android:id="@+id/network_loading"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:visibility="gone"/>
+
+    </FrameLayout>
+
+</LinearLayout>

@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="utf-8"?>
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@android:color/black">
+
+    <!-- GeckoView surface — bundled Firefox engine, full screen -->
+    <org.mozilla.geckoview.GeckoView
+        android:id="@+id/player_geckoview"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:focusable="true"
+        android:focusableInTouchMode="true" />
+
+    <!-- Thin progress bar — driven by GeckoSession.ProgressDelegate.onProgressChange -->
+    <ProgressBar
+        android:id="@+id/player_loading_bar"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="match_parent"
+        android:layout_height="3dp"
+        android:layout_gravity="top"
+        android:progressTint="@color/neon_red"
+        android:progressBackgroundTint="@color/bg_secondary"
+        android:max="100"
+        android:visibility="gone" />
+
+    <!-- Loading overlay — shown until embed page finishes loading -->
+    <RelativeLayout
+        android:id="@+id/player_loading_overlay"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:background="#FF000000"
+        android:visibility="visible">
+
+        <!-- Dim backdrop -->
+        <ImageView
+            android:id="@+id/player_loading_backdrop"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="centerCrop"
+            android:alpha="0.25" />
+
+        <!-- Center column -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerInParent="true"
+            android:orientation="vertical"
+            android:gravity="center">
+
+            <!-- Pulsing title logo -->
+            <ImageView
+                android:id="@+id/player_loading_poster"
+                android:layout_width="280dp"
+                android:layout_height="100dp"
+                android:scaleType="fitCenter"
+                android:adjustViewBounds="true"
+                android:background="@android:color/transparent"
+                android:layout_marginBottom="28dp" />
+
+            <ProgressBar
+                android:layout_width="40dp"
+                android:layout_height="40dp"
+                android:indeterminateTint="#E50914"
+                android:layout_marginBottom="16dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Loading Stream"
+                android:textColor="#FFFFFF"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="8dp" />
+
+            <!-- Tappable title — opens server picker -->
+            <TextView
+                android:id="@+id/player_title"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="#AAAAAA"
+                android:textSize="13sp"
+                android:gravity="center"
+                android:maxLines="1"
+                android:ellipsize="end"
+                android:clickable="true"
+                android:focusable="true"
+                android:paddingHorizontal="12dp"
+                android:paddingVertical="6dp" />
+
+        </LinearLayout>
+
+    </RelativeLayout>
+
+</FrameLayout>

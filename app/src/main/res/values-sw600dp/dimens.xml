@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="nav_icon_size">48dp</dimen>
+    <dimen name="nav_icon_padding">11dp</dimen>
+    <dimen name="nav_icon_margin">4dp</dimen>
+    <dimen name="nav_sidebar_width">68dp</dimen>
+    <dimen name="nav_logo_size">20sp</dimen>
+    <dimen name="movie_card_width">140dp</dimen>
+    <dimen name="movie_card_height">210dp</dimen>
+    <dimen name="network_logo_width">110dp</dimen>
+    <dimen name="network_logo_height">85dp</dimen>
+</resources>
