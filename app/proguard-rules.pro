@@ -117,3 +117,17 @@
 
 # ── Ignore java.beans.* (desktop-only, referenced transitively by snakeyaml) ─
 -dontwarn java.beans.**
+
+# ── Keep GeckoView (native/JNI calls into these classes must not be
+#    renamed, stripped, or repackaged, or native code crashes on launch) ──
+-keep class org.mozilla.geckoview.** { *; }
+-keep interface org.mozilla.geckoview.** { *; }
+-keep class org.mozilla.gecko.** { *; }
+-dontwarn org.mozilla.geckoview.**
+-dontwarn org.mozilla.gecko.**
+-keepclasseswithmembers class * {
+    @org.mozilla.gecko.annotation.WrapForJNI <methods>;
+}
+-keepclasseswithmembers class * {
+    @org.mozilla.gecko.annotation.WrapForJNI <fields>;
+}
