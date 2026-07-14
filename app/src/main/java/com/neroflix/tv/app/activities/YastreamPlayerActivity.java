@@ -394,7 +394,7 @@ public class YastreamPlayerActivity extends BaseTvActivity {
 
         // Normal TMDB-based fetch via nero-license worker
         // Try direct first (bypasses Cloudflare), fallback to worker
-        LicenseManager.fetchYastreamStreamsDirect(
+        LicenseManager.fetchYastreamStreams(
             this,
             String.valueOf(tmdbId),
             mediaType,
