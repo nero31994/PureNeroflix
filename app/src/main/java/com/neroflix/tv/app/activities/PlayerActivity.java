@@ -92,7 +92,6 @@ public class PlayerActivity extends BaseTvActivity {
     private void initRuntime() {
         if (sRuntime != null) return;
         GeckoRuntimeSettings settings = new GeckoRuntimeSettings.Builder()
-            .autoplayDefault(GeckoRuntimeSettings.AUTOPLAY_DEFAULT_ALLOWED)
             .remoteDebuggingEnabled(com.neroflix.tv.app.BuildConfig.DEBUG)
             .preferredColorScheme(GeckoRuntimeSettings.COLOR_SCHEME_DARK)
             .build();
