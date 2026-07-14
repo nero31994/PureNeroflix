@@ -18,7 +18,8 @@
         app:resize_mode="fit" />
 
 
-    <!-- Loading overlay — backdrop + pulsing logo, shown during stream fetch, hidden on play -->
+    
+    <!-- Loading overlay: backdrop + pulsing logo only, no controls -->
     <RelativeLayout
         android:id="@+id/yastream_loading_overlay"
         android:layout_width="match_parent"
@@ -31,60 +32,15 @@
             android:layout_width="match_parent"
             android:layout_height="match_parent"
             android:scaleType="centerCrop"
-            android:alpha="0.25" />
+            android:alpha="0.3" />
 
-        <LinearLayout
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+        <ImageView
+            android:id="@+id/yastream_loading_poster"
+            android:layout_width="320dp"
+            android:layout_height="120dp"
             android:layout_centerInParent="true"
-            android:orientation="vertical"
-            android:gravity="center">
-
-            <ImageView
-                android:id="@+id/yastream_loading_poster"
-                android:layout_width="280dp"
-                android:layout_height="100dp"
-                android:scaleType="fitCenter"
-                android:adjustViewBounds="true"
-                android:background="@android:color/transparent"
-                android:layout_marginBottom="28dp" />
-
-            <ProgressBar
-                android:layout_width="40dp"
-                android:layout_height="40dp"
-                android:indeterminateTint="#E50914"
-                android:layout_marginBottom="16dp" />
-
-            <TextView
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Loading Stream"
-                android:textColor="#FFFFFF"
-                android:textSize="18sp"
-                android:textStyle="bold"
-                android:layout_marginBottom="8dp" />
-
-            <TextView
-                android:id="@+id/yastream_loading_title_label"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:textColor="#AAAAAA"
-                android:textSize="13sp"
-                android:gravity="center"
-                android:maxLines="1"
-                android:ellipsize="end"
-                android:layout_marginBottom="20dp" />
-
-            <TextView
-                android:id="@+id/yastream_loading_status_text"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="Fetching stream URL..."
-                android:textColor="#666666"
-                android:textSize="11sp"
-                android:gravity="center" />
-
-        </LinearLayout>
+            android:scaleType="fitCenter"
+            android:adjustViewBounds="true" />
 
     </RelativeLayout>
 

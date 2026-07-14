@@ -271,10 +271,6 @@ public class YastreamPlayerActivity extends BaseTvActivity {
 
         if (titleText != null) titleText.setText(movieTitle);
 
-        // Show title in the loading overlay label
-        TextView overlayTitle = findViewById(R.id.yastream_loading_title_label);
-        if (overlayTitle != null) overlayTitle.setText(movieTitle != null ? movieTitle : "");
-
         // Load backdrop + pulsing title logo — identical to the old PlayerActivity loading screen
         loadLoadingArtwork();
         startPulseAnimation();
