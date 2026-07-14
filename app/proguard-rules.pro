@@ -114,3 +114,6 @@
     public static **[] values();
     public static ** valueOf(java.lang.String);
 }
+
+# ── Ignore java.beans.* (desktop-only, referenced transitively by snakeyaml) ─
+-dontwarn java.beans.**

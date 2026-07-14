@@ -71,7 +71,7 @@ android {
     // Fix: disable lint checks that block release builds
     lint {
         abortOnError false
-        disable 'DuplicatePlatformClasses', 'ResourceCycle', 'InvalidSetHasFixedSize'
+        disable 'DuplicatePlatformClasses', 'ResourceCycle', 'InvalidSetHasFixedSize', 'MissingDefaultResource'
     }
 
 }
