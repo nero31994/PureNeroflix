@@ -249,6 +249,124 @@ public class LicenseManager {
     }
 
     // -----------------------------------------------------------------------
+    // fetchYastreamStreamsByCatalog — for non-TMDB catalogs (kisskh, onetouchtv, idrama).
+    // Posts action=get_streams with catalog+content_id to the Worker.
+    // -----------------------------------------------------------------------
+    public static void fetchYastreamStreamsByCatalog(Context context,
+                                            String catalog,
+                                            String contentId,
+                                            String mediaType,
+                                            int season,
+                                            int episode,
+                                            StreamsCallback callback) {
+        if (!checkSignature(context) || !checkPackageName(context)) {
+            callback.onResult(null);
+            return;
+        }
+
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        String token    = prefs.getString(PREF_TOKEN, "");
+        String deviceId = getDeviceId(context);
+
+        if (token.isEmpty()) {
+            Log.w("LicenseManager", "fetchYastreamStreamsByCatalog: token is empty — device not activated or token expired");
+            new Thread(() -> doFullServerCheck(context, deviceId, prefs, servers -> {
+                String refreshedToken = prefs.getString(PREF_TOKEN, "");
+                if (!refreshedToken.isEmpty()) {
+                    fetchYastreamStreamsByCatalog(context, catalog, contentId, mediaType, season, episode, callback);
+                } else {
+                    Log.e("LicenseManager", "fetchYastreamStreamsByCatalog: re-auth failed, still no token");
+                    callback.onResult(null);
+                }
+            })).start();
+            return;
+        }
+
+        new Thread(() -> {
+            try {
+                JSONObject body = new JSONObject();
+                body.put("device_id",   deviceId);
+                body.put("action",      "get_streams");
+                body.put("token",       token);
+                body.put("catalog",     catalog);
+                body.put("content_id",  contentId);
+                body.put("media_type",  mediaType);
+                if (season > 0)  body.put("season",  String.valueOf(season));
+                if (episode > 0) body.put("episode", String.valueOf(episode));
+
+                String response = postToWorker(body.toString());
+                if (response != null) {
+                    JSONObject json = new JSONObject(response);
+                    if ("ok".equals(json.optString("status"))) {
+                        callback.onResult(json.optJSONArray("streams"));
+                        return;
+                    }
+                }
+            } catch (Exception e) {
+                Log.e("LicenseManager", "fetchYastreamStreamsByCatalog failed", e);
+            }
+            callback.onResult(null);
+        }).start();
+    }
+
+    // -----------------------------------------------------------------------
+    // fetchYastreamSubtitles — posts action=get_subtitles to the Worker.
+    // Replaces all direct yastream /subtitles/ calls in the app.
+    // -----------------------------------------------------------------------
+    public interface SubtitlesCallback { void onResult(JSONArray subtitles); }
+
+    public static void fetchYastreamSubtitles(Context context,
+                                            String subType,
+                                            String subId,
+                                            SubtitlesCallback callback) {
+        if (!checkSignature(context) || !checkPackageName(context)) {
+            callback.onResult(null);
+            return;
+        }
+
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        String token    = prefs.getString(PREF_TOKEN, "");
+        String deviceId = getDeviceId(context);
+
+        if (token.isEmpty()) {
+            Log.w("LicenseManager", "fetchYastreamSubtitles: token is empty — device not activated or token expired");
+            new Thread(() -> doFullServerCheck(context, deviceId, prefs, servers -> {
+                String refreshedToken = prefs.getString(PREF_TOKEN, "");
+                if (!refreshedToken.isEmpty()) {
+                    fetchYastreamSubtitles(context, subType, subId, callback);
+                } else {
+                    Log.e("LicenseManager", "fetchYastreamSubtitles: re-auth failed, still no token");
+                    callback.onResult(null);
+                }
+            })).start();
+            return;
+        }
+
+        new Thread(() -> {
+            try {
+                JSONObject body = new JSONObject();
+                body.put("device_id", deviceId);
+                body.put("action",    "get_subtitles");
+                body.put("token",     token);
+                body.put("sub_type",  subType);
+                body.put("sub_id",    subId);
+
+                String response = postToWorker(body.toString());
+                if (response != null) {
+                    JSONObject json = new JSONObject(response);
+                    if ("ok".equals(json.optString("status"))) {
+                        callback.onResult(json.optJSONArray("subtitles"));
+                        return;
+                    }
+                }
+            } catch (Exception e) {
+                Log.e("LicenseManager", "fetchYastreamSubtitles failed", e);
+            }
+            callback.onResult(null);
+        }).start();
+    }
+
+    // -----------------------------------------------------------------------
     // check / checkWithCode / checkDeviceOnly — used by ActivationActivity
     // -----------------------------------------------------------------------
     public static void checkDeviceOnly(Context context, LicenseCallback callback) {
