@@ -299,17 +299,23 @@ public class PlayerActivity extends BaseTvActivity {
 
         // Navigation → block ad domains, block all popups/redirects
         geckoSession.setNavigationDelegate(new GeckoSession.NavigationDelegate() {
-            // Full redirect lockdown: the embed URL loads exactly once (via our own
-            // geckoSession.loadUri() call, which Gecko marks isDirectNavigation=true).
-            // Any navigation NOT initiated directly by our app code — ad redirects,
-            // JS location.href changes, window.open(), clicked overlay ads, intent
-            // URLs, external browser requests, or any other content-triggered
-            // navigation regardless of how it was triggered (tap, click, remote key,
-            // timer, etc.) — is silently denied. The video itself is unaffected,
-            // since media/resource loads never go through onLoadRequest at all.
+            // Redirect lockdown: our own loadUri() calls are always allowed
+            // (isDirectNavigation=true). Content-triggered navigation (ad
+            // redirects, JS location.href, clicked overlays, etc.) is allowed
+            // ONLY if it stays on the same base domain as the embed page —
+            // many embed players legitimately redirect themselves once during
+            // startup as part of normal loading. Anything jumping to a
+            // different domain — which is what ad/redirect networks do — is
+            // denied. Popups are always blocked outright below.
             @Override
             public GeckoResult<AllowOrDeny> onLoadRequest(GeckoSession s, LoadRequest req) {
                 if (req.isDirectNavigation) {
+                    return GeckoResult.fromValue(AllowOrDeny.ALLOW);
+                }
+                String currentDomain = extractBaseDomain(lastEmbedUrl);
+                String requestDomain = extractBaseDomain(req.uri);
+                if (!currentDomain.isEmpty() && currentDomain.equals(requestDomain)) {
+                    android.util.Log.d("PlayerActivity", "Allowed same-domain navigation: " + req.uri);
                     return GeckoResult.fromValue(AllowOrDeny.ALLOW);
                 }
                 android.util.Log.d("PlayerActivity", "Blocked navigation away from embed: " + req.uri);
@@ -359,6 +365,23 @@ public class PlayerActivity extends BaseTvActivity {
         geckoSession.open(sRuntime);
         geckoView.setSession(geckoSession);
         geckoSession.loadUri(lastEmbedUrl);
+    }
+
+    /** Extracts the last two dot-separated labels of a URL's host (e.g.
+     *  "player.cinezo.live" -> "cinezo.live"), used to allow legitimate
+     *  same-site redirects while still blocking cross-domain ad redirects. */
+    private String extractBaseDomain(String urlStr) {
+        try {
+            String host = android.net.Uri.parse(urlStr).getHost();
+            if (host == null) return "";
+            String[] parts = host.split("\\.");
+            if (parts.length >= 2) {
+                return parts[parts.length - 2] + "." + parts[parts.length - 1];
+            }
+            return host;
+        } catch (Exception e) {
+            return "";
+        }
     }
 
     // ── Server picker ────────────────────────────────────────────────────────
