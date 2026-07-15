@@ -91,11 +91,35 @@ public class PlayerActivity extends BaseTvActivity {
 
     private void initRuntime() {
         if (sRuntime != null) return;
-        GeckoRuntimeSettings settings = new GeckoRuntimeSettings.Builder()
+
+        // Write a small Gecko config file enabling media.geckoview.autoplay.request,
+        // which is required for Gecko to consult our PermissionDelegate for autoplay
+        // instead of silently applying its own default (block) policy.
+        String geckoConfigPath = writeGeckoConfigFile();
+
+        GeckoRuntimeSettings.Builder builder = new GeckoRuntimeSettings.Builder()
             .remoteDebuggingEnabled(com.neroflix.tv.app.BuildConfig.DEBUG)
-            .preferredColorScheme(GeckoRuntimeSettings.COLOR_SCHEME_DARK)
-            .build();
+            .preferredColorScheme(GeckoRuntimeSettings.COLOR_SCHEME_DARK);
+        if (geckoConfigPath != null) {
+            builder.configFilePath(geckoConfigPath);
+        }
+        GeckoRuntimeSettings settings = builder.build();
         sRuntime = GeckoRuntime.create(this.getApplicationContext(), settings);
+    }
+
+    /** Writes a Gecko config YAML enabling the autoplay permission-request pref. */
+    private String writeGeckoConfigFile() {
+        try {
+            java.io.File f = new java.io.File(getFilesDir(), "geckoview-config.yaml");
+            String yaml = "prefs:\n  media.geckoview.autoplay.request: true\n";
+            try (java.io.FileWriter fw = new java.io.FileWriter(f)) {
+                fw.write(yaml);
+            }
+            return f.getAbsolutePath();
+        } catch (Exception e) {
+            android.util.Log.w("PlayerActivity", "Failed to write gecko config file: " + e.getMessage());
+            return null;
+        }
     }
 
     // ── Views ────────────────────────────────────────────────────────────────
