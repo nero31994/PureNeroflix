@@ -501,6 +501,7 @@ public class DetailActivity extends BaseTvActivity {
                         intent.putExtra("all_subs_json", finalAllSubs);
                     startActivity(intent);
                     overridePendingTransition(0, 0); // no transition — player starts black
+                    finish(); // remove detail screen from back stack — Back goes to browse, not detail animation
                 });
             }).start();
             return;
@@ -530,6 +531,7 @@ public class DetailActivity extends BaseTvActivity {
         intent.putExtra("vote_average",   stdRating);
         startActivity(intent);
         overridePendingTransition(0, 0);
+        finish(); // remove detail screen from back stack — Back goes to browse, not detail animation
     }
 
     @Override
