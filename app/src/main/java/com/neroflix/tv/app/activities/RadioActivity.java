@@ -54,6 +54,11 @@ public class RadioActivity extends AppCompatActivity {
     private ImageView stationLogo;
     private View nowPlayingPanel;
     private TextView playPauseBtn;
+    private TextView backBtn;
+
+    // ── D-pad zone tracking: LIST (channel list) or CONTROLS (back/play-pause) ──
+    private boolean controlsZoneFocused = false;
+    private int     controlsFocusIndex  = 1; // 0 = back, 1 = play/pause
 
     // Data
     private final List<M3UParser.Channel> channels = new ArrayList<>();
@@ -96,7 +101,7 @@ public class RadioActivity extends AppCompatActivity {
         nowPlayingPanel = findViewById(R.id.radio_now_playing);
         playPauseBtn   = findViewById(R.id.radio_play_pause_btn);
 
-        TextView backBtn = findViewById(R.id.radio_back_btn);
+        backBtn = findViewById(R.id.radio_back_btn);
         if (backBtn != null) backBtn.setOnClickListener(v -> finish());
 
         if (playPauseBtn != null) {
@@ -215,12 +220,52 @@ public class RadioActivity extends AppCompatActivity {
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         switch (keyCode) {
             case KeyEvent.KEYCODE_DPAD_UP:
-                if (focusedIndex > 0) { focusedIndex--; adapter.setFocused(focusedIndex); channelList.smoothScrollToPosition(focusedIndex); } return true;
+                if (controlsZoneFocused) return true; // already at top
+                if (focusedIndex > 0) {
+                    focusedIndex--;
+                    adapter.setFocused(focusedIndex);
+                    channelList.smoothScrollToPosition(focusedIndex);
+                } else {
+                    controlsZoneFocused = true;
+                    adapter.setFocused(-1);
+                    focusControlsZone();
+                }
+                return true;
             case KeyEvent.KEYCODE_DPAD_DOWN:
-                if (focusedIndex < channels.size() - 1) { focusedIndex++; adapter.setFocused(focusedIndex); channelList.smoothScrollToPosition(focusedIndex); } return true;
+                if (controlsZoneFocused) {
+                    controlsZoneFocused = false;
+                    clearControlsFocusVisual();
+                    adapter.setFocused(focusedIndex);
+                    channelList.smoothScrollToPosition(focusedIndex);
+                    return true;
+                }
+                if (focusedIndex < channels.size() - 1) {
+                    focusedIndex++;
+                    adapter.setFocused(focusedIndex);
+                    channelList.smoothScrollToPosition(focusedIndex);
+                }
+                return true;
+            case KeyEvent.KEYCODE_DPAD_LEFT:
+                if (controlsZoneFocused && controlsFocusIndex == 1) {
+                    controlsFocusIndex = 0;
+                    focusControlsZone();
+                }
+                return true;
+            case KeyEvent.KEYCODE_DPAD_RIGHT:
+                if (controlsZoneFocused && controlsFocusIndex == 0) {
+                    controlsFocusIndex = 1;
+                    focusControlsZone();
+                }
+                return true;
             case KeyEvent.KEYCODE_DPAD_CENTER:
             case KeyEvent.KEYCODE_ENTER:
-                playChannel(focusedIndex); return true;
+                if (controlsZoneFocused) {
+                    if (controlsFocusIndex == 0) finish();
+                    else togglePlayPause();
+                } else {
+                    playChannel(focusedIndex);
+                }
+                return true;
             case KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE:
                 togglePlayPause(); return true;
             case KeyEvent.KEYCODE_BACK:
@@ -228,6 +273,21 @@ public class RadioActivity extends AppCompatActivity {
                 finish(); return true;
         }
         return super.onKeyDown(keyCode, event);
+    }
+
+    private void focusControlsZone() {
+        if (controlsFocusIndex == 0) {
+            if (backBtn != null) backBtn.requestFocus();
+            if (playPauseBtn != null) playPauseBtn.clearFocus();
+        } else {
+            if (playPauseBtn != null) playPauseBtn.requestFocus();
+            if (backBtn != null) backBtn.clearFocus();
+        }
+    }
+
+    private void clearControlsFocusVisual() {
+        if (backBtn != null) backBtn.clearFocus();
+        if (playPauseBtn != null) playPauseBtn.clearFocus();
     }
 
     // ── Lifecycle ─────────────────────────────────────────────────────────
