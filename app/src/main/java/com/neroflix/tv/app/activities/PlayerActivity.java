@@ -44,6 +44,12 @@ public class PlayerActivity extends BaseTvActivity {
     private View           loadingOverlay;
     private ObjectAnimator pulseAnimator;
 
+    // ── D-pad virtual cursor ─────────────────────────────────────────────────
+    private View  cursorView;
+    private float cursorX = -1f;
+    private float cursorY = -1f;
+    private static final float CURSOR_STEP = 48f; // dp, converted to px at use
+
     // ── State ────────────────────────────────────────────────────────────────
     private int       movieId;
     private String    mediaType;
@@ -129,14 +135,110 @@ public class PlayerActivity extends BaseTvActivity {
         loadingBar     = findViewById(R.id.player_loading_bar);
         playerTitle    = findViewById(R.id.player_title);
         loadingOverlay = findViewById(R.id.player_loading_overlay);
+        cursorView     = findViewById(R.id.player_cursor);
 
         if (playerTitle != null) {
             playerTitle.setText(movieTitle);
             playerTitle.setOnClickListener(v -> showServerPicker());
         }
 
+        // Center cursor once we know the real screen size
+        android.util.DisplayMetrics dm = getResources().getDisplayMetrics();
+        cursorX = dm.widthPixels  / 2f;
+        cursorY = dm.heightPixels / 2f;
+        if (cursorView != null) {
+            cursorView.post(() -> updateCursorViewPosition());
+        }
+
         loadLoadingArtwork();
         startPulseAnimation();
+    }
+
+    // ── D-pad virtual cursor ─────────────────────────────────────────────────
+
+    private void updateCursorViewPosition() {
+        if (cursorView == null) return;
+        cursorView.setX(cursorX - cursorView.getWidth()  / 2f);
+        cursorView.setY(cursorY - cursorView.getHeight() / 2f);
+    }
+
+    private void moveCursor(float dxDp, float dyDp) {
+        if (cursorView == null) return;
+        float density = getResources().getDisplayMetrics().density;
+        android.util.DisplayMetrics dm = getResources().getDisplayMetrics();
+        cursorX = Math.max(0, Math.min(dm.widthPixels,  cursorX + dxDp * density));
+        cursorY = Math.max(0, Math.min(dm.heightPixels, cursorY + dyDp * density));
+        updateCursorViewPosition();
+    }
+
+    private void simulateClickAtCursor() {
+        if (geckoSession == null || cursorView == null) return;
+        try {
+            long downTime = android.os.SystemClock.uptimeMillis();
+            android.view.MotionEvent down = android.view.MotionEvent.obtain(
+                downTime, downTime, android.view.MotionEvent.ACTION_DOWN, cursorX, cursorY, 0);
+            android.view.MotionEvent up = android.view.MotionEvent.obtain(
+                downTime, downTime + 50, android.view.MotionEvent.ACTION_UP, cursorX, cursorY, 0);
+            geckoSession.getPanZoomController().onTouchEvent(down);
+            geckoSession.getPanZoomController().onTouchEvent(up);
+            down.recycle();
+            up.recycle();
+        } catch (Exception e) {
+            android.util.Log.w("PlayerActivity", "Cursor click failed: " + e.getMessage());
+        }
+
+        // Brief visual feedback
+        cursorView.animate().scaleX(0.6f).scaleY(0.6f).setDuration(80)
+            .withEndAction(() -> cursorView.animate().scaleX(1f).scaleY(1f).setDuration(80).start())
+            .start();
+    }
+
+    private long dpadCenterDownTime = 0;
+    private static final long CLICK_LONG_PRESS_MS = 400;
+
+    @Override
+    public boolean dispatchKeyEvent(android.view.KeyEvent event) {
+        int keyCode = event.getKeyCode();
+
+        // DPAD_CENTER/ENTER: short press = play/pause (preserves existing
+        // behavior), long press = click at cursor position.
+        if (keyCode == android.view.KeyEvent.KEYCODE_DPAD_CENTER
+                || keyCode == android.view.KeyEvent.KEYCODE_ENTER) {
+            if (event.getAction() == android.view.KeyEvent.ACTION_DOWN) {
+                if (event.getRepeatCount() == 0) {
+                    dpadCenterDownTime = android.os.SystemClock.uptimeMillis();
+                }
+                return true;
+            } else if (event.getAction() == android.view.KeyEvent.ACTION_UP) {
+                long heldMs = android.os.SystemClock.uptimeMillis() - dpadCenterDownTime;
+                if (heldMs >= CLICK_LONG_PRESS_MS) {
+                    simulateClickAtCursor();
+                } else {
+                    injectKey(android.view.KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE);
+                }
+                return true;
+            }
+        }
+
+        if (event.getAction() == android.view.KeyEvent.ACTION_DOWN) {
+            switch (keyCode) {
+                case android.view.KeyEvent.KEYCODE_DPAD_UP:
+                    moveCursor(0, -CURSOR_STEP);
+                    return true;
+                case android.view.KeyEvent.KEYCODE_DPAD_DOWN:
+                    moveCursor(0, CURSOR_STEP);
+                    return true;
+                case android.view.KeyEvent.KEYCODE_DPAD_LEFT:
+                    moveCursor(-CURSOR_STEP, 0);
+                    return true;
+                case android.view.KeyEvent.KEYCODE_DPAD_RIGHT:
+                    moveCursor(CURSOR_STEP, 0);
+                    return true;
+                default:
+                    break;
+            }
+        }
+        return super.dispatchKeyEvent(event);
     }
 
     // ── Session + embed loading ───────────────────────────────────────────────

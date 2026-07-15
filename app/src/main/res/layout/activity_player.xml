@@ -92,4 +92,13 @@
 
     </RelativeLayout>
 
+    <!-- D-pad virtual cursor — moved via remote D-pad, click via center/OK button -->
+    <View
+        android:id="@+id/player_cursor"
+        android:layout_width="26dp"
+        android:layout_height="26dp"
+        android:layout_gravity="center"
+        android:background="@drawable/player_cursor"
+        android:elevation="100dp" />
+
 </FrameLayout>
