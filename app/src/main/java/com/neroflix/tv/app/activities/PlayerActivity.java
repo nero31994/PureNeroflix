@@ -195,22 +195,40 @@ public class PlayerActivity extends BaseTvActivity {
             }
         });
 
-        // Navigation → block ads, absorb popups
+        // Navigation → block ad domains, block all popups/redirects
         geckoSession.setNavigationDelegate(new GeckoSession.NavigationDelegate() {
+            private final String[] AD_DOMAINS = {
+                "doubleclick", "googlesyndication", "adservice", "moatads",
+                "google-analytics", "propellerads", "popads", "popcash",
+                "adsterra", "exoclick", "juicyads", "mgid", "taboola",
+                "outbrain", "revcontent", "adnxs", "criteo", "pubmatic",
+                "rubiconproject", "openx", "smartadserver", "adroll",
+                "bidswitch", "casalemedia", "contextweb", "indexexchange",
+                "sharethrough", "sovrn", "spotxchange", "adform", "adition",
+                "yieldmo", "media.net", "popunder", "onclickads", "adcash",
+                "hilltopads", "clickadu", "trafficjunky", "exosrv", "a-ads",
+                "coinzilla", "bitmedia", "cointraffic", "adskeeper",
+                "mediavine", "zedo", "adyoulike", "smartyads", "adpushup",
+                "prebid", "yandex.ads", "onclickmax", "clicksor"
+            };
+
             @Override
             public GeckoResult<AllowOrDeny> onLoadRequest(GeckoSession s, LoadRequest req) {
                 String url = req.uri.toLowerCase();
-                if (url.contains("doubleclick") || url.contains("googlesyndication") ||
-                    url.contains("adservice")   || url.contains("moatads") ||
-                    url.contains("google-analytics")) {
-                    return GeckoResult.fromValue(AllowOrDeny.DENY);
+                for (String domain : AD_DOMAINS) {
+                    if (url.contains(domain)) {
+                        return GeckoResult.fromValue(AllowOrDeny.DENY);
+                    }
                 }
                 return GeckoResult.fromValue(AllowOrDeny.ALLOW);
             }
+
             @Override
             public GeckoResult<GeckoSession> onNewSession(GeckoSession s, String uri) {
-                // Absorb popup navigation into the current session
-                s.loadUri(uri);
+                // Block all popup/new-window requests outright — legitimate
+                // video playback never needs one; every popup on these embed
+                // sites is an ad or redirect attempt.
+                android.util.Log.d("PlayerActivity", "Blocked popup: " + uri);
                 return null;
             }
         });
