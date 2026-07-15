@@ -892,6 +892,8 @@ if (!activityDestroyed) runOnUiThread(() -> {
             return getLangLabel.apply(url); // fallback
         };
 
+        final String[] defaultSubLangHolder = {null};
+
         try {
             // Add all available subtitle tracks from allSubs
             java.util.Set<String> addedUrls = new java.util.HashSet<>();
@@ -900,6 +902,7 @@ if (!activityDestroyed) runOnUiThread(() -> {
                 // First pass — add auto-selected (default) sub
                 if (externalSubUrl != null && !externalSubUrl.isEmpty()) {
                     String[] ll = getLangFromJson.apply(externalSubUrl);
+                    defaultSubLangHolder[0] = ll[0];
                     MediaItem.SubtitleConfiguration defConfig =
                         new MediaItem.SubtitleConfiguration.Builder(android.net.Uri.parse(externalSubUrl))
                             .setMimeType(getMime.apply(externalSubUrl))
@@ -936,6 +939,7 @@ if (!activityDestroyed) runOnUiThread(() -> {
             } else if (externalSubUrl != null && !externalSubUrl.isEmpty()) {
                 // No allSubs — just add the single selected sub
                 String[] ll = getLangLabel.apply(externalSubUrl);
+                defaultSubLangHolder[0] = ll[0];
                 MediaItem.SubtitleConfiguration subConfig =
                     new MediaItem.SubtitleConfiguration.Builder(android.net.Uri.parse(externalSubUrl))
                         .setMimeType(getMime.apply(externalSubUrl))
@@ -983,6 +987,28 @@ if (!activityDestroyed) runOnUiThread(() -> {
         playerView.setPlayer(exoPlayer);
         exoPlayer.setMediaSource(finalSource);
         exoPlayer.prepare();
+
+        // Force deterministic single-track subtitle selection — MergingMediaSource
+        // with multiple SingleSampleMediaSource text tracks can otherwise render
+        // more than one subtitle track simultaneously.
+        if (defaultSubLangHolder[0] != null) {
+            exoPlayer.setTrackSelectionParameters(
+                exoPlayer.getTrackSelectionParameters()
+                    .buildUpon()
+                    .setPreferredTextLanguage(defaultSubLangHolder[0])
+                    .setSelectUndeterminedTextLanguage(false)
+                    .setIgnoredTextSelectionFlags(0)
+                    .build());
+        } else {
+            exoPlayer.setTrackSelectionParameters(
+                exoPlayer.getTrackSelectionParameters()
+                    .buildUpon()
+                    .setIgnoredTextSelectionFlags(
+                        androidx.media3.common.C.SELECTION_FLAG_DEFAULT
+                        | androidx.media3.common.C.SELECTION_FLAG_FORCED)
+                    .build());
+        }
+
         exoPlayer.setPlayWhenReady(true);
 
         // Resume from saved position if available

@@ -12,7 +12,7 @@
         android:layout_height="match_parent"
         android:focusable="true"
         android:focusableInTouchMode="true"
-        app:show_subtitle_button="false"
+        app:show_subtitle_button="true"
         app:show_buffering="when_playing"
         app:use_controller="false"
         app:resize_mode="fit" />
