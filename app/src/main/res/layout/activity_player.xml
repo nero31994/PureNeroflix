@@ -92,13 +92,16 @@
 
     </RelativeLayout>
 
-    <!-- D-pad virtual cursor — moved via remote D-pad, click via center/OK button -->
+    <!-- D-pad virtual cursor — moved via remote D-pad, click via center/OK button.
+         Invisible (alpha=0) per user request, but fully functional: movement
+         and synthetic clicks still operate on cursorX/cursorY in Java. -->
     <View
         android:id="@+id/player_cursor"
         android:layout_width="26dp"
         android:layout_height="26dp"
         android:layout_gravity="center"
         android:background="@drawable/player_cursor"
+        android:alpha="0"
         android:elevation="100dp" />
 
 </FrameLayout>
