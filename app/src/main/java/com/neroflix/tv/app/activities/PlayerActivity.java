@@ -197,30 +197,21 @@ public class PlayerActivity extends BaseTvActivity {
 
         // Navigation → block ad domains, block all popups/redirects
         geckoSession.setNavigationDelegate(new GeckoSession.NavigationDelegate() {
-            private final String[] AD_DOMAINS = {
-                "doubleclick", "googlesyndication", "adservice", "moatads",
-                "google-analytics", "propellerads", "popads", "popcash",
-                "adsterra", "exoclick", "juicyads", "mgid", "taboola",
-                "outbrain", "revcontent", "adnxs", "criteo", "pubmatic",
-                "rubiconproject", "openx", "smartadserver", "adroll",
-                "bidswitch", "casalemedia", "contextweb", "indexexchange",
-                "sharethrough", "sovrn", "spotxchange", "adform", "adition",
-                "yieldmo", "media.net", "popunder", "onclickads", "adcash",
-                "hilltopads", "clickadu", "trafficjunky", "exosrv", "a-ads",
-                "coinzilla", "bitmedia", "cointraffic", "adskeeper",
-                "mediavine", "zedo", "adyoulike", "smartyads", "adpushup",
-                "prebid", "yandex.ads", "onclickmax", "clicksor"
-            };
-
+            // Full redirect lockdown: the embed URL loads exactly once (via our own
+            // geckoSession.loadUri() call, which Gecko marks isDirectNavigation=true).
+            // Any navigation NOT initiated directly by our app code — ad redirects,
+            // JS location.href changes, window.open(), clicked overlay ads, intent
+            // URLs, external browser requests, or any other content-triggered
+            // navigation regardless of how it was triggered (tap, click, remote key,
+            // timer, etc.) — is silently denied. The video itself is unaffected,
+            // since media/resource loads never go through onLoadRequest at all.
             @Override
             public GeckoResult<AllowOrDeny> onLoadRequest(GeckoSession s, LoadRequest req) {
-                String url = req.uri.toLowerCase();
-                for (String domain : AD_DOMAINS) {
-                    if (url.contains(domain)) {
-                        return GeckoResult.fromValue(AllowOrDeny.DENY);
-                    }
+                if (req.isDirectNavigation) {
+                    return GeckoResult.fromValue(AllowOrDeny.ALLOW);
                 }
-                return GeckoResult.fromValue(AllowOrDeny.ALLOW);
+                android.util.Log.d("PlayerActivity", "Blocked navigation away from embed: " + req.uri);
+                return GeckoResult.fromValue(AllowOrDeny.DENY);
             }
 
             @Override
