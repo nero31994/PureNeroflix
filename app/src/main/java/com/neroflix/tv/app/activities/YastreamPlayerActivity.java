@@ -1022,9 +1022,10 @@ if (!activityDestroyed) runOnUiThread(() -> {
             }).start();
         }
 
-        playerView.setUseController(true);
-        playerView.setControllerAutoShow(true);
-        playerView.setControllerHideOnTouch(true);
+        // Custom top/bottom control bars handle playback UI — ExoPlayer's
+        // own default controller must stay off, or it renders a duplicate
+        // permanent overlay on top of the custom controls.
+        playerView.setUseController(false);
 
         // SubtitleView styling
         androidx.media3.ui.SubtitleView subView = playerView.getSubtitleView();
