@@ -38,12 +38,30 @@
 
     </LinearLayout>
 
+    <!-- ── Search bar ──────────────────────────────────────────────────── -->
+    <EditText
+        android:id="@+id/karaoke_search"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="56dp"
+        android:layout_marginHorizontal="16dp"
+        android:hint="Search title or artist..."
+        android:textColorHint="#888888"
+        android:textColor="#FFFFFF"
+        android:textSize="14sp"
+        android:singleLine="true"
+        android:imeOptions="actionSearch"
+        android:inputType="text"
+        android:paddingHorizontal="16dp"
+        android:paddingVertical="10dp"
+        android:background="@drawable/search_input_bg" />
+
     <!-- ── Song list ───────────────────────────────────────────────────── -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/karaoke_song_list"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_marginTop="56dp"
+        android:layout_marginTop="108dp"
         android:paddingBottom="140dp"
         android:clipToPadding="false" />
 

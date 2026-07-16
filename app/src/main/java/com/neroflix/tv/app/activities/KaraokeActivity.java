@@ -9,6 +9,9 @@ import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.text.Editable;
+import android.text.TextWatcher;
+import android.widget.EditText;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
@@ -43,6 +46,7 @@ public class KaraokeActivity extends AppCompatActivity {
 
     // UI
     private RecyclerView songList;
+    private EditText searchInput;
     private KaraokeSongAdapter adapter;
     private ProgressBar loadingBar;
     private TextView statusText;
@@ -53,6 +57,7 @@ public class KaraokeActivity extends AppCompatActivity {
     private TextView lyricPrev, lyricCurrent, lyricNext;
 
     // Data
+    private final List<Song> allSongs = new ArrayList<>();
     private final List<Song> songs = new ArrayList<>();
     private int playingIndex = -1;
     private int focusedIndex = 0;
@@ -105,6 +110,17 @@ public class KaraokeActivity extends AppCompatActivity {
         adapter = new KaraokeSongAdapter(songs, this::playSong);
         songList.setAdapter(adapter);
 
+        searchInput = findViewById(R.id.karaoke_search);
+        if (searchInput != null) {
+            searchInput.addTextChangedListener(new TextWatcher() {
+                @Override public void beforeTextChanged(CharSequence s, int a, int b, int c) {}
+                @Override public void onTextChanged(CharSequence s, int a, int b, int c) {}
+                @Override public void afterTextChanged(Editable s) {
+                    filterSongs(s.toString());
+                }
+            });
+        }
+
         loadSongList();
     }
 
@@ -132,14 +148,12 @@ public class KaraokeActivity extends AppCompatActivity {
 
                 mainHandler.post(() -> {
                     loadingBar.setVisibility(View.GONE);
-                    songs.clear();
-                    songs.addAll(parsed);
-                    adapter.notifyDataSetChanged();
-                    if (songs.isEmpty()) {
+                    allSongs.clear();
+                    allSongs.addAll(parsed);
+                    filterSongs(searchInput != null ? searchInput.getText().toString() : "");
+                    if (allSongs.isEmpty()) {
                         statusText.setText("No karaoke songs available yet.");
                         statusText.setVisibility(View.VISIBLE);
-                    } else {
-                        adapter.setFocused(focusedIndex);
                     }
                 });
             } catch (Exception e) {
@@ -150,6 +164,25 @@ public class KaraokeActivity extends AppCompatActivity {
                 });
             }
         });
+    }
+
+    private void filterSongs(String query) {
+        String q = query == null ? "" : query.trim().toLowerCase();
+        songs.clear();
+        if (q.isEmpty()) {
+            songs.addAll(allSongs);
+        } else {
+            for (Song s : allSongs) {
+                if (s.title.toLowerCase().contains(q) || s.artist.toLowerCase().contains(q)) {
+                    songs.add(s);
+                }
+            }
+        }
+        focusedIndex = 0;
+        adapter.notifyDataSetChanged();
+        if (!songs.isEmpty()) adapter.setFocused(0);
+        statusText.setVisibility(songs.isEmpty() && !allSongs.isEmpty() ? View.VISIBLE : View.GONE);
+        if (songs.isEmpty() && !allSongs.isEmpty()) statusText.setText("No matches found.");
     }
 
     private void playSong(int index) {
@@ -415,7 +448,7 @@ public class KaraokeActivity extends AppCompatActivity {
         @Override
         public void onBindViewHolder(@NonNull VH h, int pos) {
             Song s = data.get(pos);
-            h.number.setText(String.valueOf(pos + 1));
+            h.number.setText(String.format(java.util.Locale.US, "%06d", pos + 1));
             h.title.setText(s.title);
             h.artist.setText(s.artist);
             h.playingDot.setVisibility(pos == playingPos ? View.VISIBLE : View.GONE);
