@@ -39,7 +39,7 @@ import okhttp3.Response;
 public class KaraokeActivity extends AppCompatActivity {
 
     private static final String KARAOKE_LIST_URL =
-        "https://raw.githubusercontent.com/pure-oren/approvation/refs/heads/main/karaoke.json";
+        "https://raw.githubusercontent.com/nero31994/Purekara/refs/heads/main/karaoke.json";
 
     // UI
     private RecyclerView songList;
