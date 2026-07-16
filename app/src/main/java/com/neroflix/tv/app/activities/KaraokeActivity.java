@@ -63,7 +63,7 @@ public class KaraokeActivity extends AppCompatActivity {
 
     // Playback
     private MediaPlayer mediaPlayer;
-    private List<MidiLyricParser.LyricEvent> lyrics;
+    private List<MidiLyricParser.LyricLine> lyricLines;
     private int currentLyricIndex = -1;
     private boolean isPlaying = false;
 
@@ -181,16 +181,18 @@ public class KaraokeActivity extends AppCompatActivity {
                     }
                 }
 
-                List<MidiLyricParser.LyricEvent> parsedLyrics;
+                List<MidiLyricParser.LyricEvent> parsedEvents;
                 InputStream in = new FileInputStream(cacheFile);
                 try {
-                    parsedLyrics = MidiLyricParser.parse(in);
+                    parsedEvents = MidiLyricParser.parse(in);
                 } finally {
                     in.close();
                 }
+                List<MidiLyricParser.LyricLine> parsedLines =
+                    MidiLyricParser.groupIntoLines(parsedEvents);
 
                 mainHandler.post(() -> {
-                    lyrics = parsedLyrics;
+                    lyricLines = parsedLines;
                     currentLyricIndex = -1;
                     startPlayback(cacheFile);
                 });
@@ -256,7 +258,7 @@ public class KaraokeActivity extends AppCompatActivity {
     }
 
     private void updateLyricDisplay() {
-        if (mediaPlayer == null || lyrics == null || lyrics.isEmpty()) return;
+        if (mediaPlayer == null || lyricLines == null || lyricLines.isEmpty()) return;
         long pos;
         try {
             pos = mediaPlayer.getCurrentPosition();
@@ -265,13 +267,13 @@ public class KaraokeActivity extends AppCompatActivity {
         }
 
         int idx = currentLyricIndex;
-        while (idx + 1 < lyrics.size() && lyrics.get(idx + 1).timeMs <= pos) idx++;
+        while (idx + 1 < lyricLines.size() && lyricLines.get(idx + 1).timeMs <= pos) idx++;
 
         if (idx != currentLyricIndex) {
             currentLyricIndex = idx;
-            String prev = idx > 0 ? lyrics.get(idx - 1).text : "";
-            String curr = idx >= 0 ? lyrics.get(idx).text : "";
-            String next = idx + 1 < lyrics.size() ? lyrics.get(idx + 1).text : "";
+            String prev = idx > 0 ? lyricLines.get(idx - 1).text : "";
+            String curr = idx >= 0 ? lyricLines.get(idx).text : "";
+            String next = idx + 1 < lyricLines.size() ? lyricLines.get(idx + 1).text : "";
             lyricPrev.setText(prev);
             lyricCurrent.setText(curr);
             lyricNext.setText(next);

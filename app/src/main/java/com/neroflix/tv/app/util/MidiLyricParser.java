@@ -26,6 +26,47 @@ public class MidiLyricParser {
         }
     }
 
+    /** A full display line, built by joining consecutive syllable-level
+     *  LyricEvents until a "/" (new line) or "\\" (new paragraph) marker —
+     *  the standard .kar convention — which is consumed as a break, not
+     *  shown as literal text. */
+    public static class LyricLine {
+        public final long timeMs;
+        public final String text;
+        public LyricLine(long timeMs, String text) {
+            this.timeMs = timeMs;
+            this.text = text;
+        }
+    }
+
+    /** Groups raw syllable-level lyric events into full display lines. */
+    public static List<LyricLine> groupIntoLines(List<LyricEvent> events) {
+        List<LyricLine> lines = new ArrayList<>();
+        StringBuilder current = new StringBuilder();
+        long lineStart = -1;
+
+        for (LyricEvent ev : events) {
+            String raw = ev.text;
+            boolean isBreak = raw.startsWith("/") || raw.startsWith("\\");
+            String content = isBreak ? raw.substring(1) : raw;
+
+            if (isBreak && current.length() > 0) {
+                lines.add(new LyricLine(lineStart, current.toString().trim()));
+                current.setLength(0);
+                lineStart = -1;
+            }
+
+            if (lineStart < 0) lineStart = ev.timeMs;
+            current.append(content);
+        }
+
+        if (current.length() > 0) {
+            lines.add(new LyricLine(lineStart, current.toString().trim()));
+        }
+
+        return lines;
+    }
+
     private static class TempoChange {
         final long tick;
         final int microsPerQuarter;
