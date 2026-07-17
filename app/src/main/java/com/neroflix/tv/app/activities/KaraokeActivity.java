@@ -1,16 +1,15 @@
 package com.neroflix.tv.app.activities;
 
-import android.media.MediaPlayer;
+import android.content.Intent;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
-import android.text.TextUtils;
+import android.text.Editable;
+import android.text.TextWatcher;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.text.Editable;
-import android.text.TextWatcher;
 import android.widget.EditText;
 import android.widget.ProgressBar;
 import android.widget.TextView;
@@ -21,15 +20,10 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.neroflix.tv.app.R;
-import com.neroflix.tv.app.util.MidiLyricParser;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
 
-import java.io.File;
-import java.io.FileInputStream;
-import java.io.FileOutputStream;
-import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
@@ -44,71 +38,39 @@ public class KaraokeActivity extends AppCompatActivity {
     private static final String KARAOKE_LIST_URL =
         "https://raw.githubusercontent.com/nero31994/Purekara/refs/heads/main/karaoke.json";
 
-    // UI
     private RecyclerView songList;
     private EditText searchInput;
     private KaraokeSongAdapter adapter;
     private ProgressBar loadingBar;
     private TextView statusText;
-    private View nowPlayingPanel;
-    private TextView nowTitle;
-    private TextView playPauseBtn;
     private TextView backBtn;
-    private TextView lyricRowA, lyricRowB;
-    private boolean rowAActive = true;
-    private boolean lyricRowsInitialized = false;
 
-    // Data
     private final List<Song> allSongs = new ArrayList<>();
     private final List<Song> songs = new ArrayList<>();
-    private int playingIndex = -1;
     private int focusedIndex = 0;
 
     static class Song {
         String title, artist, midiUrl;
     }
 
-    // Playback
-    private MediaPlayer mediaPlayer;
-    private List<MidiLyricParser.LyricLine> lyricLines;
-    private int currentLyricIndex = -1;
-    private boolean isPlaying = false;
-
-    // D-pad zone tracking: LIST (song list) or CONTROLS (back/play-pause)
-    private boolean controlsZoneFocused = false;
-    private int controlsFocusIndex = 1; // 0 = back, 1 = play/pause
-
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
     private final OkHttpClient http = new OkHttpClient();
-
-    private final Runnable lyricUpdateRunnable = new Runnable() {
-        @Override public void run() {
-            updateLyricDisplay();
-            mainHandler.postDelayed(this, 150);
-        }
-    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_karaoke);
 
-        songList        = findViewById(R.id.karaoke_song_list);
-        loadingBar      = findViewById(R.id.karaoke_loading);
-        statusText      = findViewById(R.id.karaoke_status);
-        nowPlayingPanel = findViewById(R.id.karaoke_now_playing);
-        nowTitle        = findViewById(R.id.karaoke_now_title);
-        playPauseBtn    = findViewById(R.id.karaoke_play_pause_btn);
-        backBtn         = findViewById(R.id.karaoke_back_btn);
-        lyricRowA       = findViewById(R.id.karaoke_lyric_row_a);
-        lyricRowB       = findViewById(R.id.karaoke_lyric_row_b);
+        songList   = findViewById(R.id.karaoke_song_list);
+        loadingBar = findViewById(R.id.karaoke_loading);
+        statusText = findViewById(R.id.karaoke_status);
+        backBtn    = findViewById(R.id.karaoke_back_btn);
 
         if (backBtn != null) backBtn.setOnClickListener(v -> finish());
-        if (playPauseBtn != null) playPauseBtn.setOnClickListener(v -> togglePlayPause());
 
         songList.setLayoutManager(new LinearLayoutManager(this));
-        adapter = new KaraokeSongAdapter(songs, this::playSong);
+        adapter = new KaraokeSongAdapter(songs, this::openPlayer);
         songList.setAdapter(adapter);
 
         searchInput = findViewById(R.id.karaoke_search);
@@ -186,170 +148,16 @@ public class KaraokeActivity extends AppCompatActivity {
         if (songs.isEmpty() && !allSongs.isEmpty()) statusText.setText("No matches found.");
     }
 
-    private void playSong(int index) {
+    private void openPlayer(int index) {
         if (index < 0 || index >= songs.size()) return;
         Song song = songs.get(index);
-        playingIndex = index;
-        adapter.setPlaying(index);
-
-        stopPlayback();
-
-        nowPlayingPanel.setVisibility(View.VISIBLE);
-        nowTitle.setText(song.title + (TextUtils.isEmpty(song.artist) ? "" : "  •  " + song.artist));
-        lyricRowA.setText("Loading...");
-        lyricRowB.setText("");
-        rowAActive = true;
-        lyricRowsInitialized = false;
-
-        executor.execute(() -> {
-            try {
-                File cacheFile = new File(getCacheDir(), "karaoke_" + Math.abs(song.midiUrl.hashCode()) + ".mid");
-                if (!cacheFile.exists()) {
-                    Request req = new Request.Builder().url(song.midiUrl).build();
-                    Response resp = http.newCall(req).execute();
-                    if (!resp.isSuccessful() || resp.body() == null) throw new Exception("HTTP " + resp.code());
-                    FileOutputStream fos = new FileOutputStream(cacheFile);
-                    try {
-                        fos.write(resp.body().bytes());
-                    } finally {
-                        fos.close();
-                    }
-                }
-
-                List<MidiLyricParser.LyricEvent> parsedEvents;
-                InputStream in = new FileInputStream(cacheFile);
-                try {
-                    parsedEvents = MidiLyricParser.parse(in);
-                } finally {
-                    in.close();
-                }
-                List<MidiLyricParser.LyricLine> parsedLines =
-                    MidiLyricParser.groupIntoLines(parsedEvents);
-
-                mainHandler.post(() -> {
-                    lyricLines = parsedLines;
-                    currentLyricIndex = -1;
-                    startPlayback(cacheFile);
-                });
-            } catch (Exception e) {
-                android.util.Log.e("Karaoke", "playSong failed", e);
-                mainHandler.post(() -> lyricRowA.setText("Failed to load song."));
-            }
-        });
-    }
-
-    private void startPlayback(File file) {
-        try {
-            mediaPlayer = new MediaPlayer();
-            mediaPlayer.setDataSource(file.getAbsolutePath());
-            mediaPlayer.setOnPreparedListener(mp -> {
-                mp.start();
-                isPlaying = true;
-                updatePlayPauseIcon();
-                mainHandler.post(lyricUpdateRunnable);
-            });
-            mediaPlayer.setOnCompletionListener(mp -> {
-                isPlaying = false;
-                updatePlayPauseIcon();
-                mainHandler.removeCallbacks(lyricUpdateRunnable);
-                playNextSong();
-            });
-            mediaPlayer.setOnErrorListener((mp, what, extra) -> {
-                android.util.Log.e("Karaoke", "MediaPlayer error: " + what + "/" + extra);
-                lyricRowA.setText("Playback error.");
-                return true;
-            });
-            mediaPlayer.prepareAsync();
-        } catch (Exception e) {
-            lyricRowA.setText("Failed to play song.");
-            android.util.Log.e("Karaoke", "startPlayback failed", e);
-        }
-    }
-
-    private void playNextSong() {
-        if (playingIndex >= 0 && playingIndex < songs.size() - 1) {
-            playSong(playingIndex + 1);
-        }
-    }
-
-    private void togglePlayPause() {
-        if (mediaPlayer == null) return;
-        try {
-            if (isPlaying) {
-                mediaPlayer.pause();
-                isPlaying = false;
-                mainHandler.removeCallbacks(lyricUpdateRunnable);
-            } else {
-                mediaPlayer.start();
-                isPlaying = true;
-                mainHandler.post(lyricUpdateRunnable);
-            }
-            updatePlayPauseIcon();
-        } catch (Exception ignored) {}
-    }
-
-    private void updatePlayPauseIcon() {
-        if (playPauseBtn != null) playPauseBtn.setText(isPlaying ? "⏸" : "▶");
-    }
-
-    private void updateLyricDisplay() {
-        if (mediaPlayer == null || lyricLines == null || lyricLines.isEmpty()) return;
-        long pos;
-        try {
-            pos = mediaPlayer.getCurrentPosition();
-        } catch (Exception e) {
-            return;
-        }
-
-        int idx = currentLyricIndex;
-        while (idx + 1 < lyricLines.size() && lyricLines.get(idx + 1).timeMs <= pos) idx++;
-
-        if (idx == currentLyricIndex) return;
-        currentLyricIndex = idx;
-
-        String currText = idx >= 0 ? lyricLines.get(idx).text : "";
-        String nextText = idx + 1 < lyricLines.size() ? lyricLines.get(idx + 1).text : "";
-
-        if (!lyricRowsInitialized) {
-            setRowActive(lyricRowA, currText);
-            setRowWaiting(lyricRowB, nextText);
-            rowAActive = true;
-            lyricRowsInitialized = true;
-            return;
-        }
-
-        if (rowAActive) {
-            setRowActive(lyricRowB, currText);
-            setRowWaiting(lyricRowA, nextText);
-        } else {
-            setRowActive(lyricRowA, currText);
-            setRowWaiting(lyricRowB, nextText);
-        }
-        rowAActive = !rowAActive;
-    }
-
-    private void setRowActive(TextView row, String text) {
-        row.setText(text);
-        row.setTextColor(android.graphics.Color.parseColor("#4DD9FF"));
-        row.setTextSize(24);
-        row.setAlpha(1f);
-    }
-
-    private void setRowWaiting(TextView row, String text) {
-        row.setText(text);
-        row.setTextColor(android.graphics.Color.parseColor("#888888"));
-        row.setTextSize(18);
-        row.setAlpha(0.85f);
-    }
-
-    private void stopPlayback() {
-        mainHandler.removeCallbacks(lyricUpdateRunnable);
-        if (mediaPlayer != null) {
-            try { mediaPlayer.stop(); } catch (Exception ignored) {}
-            try { mediaPlayer.release(); } catch (Exception ignored) {}
-            mediaPlayer = null;
-        }
-        isPlaying = false;
+        Intent intent = new Intent(this, KaraokePlayerActivity.class);
+        intent.putExtra("song_title", song.title);
+        intent.putExtra("song_artist", song.artist);
+        intent.putExtra("song_midi_url", song.midiUrl);
+        startActivity(intent);
+        overridePendingTransition(R.anim.fade_in, R.anim.fade_out);
+        finish(); // remove list from back stack — Back from player goes to main menu
     }
 
     // ── D-pad ────────────────────────────────────────────────────────────
@@ -358,83 +166,28 @@ public class KaraokeActivity extends AppCompatActivity {
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         switch (keyCode) {
             case KeyEvent.KEYCODE_DPAD_UP:
-                if (controlsZoneFocused) return true;
                 if (focusedIndex > 0) {
                     focusedIndex--;
                     adapter.setFocused(focusedIndex);
                     songList.smoothScrollToPosition(focusedIndex);
-                } else {
-                    controlsZoneFocused = true;
-                    adapter.setFocused(-1);
-                    focusControlsZone();
                 }
                 return true;
             case KeyEvent.KEYCODE_DPAD_DOWN:
-                if (controlsZoneFocused) {
-                    controlsZoneFocused = false;
-                    clearControlsFocusVisual();
-                    adapter.setFocused(focusedIndex);
-                    songList.smoothScrollToPosition(focusedIndex);
-                    return true;
-                }
                 if (focusedIndex < songs.size() - 1) {
                     focusedIndex++;
                     adapter.setFocused(focusedIndex);
                     songList.smoothScrollToPosition(focusedIndex);
                 }
                 return true;
-            case KeyEvent.KEYCODE_DPAD_LEFT:
-                if (controlsZoneFocused && controlsFocusIndex == 1) {
-                    controlsFocusIndex = 0;
-                    focusControlsZone();
-                }
-                return true;
-            case KeyEvent.KEYCODE_DPAD_RIGHT:
-                if (controlsZoneFocused && controlsFocusIndex == 0) {
-                    controlsFocusIndex = 1;
-                    focusControlsZone();
-                }
-                return true;
             case KeyEvent.KEYCODE_DPAD_CENTER:
             case KeyEvent.KEYCODE_ENTER:
-                if (controlsZoneFocused) {
-                    if (controlsFocusIndex == 0) finish();
-                    else togglePlayPause();
-                } else {
-                    playSong(focusedIndex);
-                }
+                openPlayer(focusedIndex);
                 return true;
-            case KeyEvent.KEYCODE_MEDIA_PLAY_PAUSE:
-                togglePlayPause(); return true;
             case KeyEvent.KEYCODE_BACK:
             case KeyEvent.KEYCODE_ESCAPE:
                 finish(); return true;
         }
         return super.onKeyDown(keyCode, event);
-    }
-
-    private void focusControlsZone() {
-        if (controlsFocusIndex == 0) {
-            if (backBtn != null) backBtn.requestFocus();
-            if (playPauseBtn != null) playPauseBtn.clearFocus();
-        } else {
-            if (playPauseBtn != null) playPauseBtn.requestFocus();
-            if (backBtn != null) backBtn.clearFocus();
-        }
-    }
-
-    private void clearControlsFocusVisual() {
-        if (backBtn != null) backBtn.clearFocus();
-        if (playPauseBtn != null) playPauseBtn.clearFocus();
-    }
-
-    // ── Lifecycle ────────────────────────────────────────────────────────
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        stopPlayback();
-        executor.shutdownNow();
     }
 
     // ── Adapter ──────────────────────────────────────────────────────────
@@ -445,7 +198,6 @@ public class KaraokeActivity extends AppCompatActivity {
         private final List<Song> data;
         private final OnSongClick listener;
         private int focusedPos = 0;
-        private int playingPos = -1;
 
         KaraokeSongAdapter(List<Song> data, OnSongClick listener) {
             this.data = data;
@@ -455,13 +207,6 @@ public class KaraokeActivity extends AppCompatActivity {
         void setFocused(int pos) {
             int old = focusedPos;
             focusedPos = pos;
-            if (old >= 0) notifyItemChanged(old);
-            if (pos >= 0) notifyItemChanged(pos);
-        }
-
-        void setPlaying(int pos) {
-            int old = playingPos;
-            playingPos = pos;
             if (old >= 0) notifyItemChanged(old);
             if (pos >= 0) notifyItemChanged(pos);
         }
@@ -480,7 +225,7 @@ public class KaraokeActivity extends AppCompatActivity {
             h.number.setText(String.format(java.util.Locale.US, "%06d", pos + 1));
             h.title.setText(s.title);
             h.artist.setText(s.artist);
-            h.playingDot.setVisibility(pos == playingPos ? View.VISIBLE : View.GONE);
+            h.playingDot.setVisibility(View.GONE);
             h.itemView.setBackgroundResource(
                 pos == focusedPos ? R.drawable.card_focus_border : android.R.color.transparent);
             h.itemView.setOnClickListener(v -> listener.onClick(pos));

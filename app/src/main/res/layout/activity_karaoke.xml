@@ -56,21 +56,20 @@
         android:paddingVertical="10dp"
         android:background="@drawable/search_input_bg" />
 
-    <!-- ── Song list ───────────────────────────────────────────────────── -->
+    <!-- ── Song list — fills the rest of the screen ───────────────────── -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/karaoke_song_list"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
         android:layout_marginTop="108dp"
-        android:paddingBottom="140dp"
+        android:paddingBottom="24dp"
         android:clipToPadding="false" />
 
     <ProgressBar
         android:id="@+id/karaoke_loading"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_gravity="center"
-        android:indeterminateTint="#E50914" />
+        android:layout_gravity="center" />
 
     <TextView
         android:id="@+id/karaoke_status"
@@ -80,84 +79,5 @@
         android:textColor="#AAAAAA"
         android:textSize="14sp"
         android:visibility="gone" />
-
-    <!-- ── Now-playing lyric panel ─────────────────────────────────────── -->
-    <LinearLayout
-        android:id="@+id/karaoke_now_playing"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_gravity="bottom"
-        android:orientation="vertical"
-        android:background="#1A1A1A"
-        android:padding="20dp"
-        android:visibility="gone">
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="horizontal"
-            android:gravity="center_vertical">
-
-            <TextView
-                android:id="@+id/karaoke_now_title"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:textColor="#FFFFFF"
-                android:textSize="14sp"
-                android:textStyle="bold"
-                android:maxLines="1"
-                android:ellipsize="end" />
-
-            <TextView
-                android:id="@+id/karaoke_play_pause_btn"
-                android:layout_width="44dp"
-                android:layout_height="44dp"
-                android:text="⏸"
-                android:textSize="22sp"
-                android:textColor="#FFFFFF"
-                android:gravity="center"
-                android:focusable="true"
-                android:background="@drawable/nav_item_focus_bg" />
-
-        </LinearLayout>
-
-        <!-- Alternating two-row lyric display: whichever row is "active"
-             shows the current line large/bright with an outline; the other
-             row shows the upcoming line dimmed and smaller. Roles swap in
-             Java each time the line changes. -->
-        <TextView
-            android:id="@+id/karaoke_lyric_row_a"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
-            android:textColor="#FFFFFF"
-            android:textSize="24sp"
-            android:textStyle="bold"
-            android:gravity="center"
-            android:maxLines="2"
-            android:ellipsize="end"
-            android:shadowColor="#000000"
-            android:shadowDx="0"
-            android:shadowDy="0"
-            android:shadowRadius="6" />
-
-        <TextView
-            android:id="@+id/karaoke_lyric_row_b"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="10dp"
-            android:textColor="#FFFFFF"
-            android:textSize="24sp"
-            android:textStyle="bold"
-            android:gravity="center"
-            android:maxLines="2"
-            android:ellipsize="end"
-            android:shadowColor="#000000"
-            android:shadowDx="0"
-            android:shadowDy="0"
-            android:shadowRadius="6" />
-
-    </LinearLayout>
 
 </FrameLayout>

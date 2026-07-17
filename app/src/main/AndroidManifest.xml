@@ -170,6 +170,11 @@
             android:exported="false"
             android:configChanges="orientation|screenSize|keyboardHidden"
             android:screenOrientation="landscape" />
+
+        <activity android:name=".activities.KaraokePlayerActivity"
+            android:exported="false"
+            android:configChanges="orientation|screenSize|keyboardHidden"
+            android:screenOrientation="landscape" />
     
         <service
             android:name=".services.RadioPlayerService"
