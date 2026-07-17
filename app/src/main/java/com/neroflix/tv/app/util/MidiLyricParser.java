@@ -48,7 +48,8 @@ public class MidiLyricParser {
         for (LyricEvent ev : events) {
             String raw = ev.text;
             boolean isBreak = raw.startsWith("/") || raw.startsWith("\\");
-            String content = isBreak ? raw.substring(1) : raw;
+            boolean isCaretJoin = raw.startsWith("^");
+            String content = (isBreak || isCaretJoin) ? raw.substring(1) : raw;
 
             if (isBreak && current.length() > 0) {
                 lines.add(new LyricLine(lineStart, current.toString().trim()));

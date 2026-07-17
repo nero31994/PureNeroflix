@@ -122,39 +122,41 @@
 
         </LinearLayout>
 
+        <!-- Alternating two-row lyric display: whichever row is "active"
+             shows the current line large/bright with an outline; the other
+             row shows the upcoming line dimmed and smaller. Roles swap in
+             Java each time the line changes. -->
         <TextView
-            android:id="@+id/karaoke_lyric_prev"
+            android:id="@+id/karaoke_lyric_row_a"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:textColor="#666666"
-            android:textSize="16sp"
-            android:gravity="center"
-            android:maxLines="1"
-            android:ellipsize="end" />
-
-        <TextView
-            android:id="@+id/karaoke_lyric_current"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:textColor="#E50914"
+            android:layout_marginTop="20dp"
+            android:textColor="#FFFFFF"
             android:textSize="24sp"
             android:textStyle="bold"
             android:gravity="center"
             android:maxLines="2"
-            android:ellipsize="end" />
+            android:ellipsize="end"
+            android:shadowColor="#000000"
+            android:shadowDx="0"
+            android:shadowDy="0"
+            android:shadowRadius="6" />
 
         <TextView
-            android:id="@+id/karaoke_lyric_next"
+            android:id="@+id/karaoke_lyric_row_b"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:textColor="#666666"
-            android:textSize="16sp"
+            android:layout_marginTop="10dp"
+            android:textColor="#FFFFFF"
+            android:textSize="24sp"
+            android:textStyle="bold"
             android:gravity="center"
-            android:maxLines="1"
-            android:ellipsize="end" />
+            android:maxLines="2"
+            android:ellipsize="end"
+            android:shadowColor="#000000"
+            android:shadowDx="0"
+            android:shadowDy="0"
+            android:shadowRadius="6" />
 
     </LinearLayout>
 

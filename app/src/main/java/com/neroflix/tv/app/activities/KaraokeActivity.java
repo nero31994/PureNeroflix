@@ -54,7 +54,9 @@ public class KaraokeActivity extends AppCompatActivity {
     private TextView nowTitle;
     private TextView playPauseBtn;
     private TextView backBtn;
-    private TextView lyricPrev, lyricCurrent, lyricNext;
+    private TextView lyricRowA, lyricRowB;
+    private boolean rowAActive = true;
+    private boolean lyricRowsInitialized = false;
 
     // Data
     private final List<Song> allSongs = new ArrayList<>();
@@ -99,9 +101,8 @@ public class KaraokeActivity extends AppCompatActivity {
         nowTitle        = findViewById(R.id.karaoke_now_title);
         playPauseBtn    = findViewById(R.id.karaoke_play_pause_btn);
         backBtn         = findViewById(R.id.karaoke_back_btn);
-        lyricPrev       = findViewById(R.id.karaoke_lyric_prev);
-        lyricCurrent    = findViewById(R.id.karaoke_lyric_current);
-        lyricNext       = findViewById(R.id.karaoke_lyric_next);
+        lyricRowA       = findViewById(R.id.karaoke_lyric_row_a);
+        lyricRowB       = findViewById(R.id.karaoke_lyric_row_b);
 
         if (backBtn != null) backBtn.setOnClickListener(v -> finish());
         if (playPauseBtn != null) playPauseBtn.setOnClickListener(v -> togglePlayPause());
@@ -195,9 +196,10 @@ public class KaraokeActivity extends AppCompatActivity {
 
         nowPlayingPanel.setVisibility(View.VISIBLE);
         nowTitle.setText(song.title + (TextUtils.isEmpty(song.artist) ? "" : "  •  " + song.artist));
-        lyricCurrent.setText("Loading...");
-        lyricPrev.setText("");
-        lyricNext.setText("");
+        lyricRowA.setText("Loading...");
+        lyricRowB.setText("");
+        rowAActive = true;
+        lyricRowsInitialized = false;
 
         executor.execute(() -> {
             try {
@@ -231,7 +233,7 @@ public class KaraokeActivity extends AppCompatActivity {
                 });
             } catch (Exception e) {
                 android.util.Log.e("Karaoke", "playSong failed", e);
-                mainHandler.post(() -> lyricCurrent.setText("Failed to load song."));
+                mainHandler.post(() -> lyricRowA.setText("Failed to load song."));
             }
         });
     }
@@ -254,12 +256,12 @@ public class KaraokeActivity extends AppCompatActivity {
             });
             mediaPlayer.setOnErrorListener((mp, what, extra) -> {
                 android.util.Log.e("Karaoke", "MediaPlayer error: " + what + "/" + extra);
-                lyricCurrent.setText("Playback error.");
+                lyricRowA.setText("Playback error.");
                 return true;
             });
             mediaPlayer.prepareAsync();
         } catch (Exception e) {
-            lyricCurrent.setText("Failed to play song.");
+            lyricRowA.setText("Failed to play song.");
             android.util.Log.e("Karaoke", "startPlayback failed", e);
         }
     }
@@ -302,15 +304,42 @@ public class KaraokeActivity extends AppCompatActivity {
         int idx = currentLyricIndex;
         while (idx + 1 < lyricLines.size() && lyricLines.get(idx + 1).timeMs <= pos) idx++;
 
-        if (idx != currentLyricIndex) {
-            currentLyricIndex = idx;
-            String prev = idx > 0 ? lyricLines.get(idx - 1).text : "";
-            String curr = idx >= 0 ? lyricLines.get(idx).text : "";
-            String next = idx + 1 < lyricLines.size() ? lyricLines.get(idx + 1).text : "";
-            lyricPrev.setText(prev);
-            lyricCurrent.setText(curr);
-            lyricNext.setText(next);
+        if (idx == currentLyricIndex) return;
+        currentLyricIndex = idx;
+
+        String currText = idx >= 0 ? lyricLines.get(idx).text : "";
+        String nextText = idx + 1 < lyricLines.size() ? lyricLines.get(idx + 1).text : "";
+
+        if (!lyricRowsInitialized) {
+            setRowActive(lyricRowA, currText);
+            setRowWaiting(lyricRowB, nextText);
+            rowAActive = true;
+            lyricRowsInitialized = true;
+            return;
         }
+
+        if (rowAActive) {
+            setRowActive(lyricRowB, currText);
+            setRowWaiting(lyricRowA, nextText);
+        } else {
+            setRowActive(lyricRowA, currText);
+            setRowWaiting(lyricRowB, nextText);
+        }
+        rowAActive = !rowAActive;
+    }
+
+    private void setRowActive(TextView row, String text) {
+        row.setText(text);
+        row.setTextColor(android.graphics.Color.parseColor("#4DD9FF"));
+        row.setTextSize(24);
+        row.setAlpha(1f);
+    }
+
+    private void setRowWaiting(TextView row, String text) {
+        row.setText(text);
+        row.setTextColor(android.graphics.Color.parseColor("#888888"));
+        row.setTextSize(18);
+        row.setAlpha(0.85f);
     }
 
     private void stopPlayback() {
