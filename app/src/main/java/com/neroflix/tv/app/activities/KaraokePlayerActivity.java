@@ -116,9 +116,25 @@ public class KaraokePlayerActivity extends AppCompatActivity {
                 List<MidiLyricParser.LyricLine> parsedLines =
                     MidiLyricParser.groupIntoLines(parsedEvents);
 
+                // Fallback: if the MIDI itself has no embedded lyrics, try
+                // fetching synced lyrics online via lrclib.net using the
+                // song's title/artist.
+                if (parsedLines.isEmpty()) {
+                    List<MidiLyricParser.LyricLine> onlineLines =
+                        com.neroflix.tv.app.util.LrcLyricFetcher.fetch(http, songTitle, songArtist);
+                    if (onlineLines != null && !onlineLines.isEmpty()) {
+                        parsedLines = onlineLines;
+                    }
+                }
+                final List<MidiLyricParser.LyricLine> finalLines = parsedLines;
+
                 mainHandler.post(() -> {
-                    lyricLines = parsedLines;
+                    lyricLines = finalLines;
                     currentLyricIndex = -1;
+                    if (lyricLines.isEmpty()) {
+                        lyricRowA.setText("🎵 No lyrics available");
+                        lyricRowB.setText("");
+                    }
                     startPlayback(cacheFile);
                 });
             } catch (Exception e) {
