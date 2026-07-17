@@ -157,7 +157,7 @@ public class KaraokeActivity extends AppCompatActivity {
         intent.putExtra("song_midi_url", song.midiUrl);
         startActivity(intent);
         overridePendingTransition(R.anim.fade_in, R.anim.fade_out);
-        finish(); // remove list from back stack — Back from player goes to main menu
+        // list screen stays on the back stack — Back from player returns here
     }
 
     // ── D-pad ────────────────────────────────────────────────────────────
