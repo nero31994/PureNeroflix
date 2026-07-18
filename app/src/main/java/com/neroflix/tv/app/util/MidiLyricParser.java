@@ -89,10 +89,18 @@ public class MidiLyricParser {
         int division = readUInt16(data, pos); pos += 2;
         pos += (int) (headerLen - 6);
 
-        if ((division & 0x8000) != 0) {
-            throw new IOException("SMPTE time division not supported");
+        boolean isSmpte = (division & 0x8000) != 0;
+        int ppq = 0;
+        double smpteMsPerTick = 0;
+        if (isSmpte) {
+            int smpteFps = -((byte) ((division >> 8) & 0xFF));
+            int ticksPerFrame = division & 0xFF;
+            if (smpteFps <= 0) smpteFps = 30; // safe fallback
+            if (ticksPerFrame <= 0) ticksPerFrame = 1;
+            smpteMsPerTick = 1000.0 / (smpteFps * ticksPerFrame);
+        } else {
+            ppq = division;
         }
-        int ppq = division;
 
         List<TempoChange> tempoChanges = new ArrayList<>();
         tempoChanges.add(new TempoChange(0, 500000)); // default 120 BPM
@@ -166,7 +174,10 @@ public class MidiLyricParser {
         for (Object[] entry : rawLyrics) {
             long tick = (Long) entry[0];
             String text = (String) entry[1];
-            result.add(new LyricEvent(ticksToMs(tick, tempoChanges, ppq), text));
+            long tickMs = isSmpte
+                ? Math.round(tick * smpteMsPerTick)
+                : ticksToMs(tick, tempoChanges, ppq);
+            result.add(new LyricEvent(tickMs, text));
         }
 
         Collections.sort(result, new Comparator<LyricEvent>() {
