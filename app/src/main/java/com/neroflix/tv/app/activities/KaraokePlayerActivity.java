@@ -139,9 +139,11 @@ public class KaraokePlayerActivity extends AppCompatActivity {
                 });
             } catch (Exception e) {
                 android.util.Log.e("KaraokePlayer", "loadAndPlay failed", e);
+                final String errMsg = e.getClass().getSimpleName() + ": " + e.getMessage();
                 mainHandler.post(() -> {
                     loadingBar.setVisibility(android.view.View.GONE);
                     lyricRowA.setText("Failed to load song.");
+                    lyricRowB.setText(errMsg);
                 });
             }
         });
