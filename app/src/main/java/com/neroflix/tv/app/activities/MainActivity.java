@@ -224,14 +224,14 @@ public class MainActivity extends BaseTvActivity {
             R.drawable.ic_search, R.drawable.ic_movies, R.drawable.ic_tv,
             R.drawable.ic_anime,  R.drawable.ic_watchlist, R.drawable.ic_history,
             R.drawable.ic_download, R.drawable.ic_iptv, R.drawable.ic_genre,
-            R.drawable.ic_radio, R.drawable.ic_donate
+            R.drawable.ic_radio, R.drawable.ic_donate, R.drawable.ic_karaoke
         };
         String[] navLabels = {
             "Menu",
             "Search", "Movies", "TV Shows",
             "Anime", "Watchlist", "History",
             "Downloads", "Live TV", "Genre",
-            "Radio", "Donate"
+            "Radio", "Donate", "Karaoke"
         };
 
         navRecycler.setLayoutManager(new LinearLayoutManager(this));
@@ -283,6 +283,11 @@ public class MainActivity extends BaseTvActivity {
                     break;
                 case 11:
                     startActivity(new Intent(this, com.neroflix.tv.app.activities.DonateActivity.class));
+                    overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
+                    break;
+                case 12:
+                    startActivity(new Intent(this,
+                        com.neroflix.tv.app.activities.KaraokeActivity.class));
                     overridePendingTransition(R.anim.slide_in_right, R.anim.slide_out_left);
                     break;
             }
