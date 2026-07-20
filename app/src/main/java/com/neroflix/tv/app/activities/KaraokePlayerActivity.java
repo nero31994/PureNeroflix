@@ -1,6 +1,7 @@
 package com.neroflix.tv.app.activities;
 
 import android.media.MediaPlayer;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Looper;
@@ -10,6 +11,10 @@ import android.widget.ProgressBar;
 import android.widget.TextView;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.media3.common.MediaItem;
+import androidx.media3.common.Player;
+import androidx.media3.exoplayer.ExoPlayer;
+import androidx.media3.ui.PlayerView;
 
 import com.neroflix.tv.app.R;
 import com.neroflix.tv.app.util.MidiLyricParser;
@@ -18,6 +23,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -33,15 +39,24 @@ public class KaraokePlayerActivity extends AppCompatActivity {
     private TextView playPauseBtn;
     private TextView backBtn;
     private TextView lyricRowA, lyricRowB;
+    private PlayerView bgVideoView;
 
     private String songTitle, songArtist, songMidiUrl;
 
     private MediaPlayer mediaPlayer;
+    private ExoPlayer bgPlayer;
     private List<MidiLyricParser.LyricLine> lyricLines;
     private int currentLyricIndex = -1;
     private boolean isPlaying = false;
     private boolean rowAActive = true;
     private boolean lyricRowsInitialized = false;
+
+    // Background videos shipped inside the APK under assets/bgv — every
+    // video found there is loaded into a shuffled, endlessly-looping,
+    // muted playlist that plays behind the lyrics.
+    private static final String BG_VIDEO_ASSET_DIR = "bgv";
+    private static final String[] BG_VIDEO_EXTENSIONS =
+        {".mp4", ".mkv", ".webm", ".avi", ".mov", ".3gp", ".m4v"};
 
     // Fixed sync offset in ms, added to playback position before matching a
     // lyric line. Positive = lines trigger earlier (compensates for lyrics
@@ -75,6 +90,7 @@ public class KaraokePlayerActivity extends AppCompatActivity {
         backBtn      = findViewById(R.id.karplay_back_btn);
         lyricRowA    = findViewById(R.id.karplay_lyric_row_a);
         lyricRowB    = findViewById(R.id.karplay_lyric_row_b);
+        bgVideoView  = findViewById(R.id.karplay_bg_video);
 
         songTitle   = getIntent().getStringExtra("song_title");
         songArtist  = getIntent().getStringExtra("song_artist");
@@ -82,6 +98,8 @@ public class KaraokePlayerActivity extends AppCompatActivity {
 
         lyricOffsetMs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
             .getLong(PREF_OFFSET_MS, 0);
+
+        loadBackgroundVideos();
 
         titleText.setText(TextUtils.isEmpty(songArtist)
             ? songTitle : songTitle + "  •  " + songArtist);
@@ -162,6 +180,60 @@ public class KaraokePlayerActivity extends AppCompatActivity {
         });
     }
 
+    /** Lists every video in assets/bgv, shuffles them into a looping
+     *  muted playlist, and starts it behind the lyrics. If the folder
+     *  is missing or empty, the screen just falls back to the plain
+     *  dark background — this never blocks song playback. */
+    private void loadBackgroundVideos() {
+        executor.execute(() -> {
+            List<String> videoNames = new ArrayList<>();
+            try {
+                String[] names = getAssets().list(BG_VIDEO_ASSET_DIR);
+                if (names != null) {
+                    for (String name : names) {
+                        String lower = name.toLowerCase(java.util.Locale.US);
+                        for (String ext : BG_VIDEO_EXTENSIONS) {
+                            if (lower.endsWith(ext)) {
+                                videoNames.add(name);
+                                break;
+                            }
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                android.util.Log.w("KaraokePlayer", "No background videos found in assets/" + BG_VIDEO_ASSET_DIR, e);
+            }
+
+            if (videoNames.isEmpty()) return;
+
+            final List<Uri> uris = new ArrayList<>();
+            for (String name : videoNames) {
+                uris.add(Uri.parse("asset:///" + BG_VIDEO_ASSET_DIR + "/" + name));
+            }
+            mainHandler.post(() -> initBgPlayer(uris));
+        });
+    }
+
+    private void initBgPlayer(List<Uri> uris) {
+        if (bgVideoView == null || uris.isEmpty()) return;
+        try {
+            bgPlayer = new ExoPlayer.Builder(this).build();
+            bgVideoView.setPlayer(bgPlayer);
+
+            List<MediaItem> items = new ArrayList<>();
+            for (Uri uri : uris) items.add(MediaItem.fromUri(uri));
+
+            bgPlayer.setMediaItems(items);
+            bgPlayer.setShuffleModeEnabled(true);
+            bgPlayer.setRepeatMode(Player.REPEAT_MODE_ALL);
+            bgPlayer.setVolume(0f);
+            bgPlayer.prepare();
+            bgPlayer.setPlayWhenReady(isPlaying);
+        } catch (Exception e) {
+            android.util.Log.e("KaraokePlayer", "initBgPlayer failed", e);
+        }
+    }
+
     private void startPlayback(File file) {
         try {
             mediaPlayer = new MediaPlayer();
@@ -205,6 +277,7 @@ public class KaraokePlayerActivity extends AppCompatActivity {
                 isPlaying = true;
                 mainHandler.post(lyricUpdateRunnable);
             }
+            if (bgPlayer != null) bgPlayer.setPlayWhenReady(isPlaying);
             updatePlayPauseIcon();
         } catch (Exception ignored) {}
     }
@@ -305,6 +378,11 @@ public class KaraokePlayerActivity extends AppCompatActivity {
             try { mediaPlayer.stop(); } catch (Exception ignored) {}
             try { mediaPlayer.release(); } catch (Exception ignored) {}
             mediaPlayer = null;
+        }
+        if (bgPlayer != null) {
+            try { bgVideoView.setPlayer(null); } catch (Exception ignored) {}
+            try { bgPlayer.release(); } catch (Exception ignored) {}
+            bgPlayer = null;
         }
         executor.shutdownNow();
     }
