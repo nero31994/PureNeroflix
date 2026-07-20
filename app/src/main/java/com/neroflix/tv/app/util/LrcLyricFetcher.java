@@ -22,7 +22,7 @@ public class LrcLyricFetcher {
 
     private static final String SEARCH_URL = "https://lrclib.net/api/search";
     private static final Pattern LRC_LINE =
-        Pattern.compile("\\[(\\d{2}):(\\d{2})[.:](\\d{2,3})\\](.*)");
+        Pattern.compile("\\[(\\d{2}):(\\d{2})[.:](\\d{2,3})\\]");
 
     /** Returns null if no synced lyrics could be found. */
     public static List<MidiLyricParser.LyricLine> fetch(OkHttpClient http, String title, String artist) {
@@ -58,24 +58,37 @@ public class LrcLyricFetcher {
         return null;
     }
 
-    /** Parses standard LRC-format text ([mm:ss.xx]line) into timed lines. */
+    /** Parses standard LRC-format text ([mm:ss.xx]line) into timed lines.
+     *  Scans for timestamp tags directly across the whole text rather than
+     *  splitting on '
+' first — some sources return multiple leading tags
+     *  on one line (shared repeated lyric), or omit real newlines entirely,
+     *  either of which broke the old line-by-line approach and caused the
+     *  whole song to collapse into a single stuck "line". */
     private static List<MidiLyricParser.LyricLine> parseLrc(String lrcText) {
         List<MidiLyricParser.LyricLine> lines = new ArrayList<>();
-        for (String rawLine : lrcText.split("\n")) {
-            Matcher m = LRC_LINE.matcher(rawLine.trim());
-            if (!m.find()) continue;
+        Matcher m = LRC_LINE.matcher(lrcText);
 
+        List<int[]> spans = new ArrayList<>();  // {tagStartIndex, tagEndIndex}
+        List<Long> times = new ArrayList<>();
+        while (m.find()) {
             int min = Integer.parseInt(m.group(1));
             int sec = Integer.parseInt(m.group(2));
             String fracStr = m.group(3);
             long fracMs = fracStr.length() == 2
                 ? Long.parseLong(fracStr) * 10L
                 : Long.parseLong(fracStr);
-            long timeMs = min * 60000L + sec * 1000L + fracMs;
+            times.add(min * 60000L + sec * 1000L + fracMs);
+            spans.add(new int[]{m.start(), m.end()});
+        }
 
-            String text = m.group(4).trim();
+        for (int i = 0; i < spans.size(); i++) {
+            int textStart = spans.get(i)[1];
+            int textEnd = (i + 1 < spans.size()) ? spans.get(i + 1)[0] : lrcText.length();
+            String text = lrcText.substring(textStart, textEnd)
+                .replace("\r", "").replace("\n", "").trim();
             if (!text.isEmpty()) {
-                lines.add(new MidiLyricParser.LyricLine(timeMs, text));
+                lines.add(new MidiLyricParser.LyricLine(times.get(i), text));
             }
         }
         return lines;
