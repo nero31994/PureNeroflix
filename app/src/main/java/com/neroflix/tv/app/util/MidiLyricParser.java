@@ -56,12 +56,28 @@ public class MidiLyricParser {
     }
 
     /** Groups raw syllable-level lyric events into full display lines,
-     *  keeping each syllable's own timing for karaoke highlighting. */
+     *  keeping each syllable's own timing for karaoke highlighting.
+     *
+     *  A line breaks on the explicit "/" / "\\" karaoke markers where
+     *  present. But those markers are a .kar-file convention for the 0x05
+     *  Lyric meta event — files that only carry plain 0x01 Text events
+     *  (common in hymn/church MIDI packs) never use them at all, which
+     *  used to merge the *entire song* into one unbreakable line: the
+     *  sweep highlight would finish and then just sit there with nothing
+     *  to advance to. To handle that, a line also breaks automatically on
+     *  a natural pause between words (a timing gap suggesting a phrase
+     *  boundary) or once it's grown too long to read comfortably — so
+     *  files without real break markers still get sensible line-by-line
+     *  pacing instead of a single endless block. */
+    private static final long AUTO_BREAK_GAP_MS = 700;
+    private static final int AUTO_BREAK_MAX_CHARS = 48;
+
     public static List<LyricLine> groupIntoLines(List<LyricEvent> events) {
         List<LyricLine> lines = new ArrayList<>();
         StringBuilder current = new StringBuilder();
         List<Syllable> currentSyllables = new ArrayList<>();
         long lineStart = -1;
+        long lastEventTime = -1;
 
         for (LyricEvent ev : events) {
             String raw = ev.text;
@@ -69,7 +85,12 @@ public class MidiLyricParser {
             boolean isCaretJoin = raw.startsWith("^");
             String content = (isBreak || isCaretJoin) ? raw.substring(1) : raw;
 
-            if (isBreak && current.length() > 0) {
+            boolean autoBreak = !isBreak && current.length() > 0 && (
+                (lastEventTime >= 0 && ev.timeMs - lastEventTime >= AUTO_BREAK_GAP_MS) ||
+                current.length() + content.length() > AUTO_BREAK_MAX_CHARS
+            );
+
+            if ((isBreak || autoBreak) && current.length() > 0) {
                 lines.add(new LyricLine(lineStart, current.toString().trim(), currentSyllables));
                 current.setLength(0);
                 currentSyllables = new ArrayList<>();
@@ -81,6 +102,7 @@ public class MidiLyricParser {
                 currentSyllables.add(new Syllable(ev.timeMs, content));
             }
             current.append(content);
+            lastEventTime = ev.timeMs;
         }
 
         if (current.length() > 0) {
@@ -88,6 +110,7 @@ public class MidiLyricParser {
         }
 
         return lines;
+
     }
 
     private static class TempoChange {
