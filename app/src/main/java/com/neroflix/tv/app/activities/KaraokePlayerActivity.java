@@ -50,6 +50,11 @@ public class KaraokePlayerActivity extends AppCompatActivity {
     private boolean isPlaying = false;
     private boolean rowAActive = true;
     private boolean lyricRowsInitialized = false;
+    // The row currently showing the "singing now" line, and the line data
+    // behind it — needed so the sweep highlight can be refreshed every
+    // tick without waiting for the active line to change.
+    private TextView activeRow;
+    private MidiLyricParser.LyricLine activeLine;
 
     // Background videos shipped inside the APK under assets/bgv — every
     // video found there is loaded into a shuffled, endlessly-looping,
@@ -75,7 +80,7 @@ public class KaraokePlayerActivity extends AppCompatActivity {
     private final Runnable lyricUpdateRunnable = new Runnable() {
         @Override public void run() {
             updateLyricDisplay();
-            mainHandler.postDelayed(this, 150);
+            mainHandler.postDelayed(this, 80);
         }
     };
 
@@ -121,6 +126,8 @@ public class KaraokePlayerActivity extends AppCompatActivity {
         lyricRowB.setText("");
         rowAActive = true;
         lyricRowsInitialized = false;
+        activeRow = null;
+        activeLine = null;
 
         executor.execute(() -> {
             try {
@@ -157,7 +164,15 @@ public class KaraokePlayerActivity extends AppCompatActivity {
                         parsedLines = onlineLines;
                     }
                 }
-                final List<MidiLyricParser.LyricLine> finalLines = parsedLines;
+                // Defensive: the line-index walk that drives playback sync
+                // assumes non-decreasing timestamps. Sorting here (on top
+                // of the sort each source already does) guarantees that
+                // regardless of where the lines came from, so a single
+                // out-of-order entry can never freeze the display on an
+                // early line for the rest of the song.
+                List<MidiLyricParser.LyricLine> sortedLines = new ArrayList<>(parsedLines);
+                java.util.Collections.sort(sortedLines, (a, b) -> Long.compare(a.timeMs, b.timeMs));
+                final List<MidiLyricParser.LyricLine> finalLines = sortedLines;
 
                 mainHandler.post(() -> {
                     lyricLines = finalLines;
@@ -183,7 +198,13 @@ public class KaraokePlayerActivity extends AppCompatActivity {
     /** Lists every video in assets/bgv, shuffles them into a looping
      *  muted playlist, and starts it behind the lyrics. If the folder
      *  is missing or empty, the screen just falls back to the plain
-     *  dark background — this never blocks song playback. */
+     *  dark background — this never blocks song playback.
+     *
+     *  The list is shuffled here (not just via ExoPlayer's shuffle mode)
+     *  because enabling shuffle mode only randomizes which item plays
+     *  *next* — the item at index 0 still plays first every time, and
+     *  since AssetManager.list() returns names in the same deterministic
+     *  order on every call, every song was opening on the same video. */
     private void loadBackgroundVideos() {
         executor.execute(() -> {
             List<String> videoNames = new ArrayList<>();
@@ -205,6 +226,8 @@ public class KaraokePlayerActivity extends AppCompatActivity {
             }
 
             if (videoNames.isEmpty()) return;
+
+            java.util.Collections.shuffle(videoNames, new java.util.Random());
 
             final List<Uri> uris = new ArrayList<>();
             for (String name : videoNames) {
@@ -228,7 +251,14 @@ public class KaraokePlayerActivity extends AppCompatActivity {
             bgPlayer.setRepeatMode(Player.REPEAT_MODE_ALL);
             bgPlayer.setVolume(0f);
             bgPlayer.prepare();
-            bgPlayer.setPlayWhenReady(isPlaying);
+            // The background loop is silent and purely decorative, so it
+            // should start rolling as soon as it's ready rather than
+            // waiting on `isPlaying` — that flag is still false at this
+            // point because the MIDI download/parse (on another thread)
+            // usually hasn't finished yet, and nothing ever flipped this
+            // player's playWhenReady on afterward. That left it sitting on
+            // its first decoded frame — a static image, not a video.
+            bgPlayer.setPlayWhenReady(true);
         } catch (Exception e) {
             android.util.Log.e("KaraokePlayer", "initBgPlayer failed", e);
         }
@@ -296,39 +326,89 @@ public class KaraokePlayerActivity extends AppCompatActivity {
         }
         long adjPos = pos + lyricOffsetMs;
 
+        // Full scan (not break-on-first-miss) so a single out-of-order
+        // timestamp can't strand the index on an early line for the rest
+        // of playback — it just finds the last line that has started.
         int idx = -1;
         for (int i = 0; i < lyricLines.size(); i++) {
             if (lyricLines.get(i).timeMs <= adjPos) idx = i;
-            else break;
         }
 
-        if (idx == currentLyricIndex) return;
-        currentLyricIndex = idx;
+        if (idx != currentLyricIndex) {
+            currentLyricIndex = idx;
 
-        String currText = idx >= 0 ? lyricLines.get(idx).text : "";
-        String nextText = idx + 1 < lyricLines.size() ? lyricLines.get(idx + 1).text : "";
+            MidiLyricParser.LyricLine currLine = idx >= 0 ? lyricLines.get(idx) : null;
+            String nextText = idx + 1 < lyricLines.size() ? lyricLines.get(idx + 1).text : "";
 
-        if (!lyricRowsInitialized) {
-            setRowActive(lyricRowA, currText);
-            setRowWaiting(lyricRowB, nextText);
-            rowAActive = true;
-            lyricRowsInitialized = true;
+            if (!lyricRowsInitialized) {
+                setRowWaiting(lyricRowB, nextText);
+                activeRow = lyricRowA;
+                rowAActive = true;
+                lyricRowsInitialized = true;
+            } else if (rowAActive) {
+                setRowWaiting(lyricRowA, nextText);
+                activeRow = lyricRowB;
+                rowAActive = false;
+            } else {
+                setRowWaiting(lyricRowB, nextText);
+                activeRow = lyricRowA;
+                rowAActive = true;
+            }
+            activeLine = currLine;
+            setRowActiveStyle(activeRow);
+        }
+
+        // Refresh the karaoke-guide sweep on the active line every tick,
+        // independent of whether the line itself just changed, so the
+        // highlight progresses smoothly word-by-word as the song plays.
+        updateActiveRowHighlight(adjPos);
+    }
+
+    /** Repaints the active row's text with the karaoke-guide sweep: the
+     *  words already sung (their syllable timestamp has passed) in the
+     *  bright highlight color, and the words still to come in white. This
+     *  is what makes word-by-word/syllable highlighting actually visible —
+     *  previously the active line was just set to one flat color. */
+    private void updateActiveRowHighlight(long adjPos) {
+        if (activeRow == null) return;
+        if (activeLine == null) {
+            activeRow.setText("");
+            return;
+        }
+        List<MidiLyricParser.Syllable> syllables = activeLine.syllables;
+        if (syllables == null || syllables.isEmpty()) {
+            // No syllable-level timing available — show the plain line
+            // (still correctly synced, just without the word sweep).
+            activeRow.setText(activeLine.text);
             return;
         }
 
-        if (rowAActive) {
-            setRowActive(lyricRowB, currText);
-            setRowWaiting(lyricRowA, nextText);
-        } else {
-            setRowActive(lyricRowA, currText);
-            setRowWaiting(lyricRowB, nextText);
+        StringBuilder full = new StringBuilder();
+        int sungChars = 0;
+        for (MidiLyricParser.Syllable s : syllables) {
+            full.append(s.text);
+            if (s.timeMs <= adjPos) sungChars = full.length();
         }
-        rowAActive = !rowAActive;
+
+        String text = full.toString();
+        android.text.SpannableString sp = new android.text.SpannableString(text);
+        if (sungChars > 0) {
+            sp.setSpan(new android.text.style.ForegroundColorSpan(SUNG_COLOR),
+                0, Math.min(sungChars, text.length()),
+                android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
+        if (sungChars < text.length()) {
+            sp.setSpan(new android.text.style.ForegroundColorSpan(UPCOMING_COLOR),
+                sungChars, text.length(),
+                android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
+        activeRow.setText(sp);
     }
 
-    private void setRowActive(TextView row, String text) {
-        row.setText(text);
-        row.setTextColor(android.graphics.Color.parseColor("#4DD9FF"));
+    private static final int SUNG_COLOR = android.graphics.Color.parseColor("#4DD9FF");
+    private static final int UPCOMING_COLOR = android.graphics.Color.parseColor("#FFFFFF");
+
+    private void setRowActiveStyle(TextView row) {
         row.setTextSize(34);
         row.setAlpha(1f);
     }

@@ -26,23 +26,41 @@ public class MidiLyricParser {
         }
     }
 
-    /** A full display line, built by joining consecutive syllable-level
-     *  LyricEvents until a "/" (new line) or "\\" (new paragraph) marker —
-     *  the standard .kar convention — which is consumed as a break, not
-     *  shown as literal text. */
-    public static class LyricLine {
+    /** A single syllable/word within a line, with its own trigger time —
+     *  this is what drives the karaoke guide's word-by-word highlight. */
+    public static class Syllable {
         public final long timeMs;
         public final String text;
-        public LyricLine(long timeMs, String text) {
+        public Syllable(long timeMs, String text) {
             this.timeMs = timeMs;
             this.text = text;
         }
     }
 
-    /** Groups raw syllable-level lyric events into full display lines. */
+    /** A full display line, built by joining consecutive syllable-level
+     *  LyricEvents until a "/" (new line) or "\\" (new paragraph) marker —
+     *  the standard .kar convention — which is consumed as a break, not
+     *  shown as literal text. The individual syllables (with their own
+     *  timings) are kept alongside the flattened `text` so the UI can
+     *  either show the plain line (fallback) or sweep-highlight it word
+     *  by word (karaoke guide) using the same data. */
+    public static class LyricLine {
+        public final long timeMs;
+        public final String text;
+        public final List<Syllable> syllables;
+        public LyricLine(long timeMs, String text, List<Syllable> syllables) {
+            this.timeMs = timeMs;
+            this.text = text;
+            this.syllables = syllables;
+        }
+    }
+
+    /** Groups raw syllable-level lyric events into full display lines,
+     *  keeping each syllable's own timing for karaoke highlighting. */
     public static List<LyricLine> groupIntoLines(List<LyricEvent> events) {
         List<LyricLine> lines = new ArrayList<>();
         StringBuilder current = new StringBuilder();
+        List<Syllable> currentSyllables = new ArrayList<>();
         long lineStart = -1;
 
         for (LyricEvent ev : events) {
@@ -52,17 +70,21 @@ public class MidiLyricParser {
             String content = (isBreak || isCaretJoin) ? raw.substring(1) : raw;
 
             if (isBreak && current.length() > 0) {
-                lines.add(new LyricLine(lineStart, current.toString().trim()));
+                lines.add(new LyricLine(lineStart, current.toString().trim(), currentSyllables));
                 current.setLength(0);
+                currentSyllables = new ArrayList<>();
                 lineStart = -1;
             }
 
             if (lineStart < 0) lineStart = ev.timeMs;
+            if (!content.isEmpty()) {
+                currentSyllables.add(new Syllable(ev.timeMs, content));
+            }
             current.append(content);
         }
 
         if (current.length() > 0) {
-            lines.add(new LyricLine(lineStart, current.toString().trim()));
+            lines.add(new LyricLine(lineStart, current.toString().trim(), currentSyllables));
         }
 
         return lines;

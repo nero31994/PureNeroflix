@@ -4,6 +4,8 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -64,7 +66,20 @@ public class LrcLyricFetcher {
 ' first — some sources return multiple leading tags
      *  on one line (shared repeated lyric), or omit real newlines entirely,
      *  either of which broke the old line-by-line approach and caused the
-     *  whole song to collapse into a single stuck "line". */
+     *  whole song to collapse into a single stuck "line".
+     *
+     *  lrclib only gives line-level timestamps, not per-word ones, so each
+     *  line's words are given evenly-spaced *estimated* timings between
+     *  this line's start and the next line's start — good enough to drive
+     *  a karaoke-guide sweep highlight even without real word-level data.
+     *
+     *  The result is explicitly sorted by time before it's returned: the
+     *  line-index walk used for playback sync assumes non-decreasing
+     *  timestamps, and lrclib's JSON ordering isn't guaranteed to be
+     *  strictly chronological — an out-of-order entry here was what made
+     *  the fallback lyrics appear to freeze on the first line instead of
+     *  advancing with the song.
+     */
     private static List<MidiLyricParser.LyricLine> parseLrc(String lrcText) {
         List<MidiLyricParser.LyricLine> lines = new ArrayList<>();
         Matcher m = LRC_LINE.matcher(lrcText);
@@ -88,9 +103,34 @@ public class LrcLyricFetcher {
             String text = lrcText.substring(textStart, textEnd)
                 .replace("\r", "").replace("\n", "").trim();
             if (!text.isEmpty()) {
-                lines.add(new MidiLyricParser.LyricLine(times.get(i), text));
+                long lineTime = times.get(i);
+                long nextTime = (i + 1 < times.size()) ? times.get(i + 1) : lineTime + 4000;
+                lines.add(new MidiLyricParser.LyricLine(
+                    lineTime, text, estimateSyllables(lineTime, nextTime, text)));
             }
         }
+
+        Collections.sort(lines, new Comparator<MidiLyricParser.LyricLine>() {
+            @Override public int compare(MidiLyricParser.LyricLine a, MidiLyricParser.LyricLine b) {
+                return Long.compare(a.timeMs, b.timeMs);
+            }
+        });
         return lines;
+    }
+
+    /** Splits a fallback lyric line into words and spreads them evenly
+     *  across the gap to the next line, so the karaoke guide has something
+     *  to sweep through even though lrclib only gives one timestamp per
+     *  line. Capped well short of the next line's start so the sweep
+     *  finishes before the line hands off, rather than exactly on it. */
+    private static List<MidiLyricParser.Syllable> estimateSyllables(long lineTime, long nextTime, String text) {
+        List<MidiLyricParser.Syllable> syllables = new ArrayList<>();
+        String[] words = text.split("(?<=\\s)"); // keep trailing spaces attached
+        long available = Math.max(300, (long) ((nextTime - lineTime) * 0.85));
+        long step = words.length > 0 ? available / words.length : 0;
+        for (int i = 0; i < words.length; i++) {
+            syllables.add(new MidiLyricParser.Syllable(lineTime + (step * i), words[i]));
+        }
+        return syllables;
     }
 }
