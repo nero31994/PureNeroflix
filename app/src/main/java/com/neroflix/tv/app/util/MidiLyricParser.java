@@ -110,7 +110,104 @@ public class MidiLyricParser {
         }
 
         return lines;
+    }
 
+    private static final int DISPLAY_LINE_MAX_CHARS = 48;
+    private static final long DISPLAY_LINE_DEFAULT_MS = 3200;
+
+    /** Final safety pass: splits any line that's still too long to read
+     *  comfortably into shorter, advancing sub-lines — run on the
+     *  finished line list regardless of where it came from (MIDI or
+     *  online fallback).
+     *
+     *  This exists because some MIDI files store their lyrics as one
+     *  single Text meta-event holding an entire verse as one literal
+     *  string, rather than one event per word/syllable. Nothing earlier
+     *  in the pipeline can break a line like that: groupIntoLines only
+     *  ever breaks *between* separate events, and a single event has
+     *  nothing to break between. Such a file also isn't caught by the
+     *  "fall back to online lyrics" path, because that only triggers
+     *  when the MIDI produced *zero* lines — one giant line still counts
+     *  as "found lyrics," so the file's own (unsplittable) block was
+     *  used as-is. Running this pass last, after both sources have had
+     *  their chance, guarantees a long block gets split either way. */
+    public static List<LyricLine> splitLongLines(List<LyricLine> lines) {
+        List<LyricLine> out = new ArrayList<>();
+        for (int i = 0; i < lines.size(); i++) {
+            LyricLine line = lines.get(i);
+            if (line.text.length() <= DISPLAY_LINE_MAX_CHARS) {
+                out.add(line);
+                continue;
+            }
+            long nextStart = (i + 1 < lines.size()) ? lines.get(i + 1).timeMs : -1;
+            out.addAll(splitOneLongLine(line, nextStart));
+        }
+        return out;
+    }
+
+    private static List<LyricLine> splitOneLongLine(LyricLine line, long nextStart) {
+        List<LyricLine> result = new ArrayList<>();
+
+        // Prefer real per-word timing when there's more than one syllable
+        // to work with — this preserves exact sync for files that do
+        // have per-word events but just never got an explicit break.
+        List<Syllable> syllables = line.syllables;
+        if (syllables != null && syllables.size() > 1) {
+            StringBuilder chunk = new StringBuilder();
+            List<Syllable> chunkSylls = new ArrayList<>();
+            long chunkStart = -1;
+            for (Syllable s : syllables) {
+                if (chunk.length() > 0 && chunk.length() + s.text.length() > DISPLAY_LINE_MAX_CHARS) {
+                    result.add(new LyricLine(chunkStart, chunk.toString().trim(), new ArrayList<>(chunkSylls)));
+                    chunk.setLength(0);
+                    chunkSylls.clear();
+                    chunkStart = -1;
+                }
+                if (chunkStart < 0) chunkStart = s.timeMs;
+                chunk.append(s.text);
+                chunkSylls.add(s);
+            }
+            if (chunk.length() > 0) {
+                result.add(new LyricLine(chunkStart, chunk.toString().trim(), chunkSylls));
+            }
+            if (!result.isEmpty()) return result;
+        }
+
+        // Single event / no usable per-word timing: chunk the raw text by
+        // word boundaries and pace each chunk evenly, using the gap to
+        // the next known line where available, or a fixed reading pace
+        // otherwise — this is the case a single massive Text event hits.
+        String[] words = line.text.split("(?<=\\s)");
+        List<StringBuilder> chunks = new ArrayList<>();
+        StringBuilder chunk = new StringBuilder();
+        for (String w : words) {
+            if (chunk.length() > 0 && chunk.length() + w.length() > DISPLAY_LINE_MAX_CHARS) {
+                chunks.add(chunk);
+                chunk = new StringBuilder();
+            }
+            chunk.append(w);
+        }
+        if (chunk.length() > 0) chunks.add(chunk);
+        if (chunks.isEmpty()) {
+            result.add(line);
+            return result;
+        }
+
+        long totalWindow = (nextStart > line.timeMs)
+            ? (nextStart - line.timeMs)
+            : DISPLAY_LINE_DEFAULT_MS * chunks.size();
+        long perChunk = Math.max(800, totalWindow / chunks.size());
+        long cursor = line.timeMs;
+        for (StringBuilder c : chunks) {
+            String text = c.toString().trim();
+            String[] cw = c.toString().split("(?<=\\s)");
+            List<Syllable> est = new ArrayList<>();
+            long step = cw.length > 0 ? Math.max(50, (long) (perChunk * 0.85) / cw.length) : 0;
+            for (int j = 0; j < cw.length; j++) est.add(new Syllable(cursor + step * j, cw[j]));
+            result.add(new LyricLine(cursor, text, est));
+            cursor += perChunk;
+        }
+        return result;
     }
 
     private static class TempoChange {

@@ -172,7 +172,12 @@ public class KaraokePlayerActivity extends AppCompatActivity {
                 // early line for the rest of the song.
                 List<MidiLyricParser.LyricLine> sortedLines = new ArrayList<>(parsedLines);
                 java.util.Collections.sort(sortedLines, (a, b) -> Long.compare(a.timeMs, b.timeMs));
-                final List<MidiLyricParser.LyricLine> finalLines = sortedLines;
+                // Splits any line too long to read comfortably into shorter
+                // advancing sub-lines — needed for MIDI files that store an
+                // entire verse as one single Text event, which nothing
+                // earlier in the pipeline (from either source) can break up.
+                final List<MidiLyricParser.LyricLine> finalLines =
+                    MidiLyricParser.splitLongLines(sortedLines);
 
                 mainHandler.post(() -> {
                     lyricLines = finalLines;
