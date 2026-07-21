@@ -60,6 +60,8 @@ public class LrcLyricFetcher {
         return null;
     }
 
+    private static final int MAX_LINE_CHARS = 48;
+
     /** Parses standard LRC-format text ([mm:ss.xx]line) into timed lines.
      *  Scans for timestamp tags directly across the whole text rather than
      *  splitting on '
@@ -68,10 +70,19 @@ public class LrcLyricFetcher {
      *  either of which broke the old line-by-line approach and caused the
      *  whole song to collapse into a single stuck "line".
      *
+     *  Some sources also give very sparse timing — a single tag covering
+     *  a whole verse instead of one per phrase — which caused the same
+     *  symptom a different way: one legitimately huge block of text under
+     *  one timestamp, so the karaoke sweep would finish highlighting it
+     *  and then just sit there until that one distant next timestamp
+     *  arrived. Any block over MAX_LINE_CHARS is now split into several
+     *  shorter sub-lines that share out that block's time window, so the
+     *  display keeps advancing at a normal reading pace either way.
+     *
      *  lrclib only gives line-level timestamps, not per-word ones, so each
      *  line's words are given evenly-spaced *estimated* timings between
-     *  this line's start and the next line's start — good enough to drive
-     *  a karaoke-guide sweep highlight even without real word-level data.
+     *  its start and the next line's start — good enough to drive a
+     *  karaoke-guide sweep highlight even without real word-level data.
      *
      *  The result is explicitly sorted by time before it's returned: the
      *  line-index walk used for playback sync assumes non-decreasing
@@ -105,8 +116,7 @@ public class LrcLyricFetcher {
             if (!text.isEmpty()) {
                 long lineTime = times.get(i);
                 long nextTime = (i + 1 < times.size()) ? times.get(i + 1) : lineTime + 4000;
-                lines.add(new MidiLyricParser.LyricLine(
-                    lineTime, text, estimateSyllables(lineTime, nextTime, text)));
+                lines.addAll(splitIntoDisplayLines(lineTime, nextTime, text));
             }
         }
 
@@ -116,6 +126,46 @@ public class LrcLyricFetcher {
             }
         });
         return lines;
+    }
+
+    /** Breaks one LRC-tagged block into readable sub-lines (word boundaries
+     *  only, each capped at MAX_LINE_CHARS), splitting the block's time
+     *  window proportionally across them by word count so longer chunks
+     *  get proportionally more time, and estimating per-word timings
+     *  within each chunk's own share of the window. */
+    private static List<MidiLyricParser.LyricLine> splitIntoDisplayLines(long lineTime, long nextTime, String text) {
+        List<MidiLyricParser.LyricLine> result = new ArrayList<>();
+        String[] words = text.split("(?<=\\s)");
+
+        List<StringBuilder> chunks = new ArrayList<>();
+        StringBuilder chunk = new StringBuilder();
+        for (String w : words) {
+            if (chunk.length() > 0 && chunk.length() + w.length() > MAX_LINE_CHARS) {
+                chunks.add(chunk);
+                chunk = new StringBuilder();
+            }
+            chunk.append(w);
+        }
+        if (chunk.length() > 0) chunks.add(chunk);
+        if (chunks.isEmpty()) return result;
+
+        int totalWords = words.length;
+        long windowMs = Math.max(300, nextTime - lineTime);
+        long cursor = lineTime;
+        int wordsSoFar = 0;
+
+        for (int i = 0; i < chunks.size(); i++) {
+            String chunkText = chunks.get(i).toString().trim();
+            int chunkWords = chunks.get(i).toString().split("(?<=\\s)").length;
+            wordsSoFar += chunkWords;
+            long chunkEnd = (i == chunks.size() - 1)
+                ? nextTime
+                : lineTime + Math.round(windowMs * (wordsSoFar / (double) totalWords));
+            result.add(new MidiLyricParser.LyricLine(
+                cursor, chunkText, estimateSyllables(cursor, chunkEnd, chunkText)));
+            cursor = chunkEnd;
+        }
+        return result;
     }
 
     /** Splits a fallback lyric line into words and spreads them evenly
