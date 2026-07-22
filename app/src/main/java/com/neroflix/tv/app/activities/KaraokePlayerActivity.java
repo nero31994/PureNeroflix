@@ -144,25 +144,27 @@ public class KaraokePlayerActivity extends AppCompatActivity {
                     }
                 }
 
-                List<MidiLyricParser.LyricEvent> parsedEvents;
-                InputStream in = new FileInputStream(cacheFile);
-                try {
-                    parsedEvents = MidiLyricParser.parse(in);
-                } finally {
-                    in.close();
-                }
+                // Lyric source priority: the online Lyrics API is always
+                // tried first, regardless of whether this MIDI file has its
+                // own embedded lyrics — we wait for that response before
+                // deciding anything. Embedded MIDI lyrics are only parsed
+                // as a fallback, when the API call fails, returns no
+                // synced lyrics, or is unavailable (LrcLyricFetcher.fetch
+                // already catches all of those internally and returns
+                // null in every such case — see LrcLyricFetcher.java).
                 List<MidiLyricParser.LyricLine> parsedLines =
-                    MidiLyricParser.groupIntoLines(parsedEvents);
+                    com.neroflix.tv.app.util.LrcLyricFetcher.fetch(http, songTitle, songArtist);
+                boolean usedApi = parsedLines != null && !parsedLines.isEmpty();
 
-                // Fallback: if the MIDI itself has no embedded lyrics, try
-                // fetching synced lyrics online via lrclib.net using the
-                // song's title/artist.
-                if (parsedLines.isEmpty()) {
-                    List<MidiLyricParser.LyricLine> onlineLines =
-                        com.neroflix.tv.app.util.LrcLyricFetcher.fetch(http, songTitle, songArtist);
-                    if (onlineLines != null && !onlineLines.isEmpty()) {
-                        parsedLines = onlineLines;
+                if (!usedApi) {
+                    List<MidiLyricParser.LyricEvent> parsedEvents;
+                    InputStream in = new FileInputStream(cacheFile);
+                    try {
+                        parsedEvents = MidiLyricParser.parse(in);
+                    } finally {
+                        in.close();
                     }
+                    parsedLines = MidiLyricParser.groupIntoLines(parsedEvents);
                 }
                 // Defensive: the line-index walk that drives playback sync
                 // assumes non-decreasing timestamps. Sorting here (on top
@@ -190,7 +192,7 @@ public class KaraokePlayerActivity extends AppCompatActivity {
                         android.util.Log.i("KaraokePlayer", "Loaded " + lyricLines.size()
                             + " lyric lines for \"" + songTitle + "\", last line at "
                             + lastLineMs + "ms (source: "
-                            + (parsedEvents.isEmpty() ? "online fallback" : "embedded MIDI") + ")");
+                            + (usedApi ? "online API" : "embedded MIDI") + ")");
                     }
                     startPlayback(cacheFile);
                 });
