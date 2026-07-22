@@ -185,6 +185,12 @@ public class KaraokePlayerActivity extends AppCompatActivity {
                     if (lyricLines.isEmpty()) {
                         lyricRowA.setText("🎵 No lyrics available");
                         lyricRowB.setText("");
+                    } else {
+                        long lastLineMs = lyricLines.get(lyricLines.size() - 1).timeMs;
+                        android.util.Log.i("KaraokePlayer", "Loaded " + lyricLines.size()
+                            + " lyric lines for \"" + songTitle + "\", last line at "
+                            + lastLineMs + "ms (source: "
+                            + (parsedEvents.isEmpty() ? "online fallback" : "embedded MIDI") + ")");
                     }
                     startPlayback(cacheFile);
                 });
@@ -278,7 +284,11 @@ public class KaraokePlayerActivity extends AppCompatActivity {
                 mp.start();
                 isPlaying = true;
                 updatePlayPauseIcon();
+                mainHandler.removeCallbacks(lyricUpdateRunnable);
                 mainHandler.post(lyricUpdateRunnable);
+                try {
+                    android.util.Log.i("KaraokePlayer", "Song duration: " + mp.getDuration() + "ms");
+                } catch (Exception ignored) {}
             });
             mediaPlayer.setOnCompletionListener(mp -> {
                 isPlaying = false;
@@ -310,6 +320,7 @@ public class KaraokePlayerActivity extends AppCompatActivity {
             } else {
                 mediaPlayer.start();
                 isPlaying = true;
+                mainHandler.removeCallbacks(lyricUpdateRunnable);
                 mainHandler.post(lyricUpdateRunnable);
             }
             if (bgPlayer != null) bgPlayer.setPlayWhenReady(isPlaying);
