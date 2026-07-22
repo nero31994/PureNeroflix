@@ -71,7 +71,15 @@ public class KaraokePlayerActivity extends AppCompatActivity {
     private static final String PREFS_NAME = "karaoke_prefs";
     private static final String PREF_OFFSET_MS = "lyric_offset_ms";
     private static final long OFFSET_STEP_MS = 100;
-    private long lyricOffsetMs = 0;
+    // Default compensates for the ~3s "lyrics appear after the vocals"
+    // lag seen with the online API's synced timestamps. Per the sign
+    // convention above (positive = trigger earlier), this must be
+    // POSITIVE to fix a late-appearing lyric, not negative — a negative
+    // default here would make the same lag worse, not better. Still
+    // fully user-adjustable at runtime; this is only the starting point
+    // before any manual calibration has been saved.
+    private static final long DEFAULT_OFFSET_MS = 3000;
+    private long lyricOffsetMs = DEFAULT_OFFSET_MS;
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
@@ -101,8 +109,16 @@ public class KaraokePlayerActivity extends AppCompatActivity {
         songArtist  = getIntent().getStringExtra("song_artist");
         songMidiUrl = getIntent().getStringExtra("song_midi_url");
 
+        // Reset for every song load: each song opens a fresh instance of
+        // this Activity (see KaraokeActivity), so this field is always
+        // re-initialized here rather than carried over in memory from a
+        // previous song. The only thing that persists across songs is the
+        // user's own saved calibration in SharedPreferences (intentional —
+        // it represents this device's audio/MIDI latency, not anything
+        // song-specific), falling back to DEFAULT_OFFSET_MS if the user
+        // has never adjusted it.
         lyricOffsetMs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
-            .getLong(PREF_OFFSET_MS, 0);
+            .getLong(PREF_OFFSET_MS, DEFAULT_OFFSET_MS);
 
         loadBackgroundVideos();
 
