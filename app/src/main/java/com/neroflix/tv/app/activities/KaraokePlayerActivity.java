@@ -144,25 +144,16 @@ public class KaraokePlayerActivity extends AppCompatActivity {
                     }
                 }
 
-                List<MidiLyricParser.LyricEvent> parsedEvents;
-                InputStream in = new FileInputStream(cacheFile);
-                try {
-                    parsedEvents = MidiLyricParser.parse(in);
-                } finally {
-                    in.close();
-                }
+                // Lyric source is forced to the online fallback engine only —
+                // embedded MIDI lyrics are intentionally never parsed or
+                // displayed. The MIDI file itself is still downloaded/cached
+                // above for actual song playback; only the *lyric* source
+                // selection changes here. The fallback engine's own fetch,
+                // parsing, timing, and sync logic below is untouched.
                 List<MidiLyricParser.LyricLine> parsedLines =
-                    MidiLyricParser.groupIntoLines(parsedEvents);
-
-                // Fallback: if the MIDI itself has no embedded lyrics, try
-                // fetching synced lyrics online via lrclib.net using the
-                // song's title/artist.
-                if (parsedLines.isEmpty()) {
-                    List<MidiLyricParser.LyricLine> onlineLines =
-                        com.neroflix.tv.app.util.LrcLyricFetcher.fetch(http, songTitle, songArtist);
-                    if (onlineLines != null && !onlineLines.isEmpty()) {
-                        parsedLines = onlineLines;
-                    }
+                    com.neroflix.tv.app.util.LrcLyricFetcher.fetch(http, songTitle, songArtist);
+                if (parsedLines == null) {
+                    parsedLines = new ArrayList<>();
                 }
                 // Defensive: the line-index walk that drives playback sync
                 // assumes non-decreasing timestamps. Sorting here (on top
@@ -189,8 +180,7 @@ public class KaraokePlayerActivity extends AppCompatActivity {
                         long lastLineMs = lyricLines.get(lyricLines.size() - 1).timeMs;
                         android.util.Log.i("KaraokePlayer", "Loaded " + lyricLines.size()
                             + " lyric lines for \"" + songTitle + "\", last line at "
-                            + lastLineMs + "ms (source: "
-                            + (parsedEvents.isEmpty() ? "online fallback" : "embedded MIDI") + ")");
+                            + lastLineMs + "ms (source: online fallback)");
                     }
                     startPlayback(cacheFile);
                 });
