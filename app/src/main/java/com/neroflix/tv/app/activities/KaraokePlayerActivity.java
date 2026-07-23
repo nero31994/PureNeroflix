@@ -39,6 +39,7 @@ public class KaraokePlayerActivity extends AppCompatActivity {
     private TextView playPauseBtn;
     private TextView backBtn;
     private TextView lyricRowA, lyricRowB;
+    private TextView syncEarlierBtn, syncLaterBtn;
     private PlayerView bgVideoView;
 
     private String songTitle, songArtist, songMidiUrl;
@@ -50,6 +51,11 @@ public class KaraokePlayerActivity extends AppCompatActivity {
     private boolean isPlaying = false;
     private boolean rowAActive = true;
     private boolean lyricRowsInitialized = false;
+    // The row currently showing the "singing now" line, and the line data
+    // behind it — needed so the sweep highlight can be refreshed every
+    // tick without waiting for the active line to change.
+    private TextView activeRow;
+    private MidiLyricParser.LyricLine activeLine;
 
     // Background videos shipped inside the APK under assets/bgv — every
     // video found there is loaded into a shuffled, endlessly-looping,
@@ -66,7 +72,17 @@ public class KaraokePlayerActivity extends AppCompatActivity {
     private static final String PREFS_NAME = "karaoke_prefs";
     private static final String PREF_OFFSET_MS = "lyric_offset_ms";
     private static final long OFFSET_STEP_MS = 100;
-    private long lyricOffsetMs = 0;
+    // No hardcoded compensation: sync relies entirely on reading the
+    // real MIDI playback position directly on every update tick (see
+    // updateLyricDisplay), not on a fixed number tuned for one device/
+    // song. 0 is the correct default for that approach — a nonzero
+    // default would just be masking a real desync with a guess that's
+    // wrong for any other device or song. The offset stays available
+    // for per-device/per-song manual calibration via the floating
+    // buttons or D-pad Left/Right, for cases where a specific lyric
+    // source's timestamps are genuinely offset from that recording.
+    private static final long DEFAULT_OFFSET_MS = 0;
+    private long lyricOffsetMs = DEFAULT_OFFSET_MS;
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
@@ -75,7 +91,7 @@ public class KaraokePlayerActivity extends AppCompatActivity {
     private final Runnable lyricUpdateRunnable = new Runnable() {
         @Override public void run() {
             updateLyricDisplay();
-            mainHandler.postDelayed(this, 150);
+            mainHandler.postDelayed(this, 80);
         }
     };
 
@@ -91,13 +107,23 @@ public class KaraokePlayerActivity extends AppCompatActivity {
         lyricRowA    = findViewById(R.id.karplay_lyric_row_a);
         lyricRowB    = findViewById(R.id.karplay_lyric_row_b);
         bgVideoView  = findViewById(R.id.karplay_bg_video);
+        syncEarlierBtn = findViewById(R.id.karplay_sync_earlier_btn);
+        syncLaterBtn   = findViewById(R.id.karplay_sync_later_btn);
 
         songTitle   = getIntent().getStringExtra("song_title");
         songArtist  = getIntent().getStringExtra("song_artist");
         songMidiUrl = getIntent().getStringExtra("song_midi_url");
 
+        // Reset for every song load: each song opens a fresh instance of
+        // this Activity (see KaraokeActivity), so this field is always
+        // re-initialized here rather than carried over in memory from a
+        // previous song. The only thing that persists across songs is the
+        // user's own saved calibration in SharedPreferences (intentional —
+        // it represents this device's audio/MIDI latency, not anything
+        // song-specific), falling back to DEFAULT_OFFSET_MS if the user
+        // has never adjusted it.
         lyricOffsetMs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
-            .getLong(PREF_OFFSET_MS, 0);
+            .getLong(PREF_OFFSET_MS, DEFAULT_OFFSET_MS);
 
         loadBackgroundVideos();
 
@@ -106,6 +132,11 @@ public class KaraokePlayerActivity extends AppCompatActivity {
 
         if (backBtn != null) backBtn.setOnClickListener(v -> finish());
         if (playPauseBtn != null) playPauseBtn.setOnClickListener(v -> togglePlayPause());
+        // Same method + same 100ms step the D-pad Left/Right keys use
+        // (see onKeyDown below) — touch and remote stay in sync with
+        // each other and share the same persisted calibration.
+        if (syncEarlierBtn != null) syncEarlierBtn.setOnClickListener(v -> adjustLyricOffset(OFFSET_STEP_MS));
+        if (syncLaterBtn != null) syncLaterBtn.setOnClickListener(v -> adjustLyricOffset(-OFFSET_STEP_MS));
 
         loadAndPlay();
     }
@@ -121,6 +152,8 @@ public class KaraokePlayerActivity extends AppCompatActivity {
         lyricRowB.setText("");
         rowAActive = true;
         lyricRowsInitialized = false;
+        activeRow = null;
+        activeLine = null;
 
         executor.execute(() -> {
             try {
@@ -137,27 +170,42 @@ public class KaraokePlayerActivity extends AppCompatActivity {
                     }
                 }
 
-                List<MidiLyricParser.LyricEvent> parsedEvents;
-                InputStream in = new FileInputStream(cacheFile);
-                try {
-                    parsedEvents = MidiLyricParser.parse(in);
-                } finally {
-                    in.close();
-                }
+                // Lyric source priority: the online Lyrics API is always
+                // tried first, regardless of whether this MIDI file has its
+                // own embedded lyrics — we wait for that response before
+                // deciding anything. Embedded MIDI lyrics are only parsed
+                // as a fallback, when the API call fails, returns no
+                // synced lyrics, or is unavailable (LrcLyricFetcher.fetch
+                // already catches all of those internally and returns
+                // null in every such case — see LrcLyricFetcher.java).
                 List<MidiLyricParser.LyricLine> parsedLines =
-                    MidiLyricParser.groupIntoLines(parsedEvents);
+                    com.neroflix.tv.app.util.LrcLyricFetcher.fetch(http, songTitle, songArtist);
+                boolean usedApi = parsedLines != null && !parsedLines.isEmpty();
 
-                // Fallback: if the MIDI itself has no embedded lyrics, try
-                // fetching synced lyrics online via lrclib.net using the
-                // song's title/artist.
-                if (parsedLines.isEmpty()) {
-                    List<MidiLyricParser.LyricLine> onlineLines =
-                        com.neroflix.tv.app.util.LrcLyricFetcher.fetch(http, songTitle, songArtist);
-                    if (onlineLines != null && !onlineLines.isEmpty()) {
-                        parsedLines = onlineLines;
+                if (!usedApi) {
+                    List<MidiLyricParser.LyricEvent> parsedEvents;
+                    InputStream in = new FileInputStream(cacheFile);
+                    try {
+                        parsedEvents = MidiLyricParser.parse(in);
+                    } finally {
+                        in.close();
                     }
+                    parsedLines = MidiLyricParser.groupIntoLines(parsedEvents);
                 }
-                final List<MidiLyricParser.LyricLine> finalLines = parsedLines;
+                // Defensive: the line-index walk that drives playback sync
+                // assumes non-decreasing timestamps. Sorting here (on top
+                // of the sort each source already does) guarantees that
+                // regardless of where the lines came from, so a single
+                // out-of-order entry can never freeze the display on an
+                // early line for the rest of the song.
+                List<MidiLyricParser.LyricLine> sortedLines = new ArrayList<>(parsedLines);
+                java.util.Collections.sort(sortedLines, (a, b) -> Long.compare(a.timeMs, b.timeMs));
+                // Splits any line too long to read comfortably into shorter
+                // advancing sub-lines — needed for MIDI files that store an
+                // entire verse as one single Text event, which nothing
+                // earlier in the pipeline (from either source) can break up.
+                final List<MidiLyricParser.LyricLine> finalLines =
+                    MidiLyricParser.splitLongLines(sortedLines);
 
                 mainHandler.post(() -> {
                     lyricLines = finalLines;
@@ -165,6 +213,12 @@ public class KaraokePlayerActivity extends AppCompatActivity {
                     if (lyricLines.isEmpty()) {
                         lyricRowA.setText("🎵 No lyrics available");
                         lyricRowB.setText("");
+                    } else {
+                        long lastLineMs = lyricLines.get(lyricLines.size() - 1).timeMs;
+                        android.util.Log.i("KaraokePlayer", "Loaded " + lyricLines.size()
+                            + " lyric lines for \"" + songTitle + "\", last line at "
+                            + lastLineMs + "ms (source: "
+                            + (usedApi ? "online API" : "embedded MIDI") + ")");
                     }
                     startPlayback(cacheFile);
                 });
@@ -183,7 +237,13 @@ public class KaraokePlayerActivity extends AppCompatActivity {
     /** Lists every video in assets/bgv, shuffles them into a looping
      *  muted playlist, and starts it behind the lyrics. If the folder
      *  is missing or empty, the screen just falls back to the plain
-     *  dark background — this never blocks song playback. */
+     *  dark background — this never blocks song playback.
+     *
+     *  The list is shuffled here (not just via ExoPlayer's shuffle mode)
+     *  because enabling shuffle mode only randomizes which item plays
+     *  *next* — the item at index 0 still plays first every time, and
+     *  since AssetManager.list() returns names in the same deterministic
+     *  order on every call, every song was opening on the same video. */
     private void loadBackgroundVideos() {
         executor.execute(() -> {
             List<String> videoNames = new ArrayList<>();
@@ -205,6 +265,8 @@ public class KaraokePlayerActivity extends AppCompatActivity {
             }
 
             if (videoNames.isEmpty()) return;
+
+            java.util.Collections.shuffle(videoNames, new java.util.Random());
 
             final List<Uri> uris = new ArrayList<>();
             for (String name : videoNames) {
@@ -228,7 +290,14 @@ public class KaraokePlayerActivity extends AppCompatActivity {
             bgPlayer.setRepeatMode(Player.REPEAT_MODE_ALL);
             bgPlayer.setVolume(0f);
             bgPlayer.prepare();
-            bgPlayer.setPlayWhenReady(isPlaying);
+            // The background loop is silent and purely decorative, so it
+            // should start rolling as soon as it's ready rather than
+            // waiting on `isPlaying` — that flag is still false at this
+            // point because the MIDI download/parse (on another thread)
+            // usually hasn't finished yet, and nothing ever flipped this
+            // player's playWhenReady on afterward. That left it sitting on
+            // its first decoded frame — a static image, not a video.
+            bgPlayer.setPlayWhenReady(true);
         } catch (Exception e) {
             android.util.Log.e("KaraokePlayer", "initBgPlayer failed", e);
         }
@@ -243,7 +312,11 @@ public class KaraokePlayerActivity extends AppCompatActivity {
                 mp.start();
                 isPlaying = true;
                 updatePlayPauseIcon();
+                mainHandler.removeCallbacks(lyricUpdateRunnable);
                 mainHandler.post(lyricUpdateRunnable);
+                try {
+                    android.util.Log.i("KaraokePlayer", "Song duration: " + mp.getDuration() + "ms");
+                } catch (Exception ignored) {}
             });
             mediaPlayer.setOnCompletionListener(mp -> {
                 isPlaying = false;
@@ -275,6 +348,7 @@ public class KaraokePlayerActivity extends AppCompatActivity {
             } else {
                 mediaPlayer.start();
                 isPlaying = true;
+                mainHandler.removeCallbacks(lyricUpdateRunnable);
                 mainHandler.post(lyricUpdateRunnable);
             }
             if (bgPlayer != null) bgPlayer.setPlayWhenReady(isPlaying);
@@ -296,39 +370,89 @@ public class KaraokePlayerActivity extends AppCompatActivity {
         }
         long adjPos = pos + lyricOffsetMs;
 
+        // Full scan (not break-on-first-miss) so a single out-of-order
+        // timestamp can't strand the index on an early line for the rest
+        // of playback — it just finds the last line that has started.
         int idx = -1;
         for (int i = 0; i < lyricLines.size(); i++) {
             if (lyricLines.get(i).timeMs <= adjPos) idx = i;
-            else break;
         }
 
-        if (idx == currentLyricIndex) return;
-        currentLyricIndex = idx;
+        if (idx != currentLyricIndex) {
+            currentLyricIndex = idx;
 
-        String currText = idx >= 0 ? lyricLines.get(idx).text : "";
-        String nextText = idx + 1 < lyricLines.size() ? lyricLines.get(idx + 1).text : "";
+            MidiLyricParser.LyricLine currLine = idx >= 0 ? lyricLines.get(idx) : null;
+            String nextText = idx + 1 < lyricLines.size() ? lyricLines.get(idx + 1).text : "";
 
-        if (!lyricRowsInitialized) {
-            setRowActive(lyricRowA, currText);
-            setRowWaiting(lyricRowB, nextText);
-            rowAActive = true;
-            lyricRowsInitialized = true;
+            if (!lyricRowsInitialized) {
+                setRowWaiting(lyricRowB, nextText);
+                activeRow = lyricRowA;
+                rowAActive = true;
+                lyricRowsInitialized = true;
+            } else if (rowAActive) {
+                setRowWaiting(lyricRowA, nextText);
+                activeRow = lyricRowB;
+                rowAActive = false;
+            } else {
+                setRowWaiting(lyricRowB, nextText);
+                activeRow = lyricRowA;
+                rowAActive = true;
+            }
+            activeLine = currLine;
+            setRowActiveStyle(activeRow);
+        }
+
+        // Refresh the karaoke-guide sweep on the active line every tick,
+        // independent of whether the line itself just changed, so the
+        // highlight progresses smoothly word-by-word as the song plays.
+        updateActiveRowHighlight(adjPos);
+    }
+
+    /** Repaints the active row's text with the karaoke-guide sweep: the
+     *  words already sung (their syllable timestamp has passed) in the
+     *  bright highlight color, and the words still to come in white. This
+     *  is what makes word-by-word/syllable highlighting actually visible —
+     *  previously the active line was just set to one flat color. */
+    private void updateActiveRowHighlight(long adjPos) {
+        if (activeRow == null) return;
+        if (activeLine == null) {
+            activeRow.setText("");
+            return;
+        }
+        List<MidiLyricParser.Syllable> syllables = activeLine.syllables;
+        if (syllables == null || syllables.isEmpty()) {
+            // No syllable-level timing available — show the plain line
+            // (still correctly synced, just without the word sweep).
+            activeRow.setText(activeLine.text);
             return;
         }
 
-        if (rowAActive) {
-            setRowActive(lyricRowB, currText);
-            setRowWaiting(lyricRowA, nextText);
-        } else {
-            setRowActive(lyricRowA, currText);
-            setRowWaiting(lyricRowB, nextText);
+        StringBuilder full = new StringBuilder();
+        int sungChars = 0;
+        for (MidiLyricParser.Syllable s : syllables) {
+            full.append(s.text);
+            if (s.timeMs <= adjPos) sungChars = full.length();
         }
-        rowAActive = !rowAActive;
+
+        String text = full.toString();
+        android.text.SpannableString sp = new android.text.SpannableString(text);
+        if (sungChars > 0) {
+            sp.setSpan(new android.text.style.ForegroundColorSpan(SUNG_COLOR),
+                0, Math.min(sungChars, text.length()),
+                android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
+        if (sungChars < text.length()) {
+            sp.setSpan(new android.text.style.ForegroundColorSpan(UPCOMING_COLOR),
+                sungChars, text.length(),
+                android.text.Spannable.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
+        activeRow.setText(sp);
     }
 
-    private void setRowActive(TextView row, String text) {
-        row.setText(text);
-        row.setTextColor(android.graphics.Color.parseColor("#4DD9FF"));
+    private static final int SUNG_COLOR = android.graphics.Color.parseColor("#4DD9FF");
+    private static final int UPCOMING_COLOR = android.graphics.Color.parseColor("#FFFFFF");
+
+    private void setRowActiveStyle(TextView row) {
         row.setTextSize(34);
         row.setAlpha(1f);
     }
