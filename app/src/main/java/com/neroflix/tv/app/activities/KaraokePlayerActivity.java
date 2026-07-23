@@ -72,16 +72,16 @@ public class KaraokePlayerActivity extends AppCompatActivity {
     private static final String PREFS_NAME = "karaoke_prefs";
     private static final String PREF_OFFSET_MS = "lyric_offset_ms";
     private static final long OFFSET_STEP_MS = 100;
-    // Default compensates for the "lyrics appear after the vocals" lag
-    // seen with the online API's synced timestamps. Per the sign
-    // convention above (positive = trigger earlier), this must be
-    // POSITIVE to fix a late-appearing lyric, not negative — a negative
-    // default here would make the same lag worse, not better. Tuned
-    // down from an initial 3000ms after on-device testing showed a
-    // ~300ms overshoot (lyrics triggering slightly too early) at 3000.
-    // Still fully user-adjustable at runtime; this is only the starting
-    // point before any manual calibration has been saved.
-    private static final long DEFAULT_OFFSET_MS = 2700;
+    // No hardcoded compensation: sync relies entirely on reading the
+    // real MIDI playback position directly on every update tick (see
+    // updateLyricDisplay), not on a fixed number tuned for one device/
+    // song. 0 is the correct default for that approach — a nonzero
+    // default would just be masking a real desync with a guess that's
+    // wrong for any other device or song. The offset stays available
+    // for per-device/per-song manual calibration via the floating
+    // buttons or D-pad Left/Right, for cases where a specific lyric
+    // source's timestamps are genuinely offset from that recording.
+    private static final long DEFAULT_OFFSET_MS = 0;
     private long lyricOffsetMs = DEFAULT_OFFSET_MS;
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
