@@ -39,7 +39,6 @@ public class KaraokePlayerActivity extends AppCompatActivity {
     private TextView playPauseBtn;
     private TextView backBtn;
     private TextView lyricRowA, lyricRowB;
-    private TextView syncEarlierBtn, syncLaterBtn;
     private PlayerView bgVideoView;
 
     private String songTitle, songArtist, songMidiUrl;
@@ -107,8 +106,6 @@ public class KaraokePlayerActivity extends AppCompatActivity {
         lyricRowA    = findViewById(R.id.karplay_lyric_row_a);
         lyricRowB    = findViewById(R.id.karplay_lyric_row_b);
         bgVideoView  = findViewById(R.id.karplay_bg_video);
-        syncEarlierBtn = findViewById(R.id.karplay_sync_earlier_btn);
-        syncLaterBtn   = findViewById(R.id.karplay_sync_later_btn);
 
         songTitle   = getIntent().getStringExtra("song_title");
         songArtist  = getIntent().getStringExtra("song_artist");
@@ -132,11 +129,6 @@ public class KaraokePlayerActivity extends AppCompatActivity {
 
         if (backBtn != null) backBtn.setOnClickListener(v -> finish());
         if (playPauseBtn != null) playPauseBtn.setOnClickListener(v -> togglePlayPause());
-        // Same method + same 100ms step the D-pad Left/Right keys use
-        // (see onKeyDown below) — touch and remote stay in sync with
-        // each other and share the same persisted calibration.
-        if (syncEarlierBtn != null) syncEarlierBtn.setOnClickListener(v -> adjustLyricOffset(OFFSET_STEP_MS));
-        if (syncLaterBtn != null) syncLaterBtn.setOnClickListener(v -> adjustLyricOffset(-OFFSET_STEP_MS));
 
         loadAndPlay();
     }
