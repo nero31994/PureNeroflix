@@ -81,6 +81,21 @@ android {
 }
 
 dependencies {
+    // BASS + BASSMIDI (un4seen Developments — https://www.un4seen.com):
+    // real-time MIDI synthesis via BassMidiAudioEngine, used when
+    // available with automatic fallback to MediaPlayer otherwise.
+    // BASS core is bundled directly as source
+    // (app/src/main/java/com/un4seen/bass/BASS.java) plus real
+    // libbass.so per ABI — no jar needed for it. This line is for the
+    // still-pending BASSMIDI add-on, if it's supplied as a jar rather
+    // than source: drop bassmidi.jar into app/libs/ to activate it.
+    // Native .so files for BASSMIDI also still need to go in
+    // app/src/main/jniLibs/<abi>/ — see app/libs/README.md for the
+    // full setup checklist. Non-commercial/freeware use of BASS is
+    // free; commercial/shareware distribution requires a paid license
+    // from un4seen — check current terms before shipping.
+    implementation fileTree(dir: 'libs', include: ['*.jar'])
+
     // AndroidX Core
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'com.google.android.material:material:1.11.0'

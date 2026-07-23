@@ -43,7 +43,7 @@ public class KaraokePlayerActivity extends AppCompatActivity {
 
     private String songTitle, songArtist, songMidiUrl;
 
-    private MediaPlayer mediaPlayer;
+    private com.neroflix.tv.app.audio.KaraokeAudioEngine audioEngine;
     private ExoPlayer bgPlayer;
     private List<MidiLyricParser.LyricLine> lyricLines;
     private int currentLyricIndex = -1;
@@ -297,32 +297,30 @@ public class KaraokePlayerActivity extends AppCompatActivity {
 
     private void startPlayback(File file) {
         try {
-            mediaPlayer = new MediaPlayer();
-            mediaPlayer.setDataSource(file.getAbsolutePath());
-            mediaPlayer.setOnPreparedListener(mp -> {
-                loadingBar.setVisibility(android.view.View.GONE);
-                mp.start();
-                isPlaying = true;
-                updatePlayPauseIcon();
-                mainHandler.removeCallbacks(lyricUpdateRunnable);
-                mainHandler.post(lyricUpdateRunnable);
-                try {
-                    android.util.Log.i("KaraokePlayer", "Song duration: " + mp.getDuration() + "ms");
-                } catch (Exception ignored) {}
+            audioEngine = com.neroflix.tv.app.audio.KaraokeAudioEngineFactory.create();
+            android.util.Log.i("KaraokePlayer", "Audio engine: " + audioEngine.engineName());
+            audioEngine.prepareAsync(file.getAbsolutePath(), new com.neroflix.tv.app.audio.KaraokeAudioEngine.Listener() {
+                @Override public void onPrepared() {
+                    loadingBar.setVisibility(android.view.View.GONE);
+                    audioEngine.start();
+                    isPlaying = true;
+                    updatePlayPauseIcon();
+                    mainHandler.removeCallbacks(lyricUpdateRunnable);
+                    mainHandler.post(lyricUpdateRunnable);
+                    android.util.Log.i("KaraokePlayer", "Song duration: " + audioEngine.getDurationMs() + "ms");
+                }
+                @Override public void onCompletion() {
+                    isPlaying = false;
+                    updatePlayPauseIcon();
+                    mainHandler.removeCallbacks(lyricUpdateRunnable);
+                    finish();
+                }
+                @Override public void onError(String message) {
+                    android.util.Log.e("KaraokePlayer", "Playback error: " + message);
+                    loadingBar.setVisibility(android.view.View.GONE);
+                    lyricRowA.setText("Playback error.");
+                }
             });
-            mediaPlayer.setOnCompletionListener(mp -> {
-                isPlaying = false;
-                updatePlayPauseIcon();
-                mainHandler.removeCallbacks(lyricUpdateRunnable);
-                finish();
-            });
-            mediaPlayer.setOnErrorListener((mp, what, extra) -> {
-                android.util.Log.e("KaraokePlayer", "MediaPlayer error: " + what + "/" + extra);
-                loadingBar.setVisibility(android.view.View.GONE);
-                lyricRowA.setText("Playback error.");
-                return true;
-            });
-            mediaPlayer.prepareAsync();
         } catch (Exception e) {
             loadingBar.setVisibility(android.view.View.GONE);
             lyricRowA.setText("Failed to play song.");
@@ -331,14 +329,14 @@ public class KaraokePlayerActivity extends AppCompatActivity {
     }
 
     private void togglePlayPause() {
-        if (mediaPlayer == null) return;
+        if (audioEngine == null) return;
         try {
             if (isPlaying) {
-                mediaPlayer.pause();
+                audioEngine.pause();
                 isPlaying = false;
                 mainHandler.removeCallbacks(lyricUpdateRunnable);
             } else {
-                mediaPlayer.start();
+                audioEngine.start();
                 isPlaying = true;
                 mainHandler.removeCallbacks(lyricUpdateRunnable);
                 mainHandler.post(lyricUpdateRunnable);
@@ -353,10 +351,16 @@ public class KaraokePlayerActivity extends AppCompatActivity {
     }
 
     private void updateLyricDisplay() {
-        if (mediaPlayer == null || lyricLines == null || lyricLines.isEmpty()) return;
+        if (audioEngine == null || lyricLines == null || lyricLines.isEmpty()) return;
         long pos;
         try {
-            pos = mediaPlayer.getCurrentPosition();
+            // Reads the real playback position from whichever engine is
+            // actually making sound right now — BASS's own channel
+            // position when BASSMIDI is active, or MediaPlayer's when
+            // it's the fallback. Either way this is a live read on every
+            // tick, not an independent timer, so lyric sync always
+            // tracks the engine that's really playing the audio.
+            pos = audioEngine.getCurrentPositionMs();
         } catch (Exception e) {
             return;
         }
@@ -490,11 +494,15 @@ public class KaraokePlayerActivity extends AppCompatActivity {
     protected void onDestroy() {
         super.onDestroy();
         mainHandler.removeCallbacks(lyricUpdateRunnable);
-        if (mediaPlayer != null) {
-            try { mediaPlayer.stop(); } catch (Exception ignored) {}
-            try { mediaPlayer.release(); } catch (Exception ignored) {}
-            mediaPlayer = null;
+        if (audioEngine != null) {
+            try { audioEngine.release(); } catch (Exception ignored) {}
+            audioEngine = null;
         }
+        // Fully shuts BASS down (not just this song's stream) when it
+        // was the active engine — required so the *next* song's fresh
+        // Activity instance can successfully call BASS_Init() again.
+        // A no-op when MediaPlayer was the fallback engine instead.
+        com.neroflix.tv.app.audio.KaraokeAudioEngineFactory.shutdown();
         if (bgPlayer != null) {
             try { bgVideoView.setPlayer(null); } catch (Exception ignored) {}
             try { bgPlayer.release(); } catch (Exception ignored) {}
