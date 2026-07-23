@@ -39,6 +39,7 @@ public class KaraokePlayerActivity extends AppCompatActivity {
     private TextView playPauseBtn;
     private TextView backBtn;
     private TextView lyricRowA, lyricRowB;
+    private TextView syncEarlierBtn, syncLaterBtn;
     private PlayerView bgVideoView;
 
     private String songTitle, songArtist, songMidiUrl;
@@ -71,14 +72,16 @@ public class KaraokePlayerActivity extends AppCompatActivity {
     private static final String PREFS_NAME = "karaoke_prefs";
     private static final String PREF_OFFSET_MS = "lyric_offset_ms";
     private static final long OFFSET_STEP_MS = 100;
-    // Default compensates for the ~3s "lyrics appear after the vocals"
-    // lag seen with the online API's synced timestamps. Per the sign
+    // Default compensates for the "lyrics appear after the vocals" lag
+    // seen with the online API's synced timestamps. Per the sign
     // convention above (positive = trigger earlier), this must be
     // POSITIVE to fix a late-appearing lyric, not negative — a negative
-    // default here would make the same lag worse, not better. Still
-    // fully user-adjustable at runtime; this is only the starting point
-    // before any manual calibration has been saved.
-    private static final long DEFAULT_OFFSET_MS = 3000;
+    // default here would make the same lag worse, not better. Tuned
+    // down from an initial 3000ms after on-device testing showed a
+    // ~300ms overshoot (lyrics triggering slightly too early) at 3000.
+    // Still fully user-adjustable at runtime; this is only the starting
+    // point before any manual calibration has been saved.
+    private static final long DEFAULT_OFFSET_MS = 2700;
     private long lyricOffsetMs = DEFAULT_OFFSET_MS;
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
@@ -104,6 +107,8 @@ public class KaraokePlayerActivity extends AppCompatActivity {
         lyricRowA    = findViewById(R.id.karplay_lyric_row_a);
         lyricRowB    = findViewById(R.id.karplay_lyric_row_b);
         bgVideoView  = findViewById(R.id.karplay_bg_video);
+        syncEarlierBtn = findViewById(R.id.karplay_sync_earlier_btn);
+        syncLaterBtn   = findViewById(R.id.karplay_sync_later_btn);
 
         songTitle   = getIntent().getStringExtra("song_title");
         songArtist  = getIntent().getStringExtra("song_artist");
@@ -127,6 +132,11 @@ public class KaraokePlayerActivity extends AppCompatActivity {
 
         if (backBtn != null) backBtn.setOnClickListener(v -> finish());
         if (playPauseBtn != null) playPauseBtn.setOnClickListener(v -> togglePlayPause());
+        // Same method + same 100ms step the D-pad Left/Right keys use
+        // (see onKeyDown below) — touch and remote stay in sync with
+        // each other and share the same persisted calibration.
+        if (syncEarlierBtn != null) syncEarlierBtn.setOnClickListener(v -> adjustLyricOffset(OFFSET_STEP_MS));
+        if (syncLaterBtn != null) syncLaterBtn.setOnClickListener(v -> adjustLyricOffset(-OFFSET_STEP_MS));
 
         loadAndPlay();
     }
