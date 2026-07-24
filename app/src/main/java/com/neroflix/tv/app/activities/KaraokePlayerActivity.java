@@ -71,17 +71,7 @@ public class KaraokePlayerActivity extends AppCompatActivity {
     private static final String PREFS_NAME = "karaoke_prefs";
     private static final String PREF_OFFSET_MS = "lyric_offset_ms";
     private static final long OFFSET_STEP_MS = 100;
-    // No hardcoded compensation: sync relies entirely on reading the
-    // real MIDI playback position directly on every update tick (see
-    // updateLyricDisplay), not on a fixed number tuned for one device/
-    // song. 0 is the correct default for that approach — a nonzero
-    // default would just be masking a real desync with a guess that's
-    // wrong for any other device or song. The offset stays available
-    // for per-device/per-song manual calibration via the floating
-    // buttons or D-pad Left/Right, for cases where a specific lyric
-    // source's timestamps are genuinely offset from that recording.
-    private static final long DEFAULT_OFFSET_MS = 0;
-    private long lyricOffsetMs = DEFAULT_OFFSET_MS;
+    private long lyricOffsetMs = 0;
 
     private final ExecutorService executor = Executors.newSingleThreadExecutor();
     private final Handler mainHandler = new Handler(Looper.getMainLooper());
@@ -111,16 +101,8 @@ public class KaraokePlayerActivity extends AppCompatActivity {
         songArtist  = getIntent().getStringExtra("song_artist");
         songMidiUrl = getIntent().getStringExtra("song_midi_url");
 
-        // Reset for every song load: each song opens a fresh instance of
-        // this Activity (see KaraokeActivity), so this field is always
-        // re-initialized here rather than carried over in memory from a
-        // previous song. The only thing that persists across songs is the
-        // user's own saved calibration in SharedPreferences (intentional —
-        // it represents this device's audio/MIDI latency, not anything
-        // song-specific), falling back to DEFAULT_OFFSET_MS if the user
-        // has never adjusted it.
         lyricOffsetMs = getSharedPreferences(PREFS_NAME, MODE_PRIVATE)
-            .getLong(PREF_OFFSET_MS, DEFAULT_OFFSET_MS);
+            .getLong(PREF_OFFSET_MS, 0);
 
         loadBackgroundVideos();
 
